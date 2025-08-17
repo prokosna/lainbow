@@ -18,25 +18,40 @@ Lainbow is built on a microservices architecture, with each component containeri
 
 ```mermaid
 graph TD
-    subgraph User Interaction
-        User --> Web_API
+    subgraph User
+        U[User]
     end
 
-    subgraph Core Services
-        Web_API[Web API Server] -- HTTP Request --> Inference_Server[Inference Server]
-        Web_API -- Enqueue Task --> RabbitMQ[Message Queue]
-        Web_API -- CRUD --> PostgreSQL[PostgreSQL]
-        Web_API -- Search/Insert --> Milvus[Vector DB]
+    subgraph "api.yaml"
+        Web_API[Web API Server]
     end
 
-    subgraph Batch Processing
-        RabbitMQ -- Consume Task --> Batch_Server[Batch Server]
-        Batch_Server -- HTTP Request --> Inference_Server
-        Batch_Server -- CRUD --> PostgreSQL
-        Batch_Server -- Insert --> Milvus
+    subgraph "batch.yaml"
+        Batch_Server[Batch Server]
     end
 
-    style User fill:#f9f,stroke:#333,stroke-width:2px
+    subgraph "inference.yaml"
+        Inference_Server["Inference Server (GPU Required)"]
+    end
+
+    subgraph "database.yaml"
+        PostgreSQL[PostgreSQL]
+        Milvus["Vector DB (Milvus)"]
+        RabbitMQ["Message Queue (RabbitMQ)"]
+    end
+
+    %% Connections
+    U --> Web_API
+    Web_API -- Enqueue Task --> RabbitMQ
+    Web_API -- CRUD --> PostgreSQL
+    Web_API -- Search --> Milvus
+
+    RabbitMQ -- Consume Task --> Batch_Server
+    Batch_Server -- HTTP Request --> Inference_Server
+    Batch_Server -- CRUD --> PostgreSQL
+    Batch_Server -- Insert --> Milvus
+
+    style U fill:#f9f,stroke:#333,stroke-width:2px
     style Web_API fill:#bbf,stroke:#333,stroke-width:2px
     style Inference_Server fill:#ffc,stroke:#333,stroke-width:2px
     style Batch_Server fill:#cdf,stroke:#333,stroke-width:2px
