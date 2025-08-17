@@ -1,0 +1,24 @@
+# pyproject.toml
+
+[tool.ruff]
+include = ["src", "tests"]
+exclude = [
+    "alembic",
+    ".venv",
+]
+line-length = 100
+lint.select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+lint.ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+mypy_path = "src"
+ignore_missing_imports = true
+strict = true
+warn_unreachable = true

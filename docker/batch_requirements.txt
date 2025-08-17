@@ -1,0 +1,14 @@
+celery
+celery-stubs
+httpx
+librosa
+mutagen
+numpy
+pika
+psycopg[binary]
+psycopg2-binary
+pydantic
+pymilvus
+SQLAlchemy
+sqlmodel
+tenacity

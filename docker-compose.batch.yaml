@@ -1,0 +1,15 @@
+services:
+  batch-cpu:
+    build:
+      context: .
+      dockerfile: docker/batch.Dockerfile
+    volumes:
+      - ./src:/src
+      - ./models:/src/models
+      - ${MUSIC_NAS_ROOT_DIR}:/music_library:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: ["celery", "-A", "worker.tasks", "worker", "-Q", "cpu_queue,celery", "-c", "1", "--loglevel=info", "--without-gossip"]
