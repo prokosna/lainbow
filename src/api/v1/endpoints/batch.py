@@ -23,7 +23,7 @@ def run_scan(
     """Enqueues a task to scan the music library and records it in the database."""
     try:
         db_task = task_manager.create_task(db, name=str(ScanTaskPayload.NAME))
-        payload = ScanTaskPayload(task_id=db_task.id, target_path="/")
+        payload = ScanTaskPayload(task_id=db_task.id, target_path=".")
         scan_library_task.delay(task_id=str(db_task.id), payload=payload.model_dump())
         return db_task
 
