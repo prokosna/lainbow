@@ -64,10 +64,6 @@ class TextEmbeddingService:
 
         elif model_name == TextEmbeddingModel.MUQ_MULAN:
             logger.info(f"Initializing MuQ-MuLan model with path '{MUQ_MULAN_MODEL_PATH}'...")
-            if not os.path.exists(MUQ_MULAN_MODEL_PATH):
-                raise FileNotFoundError(
-                    f"MuQ-MuLan model directory not found at '{MUQ_MULAN_MODEL_PATH}'."
-                )
             model = (
                 MuQMuLan.from_pretrained(MUQ_MULAN_REPO_ID, cache_dir=MUQ_MULAN_MODEL_PATH)
                 .to(self.device)
