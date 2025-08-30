@@ -1,0 +1,23 @@
+# API
+fastapi
+torch --index-url https://download.pytorch.org/whl/cpu
+torchaudio --index-url https://download.pytorch.org/whl/cpu
+torchvision --index-url https://download.pytorch.org/whl/cpu
+uvicorn[standard]
+laion-clap
+muq
+
+# For batch
+celery
+httpx
+librosa
+mutagen
+numpy
+pika
+psycopg[binary]
+psycopg2-binary
+pydantic
+pymilvus
+SQLAlchemy
+sqlmodel
+tenacity

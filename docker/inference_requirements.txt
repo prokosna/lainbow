@@ -1,0 +1,15 @@
+# API
+fastapi
+uvicorn[standard]
+python-multipart
+
+# For inference
+celery
+celery-stubs
+laion-clap
+librosa
+muq
+nnAudio
+numpy
+pydantic
+transformers

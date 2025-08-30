@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.flac
+*_data
+.mypy_cache
+.pytest_cache
+.ruff_cache
+attu.sh
+models/*
+!models/.gitkeep
+alembic/*
+alembic.ini
+.env
