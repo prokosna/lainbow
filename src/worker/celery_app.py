@@ -38,4 +38,5 @@ celery_app.conf.update(
             queue_arguments={"x-max-priority": 10},
         ),
     ),
+    task_compression="zstd",
 )

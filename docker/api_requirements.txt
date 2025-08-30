@@ -8,7 +8,7 @@ laion-clap
 muq
 
 # For batch
-celery
+celery[zstd]
 httpx
 librosa
 mutagen
