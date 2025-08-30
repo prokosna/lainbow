@@ -11,7 +11,7 @@ from .base import InferenceModel
 logger = logging.getLogger(__name__)
 
 REPO_ID = "OpenMuQ/MuQ-large-msd-iter"
-MODEL_PATH = os.path.join("./models", REPO_ID.split('/')[-1])
+MODEL_PATH = os.path.join("./models", REPO_ID.split("/")[-1])
 
 
 class MuQModel(InferenceModel):

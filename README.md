@@ -1,6 +1,6 @@
 # Lainbow
 
-Lainbow is a music analysis engine designed to process local music libraries. It offers batch processing capabilities to extract deep learning embeddings (MERT, CLAP) and various acoustic features from audio files. These features are then stored in a vector database to power an API for tasks like similarity-based music recommendations and natural language search.
+Lainbow is a music analysis engine designed to process local music libraries. It offers batch processing capabilities to extract deep learning embeddings (MERT, CLAP, MuQ, MuQ-MuLan) and various acoustic features from audio files. These features are then stored in a vector database to power an API for tasks like similarity-based music recommendations and natural language search.
 
 The project is primarily intended for integration with the MPD client, [Sola MPD](https://github.com/prokosna/sola_mpd).
 
@@ -9,7 +9,7 @@ The project is primarily intended for integration with the MPD client, [Sola MPD
 Lainbow is built on a microservices architecture, with each component containerized using Docker. The system consists of four main services that work together:
 
 - **Web API Server**: The main entry point for user requests. It handles API calls, interacts with the databases, and delegates heavy tasks to the batch server.
-- **Inference Server**: A dedicated service that hosts the deep learning models (MERT and CLAP) and performs inference tasks (e.g., generating embeddings from audio or text).
+- **Inference Server**: A dedicated service that hosts the deep learning models and performs inference tasks (e.g., generating embeddings from audio or text).
 - **Batch Server**: A Celery-based worker that processes long-running, asynchronous tasks, such as scanning the music library and analyzing songs.
 - **Databases**: A set of databases for storing metadata, vector embeddings, and managing task queues:
     - **PostgreSQL**: Stores song metadata, features, and task information.
@@ -59,7 +59,7 @@ graph TD
 
 ## Model Preparation
 
-**Before running the application, you need to download the required deep learning models (MERT and CLAP).**
+**Before running the application, you need to download the required deep learning models.**
 
 1.  **Install Dependencies**:
     First, ensure you have the necessary Python packages installed:
@@ -74,18 +74,24 @@ graph TD
     ```
 
 This script will download:
-- The MERT model (`m-a-p/MERT-v1-330M`) from Hugging Face Hub.
-- The CLAP model checkpoint from `huggingface.co/lukewys/laion_clap`.
+- The MERT model (`m-a-p/MERT-v1-330M`)
+- The CLAP model (`laion/clap-htsat-unfused`)
+- The MuQ model (`OpenMuQ/MuQ-large-msd-iter`)
+- The MuQ-MuLan model (`OpenMuQ/MuQ-MuLan-large`)
 
 Once the script completes, the application will be ready to run.
 
 ## Setup and Configuration
 
-### Application Customization
-Customize the application by editing the `.env` file. The default settings should work out-of-the-box if you are running all components on a single machine with no port conflicts. However, **you must at least set the path to your music library**.
+### Environment Variables
+1.  **Create `.env` file**: Copy the template to create your own environment file.
+    ```bash
+    cp .env.template .env
+    ```
+2.  **Edit `.env` file**: Open the `.env` file and customize the variables. **You must at least set `MUSIC_NAS_ROOT_DIR` to the absolute path of your music library.** The default settings should work out-of-the-box if you are running all components on a single machine with no port conflicts.
 
 ### GPU Configuration for Inference Server
-The `docker/inference.Dockerfile` uses a specific PyTorch base image optimized for the author's GPU (RTX 5070 Ti). **You may need to modify the `FROM` instruction in this Dockerfile** to use a base image compatible with your GPU hardware.
+The `docker/inference.Dockerfile` uses a specific PyTorch base image optimized for author's GPU (RTX 5070 Ti). **You may need to modify the `FROM` instruction in this Dockerfile** to use a base image compatible with your GPU hardware.
 
 Additionally, **ensure that the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is properly installed and configured**. This is required for Docker to access and utilize the GPU.
 
@@ -112,18 +118,98 @@ docker compose -f docker-compose.inference.yaml up -d
 ```bash
 docker compose -f docker-compose.batch.yaml up -d --scale batch-cpu=N
 ```
-*(Note: `N` is the number of parallel processes. A value of around 6 is recommended.)*
+*(Note: `N` is the number of parallel processes. A value around 4-6 is recommended.)*
 
 ## API Endpoints
 
-| Method | Path                               | Summary                                |
-|--------|------------------------------------|----------------------------------------|
-| `GET`  | `/health`                          | Health check                           |
-| `GET`  | `/api/v1/stats`                    | Get database statistics                |
-| `POST` | `/api/v1/batch/scan/run`           | Start a music library scan             |
-| `POST` | `/api/v1/batch/vacuum/run`         | Run library vacuum                     |
-| `POST` | `/api/v1/batch/analyze/run`        | Run song analysis                      |
-| `GET`  | `/api/v1/batch/tasks/{task_id}`    | Get task status                        |
-| `GET`  | `/api/v1/songs/search`             | Search songs by natural language       |
-| `GET`  | `/api/v1/songs/{file_path}/analysis` | Get detailed song analysis             |
-| `GET`  | `/api/v1/songs/{file_path}/similar`  | Find similar songs                     |
+### General
+
+#### `GET /health`
+- **Summary**: Health check endpoint.
+- **Response (200 OK)**: `{"status":"ok"}`
+
+### Statistics
+
+#### `GET /api/v1/stats`
+- **Summary**: Get database statistics.
+- **Description**: Retrieve statistics about the current state of the database, including song counts and task statuses.
+- **Response (200 OK)**:
+  ```json
+  {
+    "total_songs": 1000,
+    "songs_missing_acoustic_features": 50,
+    "songs_missing_clap": 100,
+    "songs_missing_mert": 100,
+    "songs_missing_muq": 200,
+    "songs_missing_muq_mulan": 200,
+    "pending_tasks": 5,
+    "running_tasks": 2
+  }
+  ```
+
+### Batch Processing
+
+#### `POST /api/v1/batch/scan/run`
+- **Summary**: Start a music library scan.
+- **Description**: Triggers a background task to scan the music library path specified in `.env`.
+- **Response (200 OK)**: Returns a `TaskResult` object.
+  ```json
+  {
+    "id": "...",
+    "name": "scan",
+    "status": "PENDING",
+    "result": null
+  }
+  ```
+
+#### `POST /api/v1/batch/vacuum/run`
+- **Summary**: Run library vacuum.
+- **Description**: Triggers a background task to remove database entries for songs that no longer exist on disk.
+- **Response (200 OK)**: Returns a `TaskResult` object.
+
+#### `POST /api/v1/batch/analyze/run`
+- **Summary**: Run song analysis.
+- **Description**: Enqueues a task to analyze all songs and generate embeddings for the specified models.
+- **Request Body** (optional):
+  ```json
+  {
+    "models": ["muq", "muq_mulan"]
+  }
+  ```
+  *If the body is omitted, it defaults to `["muq", "muq_mulan"]`.*
+- **Response (200 OK)**: Returns a `TaskResult` object.
+
+#### `GET /api/v1/batch/tasks/{task_id}`
+- **Summary**: Get task status.
+- **Description**: Retrieves the current status and result of a specific background task.
+- **Path Parameters**:
+  - `task_id` (UUID, required): The ID of the task.
+- **Response (200 OK)**: Returns a `TaskResult` object with the current status.
+
+### Songs
+
+#### `GET /api/v1/songs/search`
+- **Summary**: Search songs by natural language.
+- **Description**: Searches for songs based on a natural language query, e.g., "a song for a summer evening".
+- **Query Parameters**:
+  - `q` (string, required): Natural language query.
+  - `model_name` (string, optional, default: `muq_mulan`): The text embedding model to use. Can be `clap` or `muq_mulan`.
+  - `limit` (integer, optional, default: 10): Maximum number of results.
+- **Response (200 OK)**: Returns a list of `SearchSong` objects.
+
+#### `GET /api/v1/songs/{file_path}/analysis`
+- **Summary**: Get detailed song analysis.
+- **Description**: Retrieves detailed analysis for a given song, including metadata, features, and embedding status.
+- **Path Parameters**:
+  - `file_path` (string, required): The URL-encoded file path of the song.
+- **Response (200 OK)**: Returns a `SongAnalysis` object.
+
+#### `GET /api/v1/songs/{file_path}/similar`
+- **Summary**: Find similar songs.
+- **Description**: Finds songs acoustically similar to the given song using a specified vector embedding model.
+- **Path Parameters**:
+  - `file_path` (string, required): The URL-encoded file path of the song.
+- **Query Parameters**:
+  - `model_name` (string, optional, default: `muq`): The embedding model to use. Can be `acoustic_features`, `clap`, `mert`, `muq`, `muq_mulan`.
+  - `limit` (integer, optional, default: 10): Maximum number of results.
+- **Response (200 OK)**: Returns a list of `SearchSong` objects.

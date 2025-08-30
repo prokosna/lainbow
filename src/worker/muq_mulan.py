@@ -4,7 +4,7 @@ from typing import cast
 
 import librosa
 import numpy as np
-from domain import milvus_utils, config
+from domain import config, milvus_utils
 from domain.inference_client import run_inference
 
 from worker import audio
@@ -81,7 +81,9 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
     for audio_path in audio_paths:
         try:
             audio_file = audio.load_audio_for_librosa(audio_path, sr=MUQ_SAMPLING_RATE)
-            audio_data, _ = librosa.load(audio_file, sr=MUQ_SAMPLING_RATE, mono=True, duration=config.MUQ_FILE_DURATION_SEC)
+            audio_data, _ = librosa.load(
+                audio_file, sr=MUQ_SAMPLING_RATE, mono=True, duration=config.MUQ_FILE_DURATION_SEC
+            )
 
             audio_batch = np.expand_dims(audio_data, axis=0)
             embedding = run_inference(MODEL_TYPE, audio_batch)

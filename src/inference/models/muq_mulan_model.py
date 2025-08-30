@@ -11,7 +11,7 @@ from .base import InferenceModel
 logger = logging.getLogger(__name__)
 
 REPO_ID = "OpenMuQ/MuQ-MuLan-large"
-MODEL_PATH = os.path.join("./models", REPO_ID.split('/')[-1])
+MODEL_PATH = os.path.join("./models", REPO_ID.split("/")[-1])
 
 
 class MuQMuLanModel(InferenceModel):
@@ -24,7 +24,9 @@ class MuQMuLanModel(InferenceModel):
                 raise FileNotFoundError(f"Model directory not found at '{MODEL_PATH}'.")
 
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.model = MuQMuLan.from_pretrained(REPO_ID, cache_dir=MODEL_PATH).to(self.device).eval()
+            self.model = (
+                MuQMuLan.from_pretrained(REPO_ID, cache_dir=MODEL_PATH).to(self.device).eval()
+            )
             logger.info("MuQ-MuLan model initialized successfully.")
 
         except Exception as e:
