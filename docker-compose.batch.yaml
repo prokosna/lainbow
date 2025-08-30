@@ -13,3 +13,17 @@ services:
       - .env
     restart: unless-stopped
     command: ["celery", "-A", "worker.tasks", "worker", "-Q", "cpu_queue,celery", "-c", "1", "--loglevel=info", "--without-gossip"]
+  flower:
+    build:
+      context: .
+      dockerfile: docker/batch.Dockerfile
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./src:/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: ["celery", "-A", "worker.tasks", "flower", "--port=5555"]
