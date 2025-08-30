@@ -502,7 +502,6 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
                 )
                 return
 
-            main_task_group = group(*task_groups)
             callback = finalize_analysis_task.s(task_id=task_id, start_time=start)
             task_manager.update_task_status(
                 db,
@@ -510,7 +509,7 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
                 status=TaskStatus.RUNNING,
                 details={"total_count": total_count, "processed_count": 0},
             )
-            chord(main_task_group)(callback)
+            chord(task_groups)(callback)
     except Exception as e:
         _handle_exception(AnalyzeSongTaskPayload.NAME, task_id, start, e)
 
