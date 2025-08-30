@@ -29,6 +29,10 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=user
       - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - type: bind
+        source: ${DATABASE_DATA_ROOT_DIR:-.}/rabbitmq_data
+        target: /var/lib/rabbitmq
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
