@@ -19,7 +19,7 @@ VECTOR_FIELD = "embedding"
 INDEX_PARAMS = {
     "metric_type": "COSINE",
     "index_type": "HNSW",
-    "params": {"M": 16, "efConstruction": 256},
+    "params": {"M": 30, "efConstruction": 360},
 }
 MUQ_SAMPLING_RATE = 24000
 
