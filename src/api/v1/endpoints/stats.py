@@ -17,11 +17,11 @@ class DBStats(BaseModel):
     """Dataclass for holding database statistics."""
 
     total_songs: int
-    songs_missing_acoustic_features: int
-    songs_missing_clap: int
-    songs_missing_mert: int
-    songs_missing_muq: int
-    songs_missing_muq_mulan: int
+    songs_with_acoustic_features: int
+    songs_with_clap: int
+    songs_with_mert: int
+    songs_with_muq: int
+    songs_with_muq_mulan: int
     pending_tasks: int
     running_tasks: int
 
@@ -71,11 +71,11 @@ def get_db_stats(db: Session = Depends(get_db_session)) -> DBStats:  # noqa: B00
 
     return DBStats(
         total_songs=total_songs,
-        songs_missing_acoustic_features=total_songs - songs_with_acoustic_features,
-        songs_missing_clap=total_songs - songs_with_clap,
-        songs_missing_mert=total_songs - songs_with_mert,
-        songs_missing_muq=total_songs - songs_with_muq,
-        songs_missing_muq_mulan=total_songs - songs_with_muq_mulan,
+        songs_with_acoustic_features=songs_with_acoustic_features,
+        songs_with_clap=songs_with_clap,
+        songs_with_mert=songs_with_mert,
+        songs_with_muq=songs_with_muq,
+        songs_with_muq_mulan=songs_with_muq_mulan,
         pending_tasks=pending_tasks,
         running_tasks=running_tasks,
     )

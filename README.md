@@ -137,11 +137,11 @@ docker compose -f docker-compose.batch.yaml up -d --scale batch-cpu=N
   ```json
   {
     "total_songs": 1000,
-    "songs_missing_acoustic_features": 50,
-    "songs_missing_clap": 100,
-    "songs_missing_mert": 100,
-    "songs_missing_muq": 200,
-    "songs_missing_muq_mulan": 200,
+    "songs_with_acoustic_features": 50,
+    "songs_with_clap": 100,
+    "songs_with_mert": 100,
+    "songs_with_muq": 200,
+    "songs_with_muq_mulan": 200,
     "pending_tasks": 5,
     "running_tasks": 2
   }
