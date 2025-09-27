@@ -55,7 +55,23 @@ def check_audio_file_status(file_path: Path, mtime: Optional[datetime.datetime])
 
     try:
         mtime_dt_fs = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-        if mtime_dt_fs != mtime or mtime is None:
+        is_stale = False
+        if mtime is None:
+            is_stale = True
+            logger.info(f"File has no mtime in DB, marking as STALE: {file_path}")
+        else:
+            # Ensure both datetimes are naive before comparison
+            mtime_fs_naive = mtime_dt_fs.replace(tzinfo=None)
+            mtime_db_naive = mtime.replace(tzinfo=None)
+            time_difference = abs(mtime_fs_naive - mtime_db_naive)
+
+            if time_difference > datetime.timedelta(seconds=10):
+                is_stale = True
+                logger.info(
+                    f"File is STALE. Path: {file_path}, FS mtime: {mtime_fs_naive}, DB mtime: {mtime_db_naive}, Difference: {time_difference}"
+                )
+
+        if is_stale:
             metadata = extract_metadata(file_path)
             if metadata:
                 return AudioFileStatus(file_path=str(file_path), status="STALE", metadata=metadata)
