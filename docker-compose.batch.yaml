@@ -1,5 +1,5 @@
 services:
-  batch-cpu:
+  batch_cpu:
     build:
       context: .
       dockerfile: docker/batch.Dockerfile
@@ -17,6 +17,7 @@ services:
     build:
       context: .
       dockerfile: docker/batch.Dockerfile
+    container_name: lainbow_flower
     ports:
       - "5555:5555"
     volumes:

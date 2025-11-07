@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17.5-alpine
-    container_name: lainbow-postgres
+    container_name: lainbow_postgres
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -22,7 +22,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:4.1.2-management
-    container_name: lainbow-rabbitmq
+    container_name: lainbow_rabbitmq
     ports:
       - ${RABBITMQ_PORT:-5672}:5672
       - ${RABBITMQ_MANAGEMENT_PORT:-15672}:15672
@@ -42,7 +42,7 @@ services:
 
   etcd:
     image: quay.io/coreos/etcd:v3.5.18
-    container_name: lainbow-milvus-etcd
+    container_name: lainbow_milvus_etcd
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
@@ -62,7 +62,7 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    container_name: lainbow-milvus-minio
+    container_name: lainbow_milvus_minio
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -83,7 +83,7 @@ services:
 
   milvus:
     image: milvusdb/milvus:v2.5.13
-    container_name: lainbow-milvus-standalone
+    container_name: lainbow_milvus_standalone
     command: ["milvus", "run", "standalone"]
     security_opt:
     - seccomp:unconfined

@@ -1,11 +1,11 @@
 services:
-  inference-api:
+  inference_api:
     build:
       context: .
       dockerfile: docker/inference.Dockerfile
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    container_name: lainbow-inference-api
+    container_name: lainbow_inference_api
     ports:
       - "${INFERENCE_API_PORT:-8001}:8001"
     volumes:

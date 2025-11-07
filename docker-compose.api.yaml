@@ -5,7 +5,7 @@ services:
       dockerfile: docker/api.Dockerfile
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    container_name: lainbow-api
+    container_name: lainbow_api
     ports:
       - "${WEB_API_PORT:-8000}:8000"
     volumes:
