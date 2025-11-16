@@ -95,6 +95,8 @@ The `docker/inference.Dockerfile` uses a specific PyTorch base image optimized f
 
 Additionally, **ensure that the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is properly installed and configured**. This is required for Docker to access and utilize the GPU.
 
+There is also `docker/inference.rocm.Dockerfile` for ROCm based inference server. TO use this Docker image, you need to setup [ROCm on Docker](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html) similar to NVIDIA.
+
 ### Starting the Application
 
 Start the services on your server(s). You can run each service on a separate server or on the same machine. **Ensure that the `.env` file on each server is configured correctly** to allow communication between the services.
@@ -111,7 +113,7 @@ docker compose -f docker-compose.api.yaml up -d
 
 **Inference API Server**
 ```bash
-docker compose -f docker-compose.inference.yaml up -d
+docker compose -f docker-compose.inference.yaml --profile [cuda|rocm] up -d
 ```
 
 **Batch Server**
