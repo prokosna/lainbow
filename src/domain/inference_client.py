@@ -10,8 +10,6 @@ from domain import config
 
 logger = logging.getLogger(__name__)
 
-INFERENCE_REQUEST_TIMEOUT = 30.0
-
 
 @retry(
     stop=stop_after_attempt(10),
@@ -43,7 +41,7 @@ def run_inference(model_name: str, audio_data: np.ndarray) -> np.ndarray:
         try:
             with httpx.Client() as client:
                 logger.info(f"Sending inference request for '{model_name}' to {api_url}")
-                response = client.post(api_url, files=files, timeout=INFERENCE_REQUEST_TIMEOUT)
+                response = client.post(api_url, files=files, timeout=config.INFERENCE_REQUEST_TIMEOUT)
                 response.raise_for_status()
 
             with io.BytesIO(response.content) as buffer:
