@@ -2,6 +2,7 @@ import logging
 from typing import Literal, Type
 
 import numpy as np
+from domain import config
 
 from inference.models.base import InferenceModel
 from inference.models.clap_model import CLAPModel
@@ -37,6 +38,13 @@ class ModelManager:
         self._models: dict[str, InferenceModel] = {}
         self._currently_loaded_model: str | None = None
         logger.info(f"ModelManager initialized in '{self.mode}' mode.")
+        if len(config.INFERENCE_LOAD_MODELS_ON_STARTUP) > 0:
+            for model_name in config.INFERENCE_LOAD_MODELS_ON_STARTUP:
+                if model_name in MODEL_REGISTRY:
+                    self.get_model(model_name)
+                else:
+                    logger.warning(f"Model '{model_name}' is not registered. Skipping.")
+            logger.info(f"Models loaded on startup: {config.INFERENCE_LOAD_MODELS_ON_STARTUP}")
 
     def _load_model(self, model_name: str) -> InferenceModel:
         """Loads a model by its registered name."""
