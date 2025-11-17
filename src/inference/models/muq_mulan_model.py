@@ -27,6 +27,13 @@ class MuQMuLanModel(InferenceModel):
             self.model = (
                 MuQMuLan.from_pretrained(REPO_ID, cache_dir=MODEL_PATH).to(self.device).eval()
             )
+            try:
+                self.model = torch.compile(self.model, mode="reduce-overhead")
+                logger.info("MuQ-MuLan model compiled with torch.compile (mode=reduce-overhead).")
+            except Exception as compile_error:
+                logger.warning(
+                    f"torch.compile failed for MuQ-MuLan model: {compile_error}. Continuing without compilation."
+                )
             logger.info("MuQ-MuLan model initialized successfully.")
 
         except Exception as e:

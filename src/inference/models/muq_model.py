@@ -25,6 +25,13 @@ class MuQModel(InferenceModel):
 
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model = MuQ.from_pretrained(REPO_ID, cache_dir=MODEL_PATH).to(self.device).eval()
+            try:
+                self.model = torch.compile(self.model, mode="reduce-overhead")
+                logger.info("MuQ model compiled with torch.compile (mode=reduce-overhead).")
+            except Exception as compile_error:
+                logger.warning(
+                    f"torch.compile failed for MuQ model: {compile_error}. Continuing without compilation."
+                )
             logger.info("MuQ model initialized successfully.")
 
         except Exception as e:
