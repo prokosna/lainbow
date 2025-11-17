@@ -13,6 +13,30 @@ services:
       - ./models:/src/models
     env_file:
       - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    profiles:
+      - cpu
+  inference_api_cuda:
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    container_name: lainbow_inference_api_cuda
+    ports:
+      - "${INFERENCE_API_PORT:-8001}:8001"
+    volumes:
+      - ./src:/src
+      - ./models:/src/models
+    env_file:
+      - .env
     deploy:
       resources:
         reservations:
