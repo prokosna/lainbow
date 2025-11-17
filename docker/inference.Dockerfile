@@ -2,6 +2,10 @@ FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 
 WORKDIR /src
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential clang \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY ./docker/inference_requirements.txt /src/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
