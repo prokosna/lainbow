@@ -6,7 +6,9 @@ import argparse
 import json
 import logging
 import sys
+import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -38,6 +40,8 @@ MODEL_TO_LOADER = {
 
 
 _MODEL_MANAGER: ModelManager | None = None
+_LAST_INFERENCE_CALL: dict[str, Any] | None = None
+_LAST_TIMINGS: dict[str, float] | None = None
 
 
 def _initialize_model_manager() -> ModelManager:
@@ -49,8 +53,27 @@ def _initialize_model_manager() -> ModelManager:
     _MODEL_MANAGER = ModelManager(mode=mode)  # type: ignore[arg-type]
 
     def _local_run_inference(model_name: str, audio_data: np.ndarray) -> np.ndarray:
+        global _LAST_INFERENCE_CALL
+        global _LAST_TIMINGS
         assert _MODEL_MANAGER is not None
-        return _MODEL_MANAGER.run_inference(model_name, audio_data)
+
+        start = time.perf_counter()
+        embedding = _MODEL_MANAGER.run_inference(model_name, audio_data)
+        inference_elapsed = time.perf_counter() - start
+
+        _LAST_INFERENCE_CALL = {
+            "model": model_name,
+            "input_shape": list(audio_data.shape),
+            "input_dtype": str(audio_data.dtype),
+            "output_shape": list(embedding.shape),
+            "output_dtype": str(embedding.dtype),
+        }
+
+        if _LAST_TIMINGS is None:
+            _LAST_TIMINGS = {}
+        _LAST_TIMINGS["inference_seconds"] = inference_elapsed
+
+        return embedding
 
     for module in (clap, mert, muq, muq_mulan):
         setattr(module, "run_inference", _local_run_inference)
@@ -93,7 +116,19 @@ def get_embedding(model: EmbeddingModel, audio_path: Path) -> np.ndarray:
     if loader is None:
         raise ValueError(f"Loader for model '{model.value}' is not configured.")
 
+    global _LAST_TIMINGS
+    start_loader = time.perf_counter()
     embeddings = loader([audio_path])
+    loader_elapsed = time.perf_counter() - start_loader
+
+    if _LAST_TIMINGS is None:
+        _LAST_TIMINGS = {}
+    _LAST_TIMINGS["loader_seconds"] = loader_elapsed
+
+    inference_elapsed = _LAST_TIMINGS.get("inference_seconds")
+    if inference_elapsed is not None:
+        _LAST_TIMINGS["preprocessing_seconds"] = max(loader_elapsed - inference_elapsed, 0.0)
+
     path_key = str(audio_path)
 
     if path_key not in embeddings:
@@ -104,9 +139,26 @@ def get_embedding(model: EmbeddingModel, audio_path: Path) -> np.ndarray:
     return embeddings[path_key]
 
 
+def _extract_sample_values(embedding: np.ndarray) -> dict[str, list[float]]:
+    flattened = embedding.reshape(-1)
+    if flattened.size == 0:
+        return {"head": [], "tail": []}
+
+    head_count = min(2, flattened.size)
+    tail_count = min(2, flattened.size - head_count)
+
+    head = flattened[:head_count].tolist()
+    tail = flattened[-tail_count:].tolist() if tail_count > 0 else []
+
+    return {"head": head, "tail": tail}
+
+
 def main() -> int:
     setup_logging()
     args = parse_args()
+
+    global _LAST_TIMINGS
+    _LAST_TIMINGS = {}
 
     try:
         model = EmbeddingModel(args.model_name)
@@ -121,16 +173,33 @@ def main() -> int:
         return 1
 
     try:
+        start_total = time.perf_counter()
         embedding = get_embedding(model, audio_path)
+        total_elapsed = time.perf_counter() - start_total
+        if _LAST_TIMINGS is not None:
+            _LAST_TIMINGS["total_seconds"] = total_elapsed
     except Exception:
         logging.exception("Failed to generate embedding.")
         return 1
 
+    call_info = _LAST_INFERENCE_CALL or {}
+    sample_values = _extract_sample_values(embedding)
+    timings = _LAST_TIMINGS or {}
+
     output = {
         "model": model.value,
         "audio_path": str(audio_path),
-        "embedding": embedding.tolist(),
-        "dimension": int(embedding.shape[0]) if embedding.ndim == 1 else list(embedding.shape),
+        "input": {
+            "shape": call_info.get("input_shape"),
+            "dtype": call_info.get("input_dtype"),
+        },
+        "output": {
+            "shape": list(embedding.shape),
+            "dtype": str(embedding.dtype),
+            "dimension": int(embedding.shape[0]) if embedding.ndim == 1 else list(embedding.shape),
+        },
+        "embedding_preview": sample_values,
+        "timings_seconds": timings,
     }
 
     separators = (", ", ": ") if args.pretty else (",", ":")

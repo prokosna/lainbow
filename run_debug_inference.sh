@@ -34,6 +34,9 @@ case "$RUNTIME" in
     GPU_ARGS+=("--device" "/dev/kfd" "--device" "/dev/dri" "--group-add" "video" "--group-add" "render")
     IMAGE_NAME="${IMAGE_NAME:-lainbow-inference-api-rocm:latest}"
     ;;
+  cpu)
+    IMAGE_NAME="${IMAGE_NAME:-lainbow-inference-api-rocm:latest}"
+    ;;
   none)
     IMAGE_NAME="${IMAGE_NAME:-lainbow-inference-api:latest}"
     ;;
