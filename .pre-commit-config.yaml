@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest --ignore=tests/worker/test_embeddings.py --ignore=tests/inference/test_inference_core.py
+        entry: uv run pytest --ignore=tests/worker/test_embeddings.py --ignore=tests/inference/test_inference_core.py
         language: system
         pass_filenames: false
         always_run: true

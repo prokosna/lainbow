@@ -1,6 +1,7 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, cast
+from typing import cast
 
 from domain.config import INFERENCE_MODEL_MANAGER_MODE
 from fastapi import FastAPI

@@ -1,6 +1,6 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from domain.session_manager import init_db_session
 from fastapi import FastAPI

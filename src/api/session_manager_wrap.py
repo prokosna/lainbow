@@ -1,4 +1,4 @@
-from typing import Generator
+from collections.abc import Generator
 
 from domain.session_manager import db_session_context
 from sqlmodel import Session

@@ -62,15 +62,12 @@ graph TD
 **Before running the application, you need to download the required deep learning models.**
 
 1.  **Install Dependencies**:
-    First, ensure you have the necessary Python packages installed:
-    ```bash
-    pip install -r requirements.txt
-    ```
+    Ensure you have `uv` installed.
 
 2.  **Download Models**:
     Run the provided script to download and place the models in the `./models` directory. The script will skip any models that are already downloaded.
     ```bash
-    python download_models.py
+    uv run --with httpx --with huggingface-hub --with muq python download_models.py
     ```
 
 This script will download:

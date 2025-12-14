@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Any, Optional
+from typing import Any
 
 from api.core.text_embedding import get_text_embedding_service
 from api.session_manager_wrap import get_db_session
@@ -46,21 +46,21 @@ class SongAnalysis(BaseModel):
 
     # From Song
     file_path: str
-    title: Optional[str] = None
-    artist: Optional[str] = None
-    album: Optional[str] = None
-    duration_seconds: Optional[int] = None
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    duration_seconds: int | None = None
 
     # Status
     has_features: bool
-    embeddings_status: dict[str, Optional[str]]
+    embeddings_status: dict[str, str | None]
 
     # From SongFeatures
-    bpm: Optional[float] = None
-    spectral_centroid_mean: Optional[float] = None
-    spectral_bandwidth_mean: Optional[float] = None
-    mfcc_mean: Optional[list[float]] = None
-    chroma_mean: Optional[list[float]] = None
+    bpm: float | None = None
+    spectral_centroid_mean: float | None = None
+    spectral_bandwidth_mean: float | None = None
+    mfcc_mean: list[float] | None = None
+    chroma_mean: list[float] | None = None
 
 
 @router.get(
@@ -88,9 +88,7 @@ def get_song_analysis(
         select(SongEmbedding).where(col(SongEmbedding.file_path) == file_path)
     ).all()
 
-    embedding_status_dict: dict[str, Optional[str]] = {
-        model.value: None for model in EmbeddingModel
-    }
+    embedding_status_dict: dict[str, str | None] = {model.value: None for model in EmbeddingModel}
     for emb in embeddings:
         embedding_status_dict[emb.model_name.value] = emb.status.value
 
@@ -121,10 +119,10 @@ class SearchSong(BaseModel):
     """Response model for a single similar song."""
 
     file_path: str
-    title: Optional[str] = None
-    artist: Optional[str] = None
-    album: Optional[str] = None
-    genre: Optional[str] = None
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    genre: str | None = None
     score: float
 
 
