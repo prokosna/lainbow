@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, Optional
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
@@ -7,8 +7,8 @@ from sqlmodel import Session, create_engine
 
 from domain import config
 
-engine: Optional[Engine] = None
-SessionFactory: Optional[sessionmaker[Session]] = None
+engine: Engine | None = None
+SessionFactory: sessionmaker[Session] | None = None
 
 
 def init_db_session() -> None:

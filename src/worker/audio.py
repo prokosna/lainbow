@@ -4,9 +4,10 @@ import json
 import logging
 import os
 import subprocess
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Literal, Optional, Union
+from typing import Literal
 
 import mutagen
 import numpy as np
@@ -23,12 +24,12 @@ class AudioMetadata:
     """Dataclass to hold extracted audio metadata."""
 
     file_path: str
-    title: Optional[str] = None
-    artist: Optional[str] = None
-    album: Optional[str] = None
-    genre: Optional[str] = None
-    duration_seconds: Optional[int] = None
-    mtime: Optional[datetime.datetime] = None
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    genre: str | None = None
+    duration_seconds: int | None = None
+    mtime: datetime.datetime | None = None
 
 
 @dataclass
@@ -37,7 +38,7 @@ class AudioFileStatus:
 
     file_path: str
     status: Literal["OK", "NOT_EXIST", "STALE"]
-    metadata: Optional[AudioMetadata] = None
+    metadata: AudioMetadata | None = None
 
 
 def find_audio_files(directory: Path) -> Iterator[Path]:
@@ -48,7 +49,7 @@ def find_audio_files(directory: Path) -> Iterator[Path]:
                 yield Path(root) / file
 
 
-def check_audio_file_status(file_path: Path, mtime: Optional[datetime.datetime]) -> AudioFileStatus:
+def check_audio_file_status(file_path: Path, mtime: datetime.datetime | None) -> AudioFileStatus:
     """Check a single song against the filesystem."""
     if not file_path.exists():
         return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
@@ -92,7 +93,7 @@ def extract_metadata_bulk(file_paths: list[Path]) -> list[AudioMetadata]:
     return results
 
 
-def extract_metadata(file_path: Path) -> Optional[AudioMetadata]:
+def extract_metadata(file_path: Path) -> AudioMetadata | None:
     """Extract metadata from a single audio file."""
     mtime_ts = os.path.getmtime(file_path)
     mtime_dt = datetime.datetime.fromtimestamp(mtime_ts)
@@ -114,7 +115,7 @@ def extract_metadata(file_path: Path) -> Optional[AudioMetadata]:
     )
 
 
-def load_audio_for_librosa(file_path: Path, sr: Optional[int] = 48000) -> Union[Path, io.BytesIO]:
+def load_audio_for_librosa(file_path: Path, sr: int | None = 48000) -> Path | io.BytesIO:
     """
     Loads an audio file. If it's a WavPack file (.wv), it checks for a very high
     sample rate (indicative of DSD/DXD). If found, it converts the file to PCM

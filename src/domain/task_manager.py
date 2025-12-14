@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -18,13 +18,13 @@ def create_task(
     return new_task
 
 
-def get_task(db: Session, task_id: UUID) -> Optional[TaskResult]:
+def get_task(db: Session, task_id: UUID) -> TaskResult | None:
     """Retrieves a task from the database by its ID."""
     result = db.exec(select(TaskResult).where(TaskResult.id == task_id))
     return result.one_or_none()
 
 
-def get_latest_task_by_name(db: Session, name: str, excluding_id: UUID) -> Optional[TaskResult]:
+def get_latest_task_by_name(db: Session, name: str, excluding_id: UUID) -> TaskResult | None:
     """Retrieves the latest task from the database by its name."""
     result = db.exec(
         select(TaskResult)
@@ -39,9 +39,9 @@ def update_task_status(
     db: Session,
     task_id: UUID,
     status: TaskStatus,
-    elapsed_time: Optional[int] = None,
-    details: Optional[dict[str, Any]] = None,
-) -> Optional[TaskResult]:
+    elapsed_time: int | None = None,
+    details: dict[str, Any] | None = None,
+) -> TaskResult | None:
     """Updates the status of a task."""
     task = get_task(db, task_id)
     if task:
@@ -57,9 +57,9 @@ def update_task_progress(
     db: Session,
     task_id: UUID,
     progress: int,
-    elapsed_time: Optional[int] = None,
-    details: Optional[dict[str, Any]] = None,
-) -> Optional[TaskResult]:
+    elapsed_time: int | None = None,
+    details: dict[str, Any] | None = None,
+) -> TaskResult | None:
     """Updates the progress percentage of a task."""
     task = get_task(db, task_id)
     if task:
@@ -76,11 +76,11 @@ def update_task_progress(
 def mark_task_as_success(
     db: Session,
     task_id: UUID,
-    message: Optional[str] = None,
-    elapsed_time: Optional[int] = None,
-    traceback: Optional[str] = None,
-    details: Optional[dict[str, Any]] = None,
-) -> Optional[TaskResult]:
+    message: str | None = None,
+    elapsed_time: int | None = None,
+    traceback: str | None = None,
+    details: dict[str, Any] | None = None,
+) -> TaskResult | None:
     """Marks a task as successful and records its result."""
     task = get_task(db, task_id)
     if task:
@@ -98,12 +98,12 @@ def mark_task_as_success(
 def mark_task_as_failure(
     db: Session,
     task_id: UUID,
-    message: Optional[str] = None,
-    elapsed_time: Optional[int] = None,
-    traceback: Optional[str] = None,
-    details: Optional[dict[str, Any]] = None,
+    message: str | None = None,
+    elapsed_time: int | None = None,
+    traceback: str | None = None,
+    details: dict[str, Any] | None = None,
     status: TaskStatus = TaskStatus.FAILURE,
-) -> Optional[TaskResult]:
+) -> TaskResult | None:
     """Marks a task as failed and records the error details."""
     task = get_task(db, task_id)
     if task:

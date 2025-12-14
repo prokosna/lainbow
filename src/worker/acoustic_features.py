@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import librosa
 import numpy as np
@@ -154,7 +154,7 @@ def calculate_features_stats() -> SongFeaturesStats:
         return SongFeaturesStats(**stats_data)
 
 
-def extract_acoustic_features(file_path: str) -> Optional[SongFeatures]:
+def extract_acoustic_features(file_path: str) -> SongFeatures | None:
     """Extracts various acoustic features from a song file using librosa."""
     try:
         full_path = Path(config.MUSIC_NAS_ROOT_DIR) / file_path

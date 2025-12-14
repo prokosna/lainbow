@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, Type
+from typing import Literal
 
 import numpy as np
 from domain import config
@@ -12,7 +12,7 @@ from inference.models.muq_mulan_model import MuQMuLanModel
 
 logger = logging.getLogger(__name__)
 
-MODEL_REGISTRY: dict[str, Type[InferenceModel]] = {
+MODEL_REGISTRY: dict[str, type[InferenceModel]] = {
     "mert": MERTModel,
     "clap": CLAPModel,
     "muq": MuQModel,

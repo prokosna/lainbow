@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Literal, Type
+from typing import Any, ClassVar, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -11,7 +11,7 @@ class PayloadBase(BaseModel):
 
     task_id: UUID
 
-    def __init_subclass__(cls: Type[BaseModel], **kwargs: Any) -> None:
+    def __init_subclass__(cls: type[BaseModel], **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)  # type: ignore[misc]
         if not hasattr(cls, "NAME"):
             raise ValueError("NAME attribute is required for PayloadBase subclasses.")

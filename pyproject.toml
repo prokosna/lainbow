@@ -1,4 +1,87 @@
-# pyproject.toml
+[project]
+name = "lainbow"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pre-commit",
+    "pytest",
+    "ruff",
+]
+
+api = [
+    "celery[zstd]",
+    "fastapi",
+    "httpx",
+    "laion-clap",
+    "librosa",
+    "mutagen",
+    "numpy",
+    "pika",
+    "psycopg[binary]",
+    "psycopg2-binary",
+    "pydantic",
+    "pymilvus",
+    "SQLAlchemy",
+    "sqlmodel",
+    "tenacity",
+    "torch",
+    "torchaudio",
+    "torchvision",
+    "uvicorn[standard]",
+]
+
+batch = [
+    "celery[zstd]",
+    "celery-stubs",
+    "flower",
+    "httpx",
+    "librosa",
+    "mutagen",
+    "numpy",
+    "pika",
+    "psycopg[binary]",
+    "psycopg2-binary",
+    "pydantic",
+    "pymilvus",
+    "SQLAlchemy",
+    "sqlmodel",
+    "tenacity",
+]
+
+inference = [
+    "celery[zstd]",
+    "celery-stubs",
+    "fastapi",
+    "laion-clap",
+    "librosa",
+    "muq",
+    "nnAudio",
+    "numpy",
+    "pydantic",
+    "python-multipart",
+    "transformers",
+    "uvicorn[standard]",
+]
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
 [tool.ruff]
 include = ["src", "tests"]
