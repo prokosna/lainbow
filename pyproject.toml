@@ -34,6 +34,7 @@ api = [
     "torchaudio",
     "torchvision",
     "uvicorn[standard]",
+    "muq>=0.1.0",
 ]
 
 batch = [
