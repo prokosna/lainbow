@@ -109,7 +109,7 @@ If you already have embeddings stored in Milvus and want to migrate them to Qdra
 1. Start both Milvus and Qdrant on the database server (uncomment the Milvus services in `docker-compose.database.yaml`).
 2. Run the migration script:
    ```bash
-   python migrate_milvus_to_qdrant.py
+   uv run --group batch python migrate_milvus_to_qdrant.py
    ```
 
 After the migration finishes, you can disable Milvus again and keep using Qdrant.

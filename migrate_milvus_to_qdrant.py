@@ -97,6 +97,18 @@ def _sleep_with_backoff(delay_sec: float, attempt: int) -> None:
     time.sleep(delay_sec * (1.5**attempt))
 
 
+def _escape_milvus_str_literal(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _build_milvus_expr_for_paging(id_field: str, *, last_id: str | None) -> str:
+    base = f'{id_field} != ""'
+    if last_id is None:
+        return base
+    last_id_escaped = _escape_milvus_str_literal(last_id)
+    return f'{base} and {id_field} > "{last_id_escaped}"'
+
+
 def _load_collection_with_retry(
     collection: Collection,
     *,
@@ -139,38 +151,52 @@ def _iter_milvus_rows(
     )
 
     total = int(collection.num_entities)
-    offset = 0
-    expr = f'{id_field} != ""'
+    last_id: str | None = None
 
+    # NOTE: Do not use offset-based pagination here.
+    # Milvus enforces a max query window size: (offset + limit) <= 16384.
+    # Use query_iterator() (cursor-based) to stream results.
     while True:
-        rows: list[dict[str, Any]] = []
-        last_exc: Exception | None = None
-        for attempt in range(milvus_load_retries + 1):
-            try:
-                rows = collection.query(
-                    expr=expr,
-                    output_fields=[id_field, vector_field],
-                    limit=batch_size,
-                    offset=offset,
-                )
-                last_exc = None
-                break
-            except MilvusException as e:
-                last_exc = e
-                if attempt >= milvus_load_retries:
-                    break
-                print(
-                    f"[warn] Milvus query failed for '{collection_name}' (attempt {attempt + 1}/{milvus_load_retries + 1}): {e}",
-                    file=sys.stderr,
-                )
-                _sleep_with_backoff(milvus_load_retry_delay_sec, attempt)
-        if last_exc is not None:
-            raise last_exc
-        if not rows:
-            break
+        expr = _build_milvus_expr_for_paging(id_field, last_id=last_id)
 
-        yield total, rows
-        offset += len(rows)
+        iterator = collection.query_iterator(
+            batch_size=batch_size,
+            expr=expr,
+            output_fields=[id_field, vector_field],
+        )
+
+        try:
+            while True:
+                rows: list[dict[str, Any]] = []
+                last_exc: Exception | None = None
+
+                for attempt in range(milvus_load_retries + 1):
+                    try:
+                        rows = iterator.next()
+                        last_exc = None
+                        break
+                    except MilvusException as e:
+                        last_exc = e
+                        if attempt >= milvus_load_retries:
+                            break
+                        print(
+                            f"[warn] Milvus query failed for '{collection_name}' (attempt {attempt + 1}/{milvus_load_retries + 1}): {e}",
+                            file=sys.stderr,
+                        )
+                        _sleep_with_backoff(milvus_load_retry_delay_sec, attempt)
+
+                if last_exc is not None:
+                    raise last_exc
+                if not rows:
+                    return
+
+                last_id_any = rows[-1].get(id_field)
+                if isinstance(last_id_any, str) and last_id_any:
+                    last_id = last_id_any
+
+                yield total, rows
+        finally:
+            iterator.close()
 
 
 def _normalize_vector(vec: Any) -> list[float]:
