@@ -23,7 +23,8 @@ MILVUS_HOST = f"{DATABASE_SERVER_ENDPOINT}"
 MILVUS_PORT = os.getenv("MILVUS_PORT_API", "19530")
 MILVUS_CONNECTION_ALIAS = "default"
 
-QDRANT_HOST = os.getenv("QDRANT_HOST", f"{DATABASE_SERVER_ENDPOINT}")
+# Qdrant
+QDRANT_HOST = f"{DATABASE_SERVER_ENDPOINT}"
 QDRANT_PORT = int(os.getenv("QDRANT_PORT_HTTP", "6333"))
 
 # Music NAS folder path (in the container - you should not change this)
