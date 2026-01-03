@@ -107,3 +107,27 @@ services:
       start_period: 90s
       timeout: 20s
       retries: 3
+
+  qdrant:
+    image: qdrant/qdrant:v1.16
+    container_name: lainbow_qdrant
+    ports:
+      - ${QDRANT_PORT_HTTP:-6333}:6333
+      - ${QDRANT_PORT_GRPC:-6334}:6334
+    volumes:
+      - type: bind
+        source: ${DATABASE_DATA_ROOT_DIR:-.}/qdrant_data
+        target: /qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /readyz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3",
+        ]
+      interval: 30s
+      start_period: 60s
+      timeout: 20s
+      retries: 3

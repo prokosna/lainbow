@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 import pika
 from domain import config, schemas  # noqa: F401
 from pika import exceptions as pika_exceptions
-from pymilvus import connections, utility
+from qdrant_client import QdrantClient
 from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, create_engine
 
@@ -80,13 +80,12 @@ def check_milvus() -> None:
     if db_state.milvus_ready:
         return
     try:
-        connections.connect("default", host=config.MILVUS_HOST, port=config.MILVUS_PORT)
-        utility.list_collections()  # A simple check
-        connections.disconnect("default")
-        logger.info("Milvus connection successful.")
+        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        client.get_collections()
+        logger.info("Qdrant connection successful.")
         db_state.milvus_ready = True
     except Exception as e:
-        logger.warning(f"Milvus connection failed: {e}")
+        logger.warning(f"Qdrant connection failed: {e}")
         db_state.milvus_ready = False
 
 
