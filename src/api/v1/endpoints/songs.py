@@ -3,7 +3,7 @@ from typing import Any
 
 from api.core.text_embedding import get_text_embedding_service
 from api.session_manager_wrap import get_db_session
-from domain import milvus_utils
+from domain import vector_store_utils
 from domain.schemas import EmbeddingModel, Song, SongEmbedding, SongFeatures, TextEmbeddingModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -155,7 +155,7 @@ def find_similar_songs(
     id_field = config["id_field"]
     vector_field = config["vector_field"]
 
-    query_vec = milvus_utils.query_vector(
+    query_vec = vector_store_utils.query_vector(
         collection_name=collection_name,
         vector_id=file_path,
         vector_field=vector_field,
@@ -166,7 +166,7 @@ def find_similar_songs(
             detail=f"Vector for model '{model_name.value}' not found for this song.",
         )
 
-    search_results = milvus_utils.search_vectors(
+    search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=query_vec,
         vector_field=vector_field,
@@ -238,7 +238,7 @@ def search_songs_by_natural_language(
     id_field = config["id_field"]
     vector_field = config["vector_field"]
 
-    search_results = milvus_utils.search_vectors(
+    search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=text_embed.tolist(),
         vector_field=vector_field,

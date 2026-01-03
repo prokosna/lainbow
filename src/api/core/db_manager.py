@@ -17,12 +17,12 @@ RETRY_DELAY = 5
 @dataclass
 class DBConnectionState:
     postgres_ready: bool = False
-    milvus_ready: bool = False
+    vector_db_ready: bool = False
     rabbitmq_ready: bool = False
 
     def is_ready(self) -> bool:
         """Check if all database services are ready."""
-        return self.postgres_ready and self.milvus_ready and self.rabbitmq_ready
+        return self.postgres_ready and self.vector_db_ready and self.rabbitmq_ready
 
     def to_dict(self) -> dict[str, bool]:
         """Return the state as a dictionary."""
@@ -75,18 +75,18 @@ def check_rabbitmq() -> None:
         db_state.rabbitmq_ready = False
 
 
-def check_milvus() -> None:
-    """Check if the Milvus server is ready."""
-    if db_state.milvus_ready:
+def check_vector_db() -> None:
+    """Check if the vector database server is ready."""
+    if db_state.vector_db_ready:
         return
     try:
         client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
         client.get_collections()
         logger.info("Qdrant connection successful.")
-        db_state.milvus_ready = True
+        db_state.vector_db_ready = True
     except Exception as e:
         logger.warning(f"Qdrant connection failed: {e}")
-        db_state.milvus_ready = False
+        db_state.vector_db_ready = False
 
 
 def wait_for_databases_ready() -> None:
@@ -96,7 +96,7 @@ def wait_for_databases_ready() -> None:
     checks = {
         "PostgreSQL": check_postgres,
         "RabbitMQ": check_rabbitmq,
-        "Milvus": check_milvus,
+        "Vector DB": check_vector_db,
     }
 
     while not db_state.is_ready():

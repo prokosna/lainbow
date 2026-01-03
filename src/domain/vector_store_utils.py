@@ -25,7 +25,7 @@ def _qdrant_point_id_from_file_path(file_path: str) -> UUID:
     return uuid5(QDRANT_ID_NAMESPACE, file_path)
 
 
-def disconnect_from_milvus() -> None:
+def disconnect_from_vector_store() -> None:
     """No-op for compatibility (Qdrant client is stateless)."""
     return
 
@@ -39,8 +39,9 @@ def create_collection_if_not_exists(
 ) -> None:
     """
     Checks if the collection exists, and if not, creates it with the defined schema and index.
-    Assumes that a connection to Milvus has already been established.
+    Assumes that the vector store is available.
     """
+    # Deprecated: Used to be used for Milvus.
     _ = id_field
     _ = vector_field
     _ = index_params
@@ -60,7 +61,7 @@ def create_collection_if_not_exists(
 
 def upsert_vectors(collection_name: str, data: list[dict[str, Any]]) -> None:
     """
-    Upserts (inserts or updates) vectors into the Milvus collection.
+    Upserts (inserts or updates) vectors into the vector collection.
 
     Args:
         collection_name: The name of the collection to upsert into.
@@ -112,7 +113,7 @@ def delete_vectors(
     id_field: str,
 ) -> None:
     """
-    Deletes vectors from the Milvus collection based on their IDs.
+    Deletes vectors from the vector collection based on their IDs.
 
     Args:
         collection_name: The name of the collection to delete from.
@@ -123,6 +124,7 @@ def delete_vectors(
         logger.info("No vectors to delete.")
         return
 
+    # Deprecated: Used to be used for Milvus.
     _ = id_field
 
     client = _get_client()
@@ -191,6 +193,7 @@ def search_vectors(
     Returns:
         A list of search results. ({"file_path": xx, "distance": yy})
     """
+    # Deprecated: Used to be used for Milvus.
     _ = vector_field
 
     client = _get_client()
