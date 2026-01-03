@@ -5,7 +5,7 @@ from typing import Any
 
 import librosa
 import numpy as np
-from domain import config, milvus_utils
+from domain import config, vector_store_utils
 from domain.schemas import SongFeatures, Status
 from domain.session_manager import db_session_context
 from sqlmodel import col, func, select
@@ -248,37 +248,37 @@ def extract_acoustic_features(file_path: str) -> SongFeatures | None:
 
 def create_collection_if_not_exists() -> None:
     """
-    Creates the Milvus collection if it doesn't exist.
+    Creates the vector collection if it doesn't exist.
     """
-    milvus_utils.create_collection_if_not_exists(
+    vector_store_utils.create_collection_if_not_exists(
         collection_name=COLLECTION_NAME,
         dimension=EMBEDDING_DIMENSION,
         id_field=ID_FIELD,
         vector_field=VECTOR_FIELD,
         index_params=INDEX_PARAMS,
     )
-    logger.info(f"Milvus collection '{COLLECTION_NAME}' is ready.")
+    logger.info(f"Vector collection '{COLLECTION_NAME}' is ready.")
 
 
 def delete_vectors(file_paths: list[str]) -> None:
     """
-    Deletes vectors from the song features Milvus collection based on their file paths.
+    Deletes vectors from the song features vector collection based on their file paths.
     """
     if not file_paths:
-        logger.debug("No file paths provided to delete from Milvus.")
+        logger.debug("No file paths provided to delete from vector store.")
         return
     try:
         logger.info(
-            f"Attempting to delete {len(file_paths)} vectors from Milvus collection '{COLLECTION_NAME}'"
+            f"Attempting to delete {len(file_paths)} vectors from vector collection '{COLLECTION_NAME}'"
         )
-        milvus_utils.delete_vectors(
+        vector_store_utils.delete_vectors(
             collection_name=COLLECTION_NAME,
             ids=file_paths,
             id_field=ID_FIELD,
         )
         logger.info(f"Successfully deleted vectors for {len(file_paths)} file paths.")
     except Exception as e:
-        raise Exception(f"Failed to delete vectors from Milvus: {e}") from e
+        raise Exception(f"Failed to delete vectors from vector store: {e}") from e
 
 
 def create_feature_vector_data(
@@ -287,7 +287,7 @@ def create_feature_vector_data(
 ) -> dict[str, Any]:
     """
     Creates a standardized and normalized vector from SongFeatures and returns
-    a dictionary formatted for Milvus upsert.
+    a dictionary formatted for vector store upsert.
 
     Args:
         song_features: The raw features for a single song.

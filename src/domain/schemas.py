@@ -182,7 +182,7 @@ class SongFeatures(RecordBase, table=True):
 
 
 class SongEmbedding(RecordBase, table=True):
-    """Model to track the status and reference of high-dimensional embeddings stored in Milvus."""
+    """Model to track the status and reference of high-dimensional embeddings stored in a vector store."""
 
     file_path: str = Field(foreign_key="song.file_path", primary_key=True)
     model_name: EmbeddingModel = Field(
@@ -194,7 +194,8 @@ class SongEmbedding(RecordBase, table=True):
     )
 
     milvus_collection_name: str | None = Field(
-        default=None, description="The name of the collection in Milvus where the vector is stored."
+        default=None,
+        description="The name of the collection in the vector store where the vector is stored.",
     )
 
     song: Song = Relationship(back_populates="embeddings")

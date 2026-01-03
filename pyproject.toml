@@ -35,6 +35,7 @@ api = [
     "torchvision",
     "uvicorn[standard]",
     "muq>=0.1.0",
+    "qdrant-client>=1.16.2",
 ]
 
 batch = [
@@ -53,6 +54,7 @@ batch = [
     "SQLAlchemy",
     "sqlmodel",
     "tenacity",
+    "qdrant-client>=1.16.2",
 ]
 
 inference = [

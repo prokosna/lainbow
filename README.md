@@ -13,7 +13,7 @@ Lainbow is built on a microservices architecture, with each component containeri
 - **Batch Server**: A Celery-based worker that processes long-running, asynchronous tasks, such as scanning the music library and analyzing songs.
 - **Databases**: A set of databases for storing metadata, vector embeddings, and managing task queues:
     - **PostgreSQL**: Stores song metadata, features, and task information.
-    - **Milvus**: A vector database for storing and searching high-dimensional embeddings.
+    - **Qdrant**: A vector database for storing and searching high-dimensional embeddings.
     - **RabbitMQ**: A message broker that facilitates communication between the Web API and the Batch Server.
 
 ```mermaid
@@ -36,7 +36,7 @@ graph TD
 
     subgraph "database.yaml"
         PostgreSQL[PostgreSQL]
-        Milvus["Vector DB (Milvus)"]
+        Qdrant["Vector DB (Qdrant)"]
         RabbitMQ["Message Queue (RabbitMQ)"]
     end
 
@@ -44,12 +44,12 @@ graph TD
     U --> Web_API
     Web_API -- Enqueue Task --> RabbitMQ
     Web_API -- CRUD --> PostgreSQL
-    Web_API -- Search --> Milvus
+    Web_API -- Search --> Qdrant
 
     RabbitMQ -- Consume Task --> Batch_Server
     Batch_Server -- HTTP Request --> Inference_Server
     Batch_Server -- CRUD --> PostgreSQL
-    Batch_Server -- Insert --> Milvus
+    Batch_Server -- Insert --> Qdrant
 
     style U fill:#f9f,stroke:#333,stroke-width:2px
     style Web_API fill:#bbf,stroke:#333,stroke-width:2px
@@ -102,6 +102,17 @@ Start the services on your server(s). You can run each service on a separate ser
 ```bash
 docker compose -f docker-compose.database.yaml up -d
 ```
+
+### Migrating from Milvus to Qdrant (Optional)
+If you already have embeddings stored in Milvus and want to migrate them to Qdrant:
+
+1. Start both Milvus and Qdrant on the database server (uncomment the Milvus services in `docker-compose.database.yaml`).
+2. Run the migration script:
+   ```bash
+   uv run --group batch python migrate_milvus_to_qdrant.py
+   ```
+
+After the migration finishes, you can disable Milvus again and keep using Qdrant.
 
 **Web API Server**
 ```bash

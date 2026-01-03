@@ -8,7 +8,7 @@ from uuid import UUID
 
 from celery import chain, chord, group
 from celery.canvas import Signature
-from domain import config, milvus_utils, task_manager
+from domain import config, task_manager, vector_store_utils
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
 from domain.schemas import (
     EmbeddingModel,
@@ -118,10 +118,12 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                         logger.info(f"'{file_path}' does not exist. Deleting metadata.")
 
                         # Delete from PostgreSQL
+                        db.exec(delete(SongFeatures).where(SongFeatures.file_path == file_path))  # type: ignore
+                        db.exec(delete(SongEmbedding).where(SongEmbedding.file_path == file_path))  # type: ignore
                         db.exec(delete(Song).where(Song.file_path == file_path))  # type: ignore
                         deleted_count += 1
 
-                        # Delete from Milvus
+                        # Delete from vector store
                         acoustic_features.delete_vectors(file_paths=[file_path])
                         clap.delete_vectors(file_paths=[file_path])
                         mert.delete_vectors(file_paths=[file_path])
@@ -144,7 +146,7 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                         db.exec(delete(SongFeatures).where(SongFeatures.file_path == file_path))  # type: ignore
                         db.exec(delete(SongEmbedding).where(SongEmbedding.file_path == file_path))  # type: ignore
 
-                        # Delete from Milvus
+                        # Delete from vector store
                         acoustic_features.delete_vectors(file_paths=[file_path])
                         clap.delete_vectors(file_paths=[file_path])
                         mert.delete_vectors(file_paths=[file_path])
@@ -543,7 +545,7 @@ def extract_acoustic_features(task_id: str, start_time: float, file_paths: list[
 def vectorize_song_features(
     _previous_results: list[Any], task_id: str, start_time: float, file_paths: list[str]
 ) -> bool:
-    """Vectorize song features and upsert them to Milvus."""
+    """Vectorize song features and upsert them to the vector store."""
     try:
         stats = acoustic_features.calculate_features_stats()
 
@@ -553,7 +555,7 @@ def vectorize_song_features(
             ).all()
             target_file_paths = [song.file_path for song in songs_to_vectorize]
 
-            milvus_data = [
+            vector_store_data = [
                 acoustic_features.create_feature_vector_data(sf, stats) for sf in songs_to_vectorize
             ]
             new_embedding_records = [
@@ -567,10 +569,12 @@ def vectorize_song_features(
                 for file_path in target_file_paths
             ]
 
-            if milvus_data:
+            if vector_store_data:
                 acoustic_features.create_collection_if_not_exists()
-                milvus_utils.upsert_vectors(acoustic_features.COLLECTION_NAME, milvus_data)
-                logger.info(f"Successfully upserted {len(milvus_data)} vectors")
+                vector_store_utils.upsert_vectors(
+                    acoustic_features.COLLECTION_NAME, vector_store_data
+                )
+                logger.info(f"Successfully upserted {len(vector_store_data)} vectors")
 
             if new_embedding_records:
                 db.exec(
@@ -596,7 +600,7 @@ def generate_song_embedding(
 ) -> bool:
     """
     Generates embeddings for a chunk of songs using the specified model,
-    saves them to Milvus, and records metadata in PostgreSQL.
+    saves them to the vector store, and records metadata in PostgreSQL.
     """
     try:
         model_name_enum = EmbeddingModel(model_name)
@@ -604,7 +608,7 @@ def generate_song_embedding(
         _handle_exception("Generate song embedding", task_id, start_time, e)
         return False
 
-    milvus_data: list[dict[str, Any]] = []
+    vector_store_data: list[dict[str, Any]] = []
     new_embedding_records: list[SongEmbedding] = []
 
     logger.info(f"Generating {model_name_enum.value} embedding for {file_paths}")
@@ -613,7 +617,7 @@ def generate_song_embedding(
     try:
         if model_name_enum == EmbeddingModel.CLAP:
             embeddings_dict = clap.get_audio_embeddings_batch(full_audio_paths)
-            milvus_data.extend(
+            vector_store_data.extend(
                 [
                     {
                         clap.ID_FIELD: file_path,
@@ -638,7 +642,7 @@ def generate_song_embedding(
             )
         elif model_name_enum == EmbeddingModel.MERT:
             embeddings_dict = mert.get_audio_embeddings_batch(full_audio_paths)
-            milvus_data.extend(
+            vector_store_data.extend(
                 [
                     {
                         mert.ID_FIELD: file_path,
@@ -663,7 +667,7 @@ def generate_song_embedding(
             )
         elif model_name_enum == EmbeddingModel.MUQ:
             embeddings_dict = muq.get_audio_embeddings_batch(full_audio_paths)
-            milvus_data.extend(
+            vector_store_data.extend(
                 [
                     {
                         muq.ID_FIELD: file_path,
@@ -688,7 +692,7 @@ def generate_song_embedding(
             )
         elif model_name_enum == EmbeddingModel.MUQ_MULAN:
             embeddings_dict = muq_mulan.get_audio_embeddings_batch(full_audio_paths)
-            milvus_data.extend(
+            vector_store_data.extend(
                 [
                     {
                         muq_mulan.ID_FIELD: file_path,
@@ -724,17 +728,17 @@ def generate_song_embedding(
 
     try:
         if model_name_enum == EmbeddingModel.CLAP:
-            clap.create_milvus_collection_if_not_exist()
-            milvus_utils.upsert_vectors(clap.COLLECTION_NAME, milvus_data)
+            clap.ensure_vector_collection_ready()
+            vector_store_utils.upsert_vectors(clap.COLLECTION_NAME, vector_store_data)
         elif model_name_enum == EmbeddingModel.MERT:
-            mert.create_milvus_collection_if_not_exist()
-            milvus_utils.upsert_vectors(mert.COLLECTION_NAME, milvus_data)
+            mert.ensure_vector_collection_ready()
+            vector_store_utils.upsert_vectors(mert.COLLECTION_NAME, vector_store_data)
         elif model_name_enum == EmbeddingModel.MUQ:
-            muq.create_milvus_collection_if_not_exist()
-            milvus_utils.upsert_vectors(muq.COLLECTION_NAME, milvus_data)
+            muq.ensure_vector_collection_ready()
+            vector_store_utils.upsert_vectors(muq.COLLECTION_NAME, vector_store_data)
         elif model_name_enum == EmbeddingModel.MUQ_MULAN:
-            muq_mulan.create_milvus_collection_if_not_exist()
-            milvus_utils.upsert_vectors(muq_mulan.COLLECTION_NAME, milvus_data)
+            muq_mulan.ensure_vector_collection_ready()
+            vector_store_utils.upsert_vectors(muq_mulan.COLLECTION_NAME, vector_store_data)
         with db_session_context() as db:
             db.exec(
                 delete(SongEmbedding)

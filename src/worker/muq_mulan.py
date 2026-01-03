@@ -4,7 +4,7 @@ from typing import cast
 
 import librosa
 import numpy as np
-from domain import config, milvus_utils
+from domain import config, vector_store_utils
 from domain.inference_client import run_inference
 
 from worker import audio
@@ -23,49 +23,49 @@ INDEX_PARAMS = {
 }
 MUQ_SAMPLING_RATE = 24000
 
-_is_milvus_collection_created: bool = False
+_is_vector_collection_ready: bool = False
 
 
 def delete_vectors(file_paths: list[str]) -> None:
     """
-    Deletes vectors from the MuQ-MuLan Milvus collection based on their file paths.
+    Deletes vectors from the MuQ-MuLan vector collection based on their file paths.
     """
     if not file_paths:
-        logger.debug("No file paths provided to delete from Milvus.")
+        logger.debug("No file paths provided to delete from vector store.")
         return
     try:
         logger.info(
-            f"Attempting to delete {len(file_paths)} vectors from Milvus collection '{COLLECTION_NAME}'"
+            f"Attempting to delete {len(file_paths)} vectors from vector collection '{COLLECTION_NAME}'"
         )
-        milvus_utils.delete_vectors(
+        vector_store_utils.delete_vectors(
             collection_name=COLLECTION_NAME,
             ids=file_paths,
             id_field=ID_FIELD,
         )
         logger.info(f"Successfully deleted vectors for {len(file_paths)} file paths.")
     except Exception as e:
-        raise Exception(f"Failed to delete vectors from Milvus: {e}") from e
+        raise Exception(f"Failed to delete vectors from vector store: {e}") from e
 
 
-def create_milvus_collection_if_not_exist() -> None:
-    global _is_milvus_collection_created
-    if _is_milvus_collection_created:
+def ensure_vector_collection_ready() -> None:
+    global _is_vector_collection_ready
+    if _is_vector_collection_ready:
         return
 
     try:
-        milvus_utils.create_collection_if_not_exists(
+        vector_store_utils.create_collection_if_not_exists(
             collection_name=COLLECTION_NAME,
             dimension=EMBEDDING_DIMENSION,
             id_field=ID_FIELD,
             vector_field=VECTOR_FIELD,
             index_params=INDEX_PARAMS,
         )
-        logger.info(f"Milvus collection '{COLLECTION_NAME}' is ready.")
-        _is_milvus_collection_created = True
+        logger.info(f"Vector collection '{COLLECTION_NAME}' is ready.")
+        _is_vector_collection_ready = True
 
     except Exception as e:
-        logger.error(f"Failed to create Milvus collection: {e}")
-        _is_milvus_collection_created = False
+        logger.error(f"Failed to create vector collection: {e}")
+        _is_vector_collection_ready = False
         raise e
 
 

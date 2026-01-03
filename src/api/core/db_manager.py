@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 import pika
 from domain import config, schemas  # noqa: F401
 from pika import exceptions as pika_exceptions
-from pymilvus import connections, utility
+from qdrant_client import QdrantClient
 from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, create_engine
 
@@ -17,12 +17,12 @@ RETRY_DELAY = 5
 @dataclass
 class DBConnectionState:
     postgres_ready: bool = False
-    milvus_ready: bool = False
+    vector_db_ready: bool = False
     rabbitmq_ready: bool = False
 
     def is_ready(self) -> bool:
         """Check if all database services are ready."""
-        return self.postgres_ready and self.milvus_ready and self.rabbitmq_ready
+        return self.postgres_ready and self.vector_db_ready and self.rabbitmq_ready
 
     def to_dict(self) -> dict[str, bool]:
         """Return the state as a dictionary."""
@@ -75,19 +75,18 @@ def check_rabbitmq() -> None:
         db_state.rabbitmq_ready = False
 
 
-def check_milvus() -> None:
-    """Check if the Milvus server is ready."""
-    if db_state.milvus_ready:
+def check_vector_db() -> None:
+    """Check if the vector database server is ready."""
+    if db_state.vector_db_ready:
         return
     try:
-        connections.connect("default", host=config.MILVUS_HOST, port=config.MILVUS_PORT)
-        utility.list_collections()  # A simple check
-        connections.disconnect("default")
-        logger.info("Milvus connection successful.")
-        db_state.milvus_ready = True
+        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        client.get_collections()
+        logger.info("Qdrant connection successful.")
+        db_state.vector_db_ready = True
     except Exception as e:
-        logger.warning(f"Milvus connection failed: {e}")
-        db_state.milvus_ready = False
+        logger.warning(f"Qdrant connection failed: {e}")
+        db_state.vector_db_ready = False
 
 
 def wait_for_databases_ready() -> None:
@@ -97,7 +96,7 @@ def wait_for_databases_ready() -> None:
     checks = {
         "PostgreSQL": check_postgres,
         "RabbitMQ": check_rabbitmq,
-        "Milvus": check_milvus,
+        "Vector DB": check_vector_db,
     }
 
     while not db_state.is_ready():
