@@ -6,16 +6,19 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: e06d33f          # WI-M2-03
-current_milestone: M1
-current_wi: WI-M1-07
+last_commit: 1f5145a          # WI-M1-02
+current_milestone: M2
+current_wi: WI-M2-04
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M1-02（部分失敗）、WI-M1-07（正規化）を registry の上で行う
-2. M2-01（アクセラレータ別の torch）、M2-04（Milvus の削除）、M2-05（Alembic）
+1. WI-M2-04: Milvus の残骸を削除する（Work Order 作成済み）
+2. WI-M2-05: Alembic の導入（Critical Module。Supervisor がテストを先に書く）
+3. WI-M2-01（アクセラレータ別の torch）→ WI-M2-02（テキスト埋め込みの移設と pinned モデル）
+
+M1 はすべて完了（2026-10-18）。
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -68,6 +71,7 @@ branch: improve/m1-correctness
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M1-07 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: 全対象を 1 回の `in_()` に渡していたため、約 6.5 万曲を超えると psycopg のパラメータ上限に達する。1000 件ずつのチャンクで解消。コレクション全体を同じ統計で再 upsert する |
 | 2026-10-18 | WI-M1-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: full 戦略が推論エラーも曲単位で握りつぶし、推論サーバーが停止すると全曲が FAILED になっていた。読み込みと推論の失敗を分離して解消。`retry_failed` を追加（既定の挙動は変えない） |
 | 2026-10-18 | WI-M2-03 | PASS | gemini-3.8-flash-high | 1 | 10 分超（Bash の上限でバックグラウンドに移行）。-774/+66 行。registry の値はテストで固定。F3 は xfail のまま |
 | 2026-10-18 | WI-M1-08 | PASS | gemini-3.8-flash-high | 1 | /stats は COMPLETED のみ数える（Sola MPD に表示される件数は正しい値まで減る）。limit の範囲検証、Qdrant client の再利用、echo=False、visibility_timeout の削除、default_rng。test_audio の random のテスト 1 件を許可の範囲内で修正 |

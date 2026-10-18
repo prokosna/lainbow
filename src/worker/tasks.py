@@ -2,6 +2,7 @@ import datetime
 import logging
 import time
 import traceback
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,11 @@ from worker.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 TASK_CHUNK_SIZE = config.TASK_CHUNK_SIZE
-VECTORIZE_CHUNK_SIZE = 1000
+
+
+def _chunks[T](seq: Sequence[T], size: int) -> Iterator[Sequence[T]]:
+    for i in range(0, len(seq), size):
+        yield seq[i : i + size]
 
 
 def _get_log_message(name: str, task_id: str, message: str) -> str:
@@ -531,20 +536,12 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
                         )
                     ]
                 )
-                vectorization_task_group = group(
-                    [
-                        vectorize_song_features.s(
-                            task_id=task_id,
-                            start_time=start,
-                            file_paths=[s.file_path for s in chunk],
-                        )
-                        for chunk in (
-                            songs_for_acoustic[i : i + VECTORIZE_CHUNK_SIZE]
-                            for i in range(0, len(songs_for_acoustic), VECTORIZE_CHUNK_SIZE)
-                        )
-                    ]
+                vectorization_task = vectorize_song_features.s(
+                    task_id=task_id,
+                    start_time=start,
+                    file_paths=[s.file_path for s in songs_for_acoustic],
                 )
-                task_groups.append(chain(extraction_task_group, vectorization_task_group))
+                task_groups.append(chain(extraction_task_group, vectorization_task))
 
             # Other Embedding Models Group
             embedding_tasks = []
@@ -620,59 +617,83 @@ def vectorize_song_features(
         stats = acoustic_features.calculate_features_stats()
 
         with db_session_context() as db:
-            songs_to_vectorize = db.exec(
-                select(SongFeatures).where(col(SongFeatures.file_path).in_(file_paths))
-            ).all()
-            features_by_path = {song.file_path: song for song in songs_to_vectorize}
+            acoustic_features.create_collection_if_not_exists()
 
-            vector_store_data = [
-                acoustic_features.create_feature_vector_data(sf, stats) for sf in songs_to_vectorize
-            ]
-            new_embedding_records: list[SongEmbedding] = []
-            for file_path in file_paths:
-                if file_path in features_by_path:
-                    new_embedding_records.append(
-                        SongEmbedding(
-                            file_path=file_path,
-                            model_name=EmbeddingModel.ACOUSTIC_FEATURES,
-                            status=Status.COMPLETED,
-                            milvus_collection_name=acoustic_features.COLLECTION_NAME,
-                            dimension=acoustic_features.EMBEDDING_DIMENSION,
-                        )
-                    )
-                else:
-                    logger.warning(
-                        _get_log_message(
-                            "Vectorize song features",
-                            task_id,
-                            f"Missing SongFeatures for '{file_path}', marking as FAILED.",
-                        )
-                    )
-                    new_embedding_records.append(
-                        SongEmbedding(
-                            file_path=file_path,
-                            model_name=EmbeddingModel.ACOUSTIC_FEATURES,
-                            status=Status.FAILED,
-                            milvus_collection_name=acoustic_features.COLLECTION_NAME,
-                            dimension=None,
-                        )
-                    )
-
-            if vector_store_data:
-                acoustic_features.create_collection_if_not_exists()
+            page_size = 1000
+            offset = 0
+            while True:
+                page = list(
+                    db.exec(
+                        select(SongFeatures)
+                        .where(col(SongFeatures.status) == Status.COMPLETED)
+                        .order_by(SongFeatures.file_path)
+                        .offset(offset)
+                        .limit(page_size)
+                    ).all()
+                )
+                if not page:
+                    break
+                vector_store_data = [
+                    acoustic_features.create_feature_vector_data(sf, stats) for sf in page
+                ]
                 vector_store_utils.upsert_vectors(
                     acoustic_features.COLLECTION_NAME, vector_store_data
                 )
-                logger.info(f"Successfully upserted {len(vector_store_data)} vectors")
+                offset += len(page)
+                if len(page) < page_size:
+                    break
 
-            if new_embedding_records:
-                db.exec(
-                    delete(SongEmbedding)
-                    .where(col(SongEmbedding.file_path).in_(file_paths))
-                    .where(col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES)
-                )
-                db.add_all(new_embedding_records)
-                db.commit()
+            if file_paths:
+                for chunk in _chunks(file_paths, 1000):
+                    target_features = db.exec(
+                        select(SongFeatures).where(col(SongFeatures.file_path).in_(chunk))
+                    ).all()
+                    features_by_path = {
+                        song.file_path: song
+                        for song in target_features
+                        if song.status == Status.COMPLETED
+                    }
+
+                    new_embedding_records: list[SongEmbedding] = []
+                    for file_path in chunk:
+                        if file_path in features_by_path:
+                            new_embedding_records.append(
+                                SongEmbedding(
+                                    file_path=file_path,
+                                    model_name=EmbeddingModel.ACOUSTIC_FEATURES,
+                                    status=Status.COMPLETED,
+                                    milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                                    dimension=acoustic_features.EMBEDDING_DIMENSION,
+                                )
+                            )
+                        else:
+                            logger.warning(
+                                _get_log_message(
+                                    "Vectorize song features",
+                                    task_id,
+                                    f"Missing SongFeatures for '{file_path}', marking as FAILED.",
+                                )
+                            )
+                            new_embedding_records.append(
+                                SongEmbedding(
+                                    file_path=file_path,
+                                    model_name=EmbeddingModel.ACOUSTIC_FEATURES,
+                                    status=Status.FAILED,
+                                    milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                                    dimension=None,
+                                )
+                            )
+
+                    if new_embedding_records:
+                        db.exec(
+                            delete(SongEmbedding)
+                            .where(col(SongEmbedding.file_path).in_(chunk))
+                            .where(
+                                col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES
+                            )
+                        )
+                        db.add_all(new_embedding_records)
+                        db.commit()
 
         record_progress(task_id=task_id, start_time=start_time, processed_count=len(file_paths))
         return True
