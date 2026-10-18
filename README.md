@@ -63,16 +63,16 @@ graph TD
 Run the following commands:
 
 ```bash
-git clone https://github.com/prokosna/lainbow && cd lainbow
+git clone --branch vX.Y.Z https://github.com/prokosna/lainbow && cd lainbow
 ./lainbow setup
 ./lainbow up
 ./lainbow scan
 ./lainbow analyze
 ```
 
-- `git clone https://github.com/prokosna/lainbow && cd lainbow`: Clones the repository and enters the project root directory.
+- `git clone --branch vX.Y.Z ...`: Clones a release tag. This is the recommended way to run Lainbow: `./lainbow setup` detects the release tag, sets `LAINBOW_VERSION`, and uses prebuilt container images from GitHub Container Registry (GHCR) so no local image build is required. (To build locally from the latest development code instead, clone `main` without `--branch`.)
 - `./lainbow setup`: Detects your hardware, prompts for configuration (music directory, accelerator, models, ports), writes `.env`, and downloads the required deep learning models inside an inference container.
-- `./lainbow up`: Starts the container stack in the background with Docker Compose and waits until all service healthchecks report healthy.
+- `./lainbow up`: Starts the container stack in the background with Docker Compose and waits until all service healthchecks report healthy. (Pulls prebuilt images from GHCR if on a release tag, or starts local builds.)
 - `./lainbow scan`: Scans your music library directory and inserts song metadata into PostgreSQL.
 - `./lainbow analyze`: Extracts audio features and vector embeddings for all songs and indexes them in Qdrant.
 
@@ -111,9 +111,16 @@ Use the `./lainbow` CLI for common operations:
 | `./lainbow scan` | Start a music library scan task and wait for completion. |
 | `./lainbow vacuum` | Start a library vacuum task to purge deleted songs and wait for completion. |
 | `./lainbow analyze` | Start song analysis task and wait for completion (`--models a,b`, `--retry-failed`). |
-| `./lainbow update` | Pull latest updates (`git pull --ff-only`), rebuild images, and restart services. |
+| `./lainbow update` | Update and restart services (prebuilt: pulls images; local: git pull and rebuilds). |
 | `./lainbow doctor` | Diagnose Docker version, GPU visibility, published ports, and free disk space. |
 | `./lainbow help` | Display usage information and subcommand options. |
+
+### Updating
+
+Running `./lainbow update` updates and restarts services based on your installation mode:
+
+- **Prebuilt mode (`LAINBOW_VERSION` set to a release tag)**: Pulls updated container images from GHCR (`compose pull`) and restarts services without building (`up -d --no-build`).
+- **Local build mode (`main` branch, `LAINBOW_VERSION=local`)**: Runs `git pull --ff-only`, rebuilds containers (`compose build`), and restarts services.
 
 ## Configuration
 
@@ -196,7 +203,8 @@ If upgrading an existing deployment that used separate `docker-compose.*.yaml` f
 
 2. **Pull the latest code**:
    ```bash
-   git pull
+   git fetch --tags
+   git checkout vX.Y.Z  # recommended (prebuilt images), or git pull on main (local build)
    ```
 
 3. **Run `./lainbow setup`**:

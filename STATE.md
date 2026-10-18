@@ -6,18 +6,19 @@
 
 ```yaml
 last_updated: 2026-10-19
-last_commit: fc2a245          # WI-M4-03
+last_commit: 0a59f25          # WI-M4-01
 current_milestone: M4
-current_wi: WI-M4-02
+current_wi: none
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M4-02（GHCR への公開。Work Order 作成済み。タグを打つのはユーザーの判断）
-2. ユーザーへの報告: ブランチ improve/m1-correctness（M0 から M3 まで）の push と PR の作成について確認する
+1. **ユーザーの判断待ち**: ブランチ `improve/m1-correctness`（M0 から M4 まで、`main` から積み上げ）を push して PR を作るか。CI（.github/workflows/ci.yml）は push 後に初めて GitHub 上で動く
+2. **ユーザーの判断待ち**: 最初のリリースタグ（例 `v0.2.0`）を打つか。打つと release.yml が GHCR に 5 つのイメージを公開する。GHCR のパッケージは初回 private なので、公開する場合は GitHub の Packages 画面で public に変更する必要がある
+3. 本番（/opt/apps/lainbow）の移行はユーザーが README の「Upgrading from the old layout」に沿って行う。その前に CUDA の GPU 認識（NVIDIA 環境がある場合）と、M5 の任意項目を検討する
 
-M1, M2, M3 はすべて完了（M3 は 2026-10-19）。
+M0 から M4 まですべて完了（2026-10-19）。
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -80,6 +81,7 @@ M1, M2, M3 はすべて完了（M3 は 2026-10-19）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-19 | WI-M4-02 | PASS | gemini-3.8-flash-high | 2 | release.yml（v*.*.* のタグで 5 イメージを GHCR に公開。cuda / rocm はディスクを空けてからビルド）。image 名を ghcr.io/prokosna/lainbow-*。REVISE 1 回は Supervisor の Work Order の抜けが原因: prebuilt モードの update が新しいリリースへ移れなかった。最新のタグへの checkout と LAINBOW_VERSION の書き換え（バックアップあり、未コミットの変更があれば拒否）を追加し、一時リポジトリでテスト |
 | 2026-10-19 | WI-M4-01 | PASS | gemini-3.8-flash-high | 1 | .github/workflows/ci.yml（check、compose、images、e2e）。スキーマ検証は通過。**GitHub 上ではまだ実行していない**（push 後に初めて動く） |
 | 2026-10-19 | WI-M4-03 | PASS | gemini-3.8-flash-high | 1 | scripts/e2e-smoke.sh。Supervisor が実行: 41 秒で全ステップ成功、後片付け後に残ったコンテナは 0 |
 | 2026-10-19 | WI-M3-05 | PASS | gemini-3.8-flash-high | 1 | README を全面改訂。言及している変数とコマンドがすべて実在することを機械的に確認。旧 inference の down に `--profile` を付ける修正を Supervisor が実施（profile 付きのサービスは profile を指定しないと止まらない） |

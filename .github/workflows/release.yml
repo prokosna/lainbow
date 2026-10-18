@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: api
+            file: docker/api.Dockerfile
+            build-args: ""
+            free-disk: false
+          - name: batch
+            file: docker/batch.Dockerfile
+            build-args: ""
+            free-disk: false
+          - name: inference-cpu
+            file: docker/inference.Dockerfile
+            build-args: ACCEL=cpu
+            free-disk: false
+          - name: inference-cuda
+            file: docker/inference.Dockerfile
+            build-args: ACCEL=cuda
+            free-disk: true
+          - name: inference-rocm
+            file: docker/inference.Dockerfile
+            build-args: ACCEL=rocm
+            free-disk: true
+    steps:
+      - name: Free disk space
+        if: matrix.free-disk
+        uses: jlumbroso/free-disk-space@v1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.build-args }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/lainbow-${{ matrix.name }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/lainbow-${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

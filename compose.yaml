@@ -90,7 +90,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: lainbow/api:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-api:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -123,7 +123,7 @@ services:
     build:
       context: .
       dockerfile: docker/batch.Dockerfile
-    image: lainbow/batch:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-batch:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -152,7 +152,7 @@ services:
       dockerfile: docker/inference.Dockerfile
       args:
         ACCEL: cpu
-    image: lainbow/inference-cpu:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-inference-cpu:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -184,7 +184,7 @@ services:
       dockerfile: docker/inference.Dockerfile
       args:
         ACCEL: cuda
-    image: lainbow/inference-cuda:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-inference-cuda:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -223,7 +223,7 @@ services:
       dockerfile: docker/inference.Dockerfile
       args:
         ACCEL: rocm
-    image: lainbow/inference-rocm:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-inference-rocm:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -255,7 +255,7 @@ services:
   flower:
     profiles:
       - debug
-    image: lainbow/batch:${LAINBOW_VERSION:-local}
+    image: ${LAINBOW_REGISTRY:-ghcr.io/prokosna}/lainbow-batch:${LAINBOW_VERSION:-local}
     restart: unless-stopped
     env_file:
       - path: .env

@@ -350,6 +350,16 @@ setup_cmd() {
 
   local effective_accel="$resolved_accel"
 
+  local release_tag=""
+  local release_ver=""
+  if release_tag=$(git describe --tags --exact-match 2>/dev/null); then
+    case "$release_tag" in
+      v*.*.*)
+        release_ver="${release_tag#v}"
+        ;;
+    esac
+  fi
+
   if [ ! -f "$ENV_FILE" ]; then
     local postgres_pass rabbitmq_pass
     postgres_pass=$(generate_pass)
@@ -375,6 +385,12 @@ POSTGRES_PASSWORD=${postgres_pass}
 RABBITMQ_DEFAULT_PASS=${rabbitmq_pass}
 LAINBOW_ANALYZE_MODELS=${models_to_write}
 EOF
+
+    if [ -n "$release_ver" ]; then
+      cat <<EOF >> "$ENV_FILE"
+LAINBOW_VERSION=${release_ver}
+EOF
+    fi
 
     if [ "$resolved_accel" = "rocm" ] && [ -n "$gpu_gid" ]; then
       cat <<EOF >> "$ENV_FILE"
@@ -503,6 +519,10 @@ EOF
       fi
     fi
 
+    if ! is_key_set LAINBOW_VERSION && [ -n "$release_ver" ]; then
+      lines_to_append+=("LAINBOW_VERSION=${release_ver}")
+    fi
+
     if [ ${#lines_to_append[@]} -gt 0 ]; then
       local backup_file
       backup_file="${ENV_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
@@ -539,15 +559,30 @@ EOF
     "${download_cmd[@]}"
   fi
 
+  local effective_ver
+  effective_ver=$(get_env_val "LAINBOW_VERSION" "local")
+
   echo
   echo "Setup complete!"
+  if [ "$effective_ver" != "local" ]; then
+    echo "Mode: prebuilt images (${effective_ver})"
+  else
+    echo "Mode: local build"
+  fi
   echo "Next steps:"
   echo "  ./lainbow up"
   echo "  ./lainbow scan && ./lainbow analyze"
 }
 
 up_cmd() {
-  compose up -d "$@"
+  local version
+  version=$(get_env_val "LAINBOW_VERSION" "local")
+  if [ "$version" != "local" ]; then
+    compose pull
+    compose up -d --no-build "$@"
+  else
+    compose up -d "$@"
+  fi
   echo "Waiting for services to become healthy (up to 5 minutes)..."
   local timeout=300
   local elapsed=0
@@ -697,10 +732,118 @@ analyze_cmd() {
   poll_task "$task_id" "$api_base"
 }
 
+update_usage() {
+  cat <<EOF
+Usage: ./lainbow update [options] [-- compose-options]
+
+Options:
+  --yes, -y     Automatically confirm update without prompting
+  --no-start    Update git checkout and .env, but skip pulling images and starting services
+  --help, -h    Show this help message
+EOF
+}
+
 update_cmd() {
-  git pull --ff-only
-  compose build
-  up_cmd "$@"
+  local yes=false
+  local no_start=false
+  local up_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --yes|-y)
+        yes=true
+        shift
+        ;;
+      --no-start)
+        no_start=true
+        shift
+        ;;
+      --help|-h)
+        update_usage
+        return 0
+        ;;
+      *)
+        up_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  local version
+  version=$(get_env_val "LAINBOW_VERSION" "local")
+
+  if [ "$version" = "local" ]; then
+    git pull --ff-only
+    if [ "$no_start" = false ]; then
+      compose build
+      up_cmd "${up_args[@]}"
+    fi
+    return 0
+  fi
+
+  if ! git fetch --tags --quiet; then
+    echo "Error: Failed to fetch tags from remote." >&2
+    return 1
+  fi
+
+  local newest_tag
+  newest_tag=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n 1)
+
+  if [ -z "$newest_tag" ]; then
+    echo "Error: No release tags found." >&2
+    return 1
+  fi
+
+  local clean_version="${version#v}"
+  if [ "$newest_tag" = "v${clean_version}" ]; then
+    echo "Already at ${clean_version}"
+    if [ "$no_start" = false ]; then
+      up_cmd "${up_args[@]}"
+    fi
+    return 0
+  fi
+
+  local new_version="${newest_tag#v}"
+  echo "${clean_version} -> ${new_version}"
+
+  if ! git diff --quiet HEAD; then
+    echo "Error: Working tree has uncommitted changes to tracked files. Please commit or stash them before updating." >&2
+    return 1
+  fi
+
+  if [ "$yes" = false ]; then
+    read -r -p "Proceed with update? [y/N]: " confirm
+    if [[ ! "$confirm" =~ ^[Yy] ]]; then
+      echo "Update aborted."
+      return 0
+    fi
+  fi
+
+  if ! git checkout --quiet "$newest_tag"; then
+    echo "Error: Failed to checkout tag $newest_tag" >&2
+    return 1
+  fi
+
+  local backup_file
+  backup_file="${ENV_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
+  if [ -e "$backup_file" ]; then
+    backup_file="${backup_file}.$$"
+  fi
+  cp "$ENV_FILE" "$backup_file"
+
+  local tmp_file="${ENV_FILE}.tmp.$$"
+  if grep -q -E "^[[:space:]]*LAINBOW_VERSION=" "$ENV_FILE"; then
+    sed -E "s/^[[:space:]]*LAINBOW_VERSION=.*/LAINBOW_VERSION=${new_version}/" "$ENV_FILE" > "$tmp_file"
+  else
+    cat "$ENV_FILE" > "$tmp_file"
+    printf '\nLAINBOW_VERSION=%s\n' "$new_version" >> "$tmp_file"
+  fi
+  chmod --reference="$ENV_FILE" "$tmp_file" 2>/dev/null || chmod 600 "$tmp_file"
+  mv "$tmp_file" "$ENV_FILE"
+
+  if [ "$no_start" = false ]; then
+    up_cmd "${up_args[@]}"
+  fi
 }
 
 doctor_cmd() {
@@ -717,9 +860,10 @@ doctor_cmd() {
   detected_accel=$(detect_accel)
   echo "Host detected accelerator: $detected_accel"
 
-  local version img
+  local version registry img
+  registry=$(get_env_val "LAINBOW_REGISTRY" "ghcr.io/prokosna")
   version=$(get_env_val "LAINBOW_VERSION" "local")
-  img="lainbow/inference-${detected_accel}:${version}"
+  img="${registry}/lainbow-inference-${detected_accel}:${version}"
   if command -v docker >/dev/null 2>&1 && docker image inspect "$img" >/dev/null 2>&1; then
     echo "Inference image '$img' found. Running scripts/accel-check.sh..."
     scripts/accel-check.sh "$img" || echo "accel-check reported issues"
@@ -776,8 +920,18 @@ doctor_cmd() {
 }
 
 usage() {
-  cat <<'EOF'
+  local version mode_desc
+  version=$(get_env_val "LAINBOW_VERSION" "local")
+  if [ "$version" != "local" ]; then
+    mode_desc="prebuilt images (${version})"
+  else
+    mode_desc="local build"
+  fi
+
+  cat <<EOF
 Usage: ./lainbow <command> [options]
+
+Current mode: ${mode_desc}
 
 Commands:
   setup     Set up .env configuration and download models
@@ -788,13 +942,14 @@ Commands:
   scan      Start library scan task and wait for completion
   vacuum    Start library vacuum task and wait for completion
   analyze   Start song analysis task and wait for completion
-  update    Pull updates, rebuild containers, and restart
+  update    Pull updates, rebuild or pull containers, and restart
   doctor    Diagnose system environment, GPU, ports, and disk space
   help      Show this help message
 
 For subcommand options, run:
   ./lainbow setup --help
   ./lainbow analyze --help
+  ./lainbow update --help
 EOF
 }
 
