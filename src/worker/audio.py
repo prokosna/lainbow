@@ -38,7 +38,7 @@ class AudioFileStatus:
     """Dataclass to hold the status of an audio file."""
 
     file_path: str
-    status: Literal["OK", "NOT_EXIST", "STALE"]
+    status: Literal["OK", "NOT_EXIST", "STALE", "UNREADABLE"]
     metadata: AudioMetadata | None = None
 
 
@@ -52,11 +52,24 @@ def find_audio_files(directory: Path) -> Iterator[Path]:
 
 def check_audio_file_status(file_path: Path, mtime: datetime.datetime | None) -> AudioFileStatus:
     """Check a single song against the filesystem."""
-    if not file_path.exists():
+    try:
+        if not file_path.exists():
+            return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
+    except FileNotFoundError:
         return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
+    except Exception as e:
+        logger.warning(f"Failed to check if {file_path} exists: {e}")
+        return AudioFileStatus(file_path=str(file_path), status="UNREADABLE")
 
     try:
-        mtime_dt_fs = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+        try:
+            mtime_dt_fs = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+        except FileNotFoundError:
+            return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
+        except Exception as e:
+            logger.warning(f"Failed to get mtime for {file_path}: {e}")
+            return AudioFileStatus(file_path=str(file_path), status="UNREADABLE")
+
         is_stale = False
         if mtime is None:
             is_stale = True
@@ -77,9 +90,12 @@ def check_audio_file_status(file_path: Path, mtime: datetime.datetime | None) ->
             metadata = extract_metadata(file_path)
             if metadata:
                 return AudioFileStatus(file_path=str(file_path), status="STALE", metadata=metadata)
-            return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
+            return AudioFileStatus(file_path=str(file_path), status="UNREADABLE")
     except FileNotFoundError:
         return AudioFileStatus(file_path=str(file_path), status="NOT_EXIST")
+    except Exception as e:
+        logger.warning(f"Unexpected error checking audio file status for {file_path}: {e}")
+        return AudioFileStatus(file_path=str(file_path), status="UNREADABLE")
 
     return AudioFileStatus(file_path=str(file_path), status="OK")
 
@@ -96,24 +112,32 @@ def extract_metadata_bulk(file_paths: list[Path]) -> list[AudioMetadata]:
 
 def extract_metadata(file_path: Path) -> AudioMetadata | None:
     """Extract metadata from a single audio file."""
-    mtime_ts = os.path.getmtime(file_path)
-    mtime_dt = datetime.datetime.fromtimestamp(mtime_ts)
+    try:
+        mtime_ts = os.path.getmtime(file_path)
+        mtime_dt = datetime.datetime.fromtimestamp(mtime_ts)
 
-    audio = mutagen.File(file_path, easy=True)  # type: ignore[attr-defined]  # mutagen does not explicitly export File
-    if audio is None:
+        audio = mutagen.File(file_path, easy=True)  # type: ignore[attr-defined]  # mutagen does not explicitly export File
+        if audio is None:
+            logger.warning(f"Failed to extract metadata from {file_path}: unrecognized format")
+            return None
+
+        duration = int(audio.info.length) if hasattr(audio.info, "length") else None
+
+        return AudioMetadata(
+            file_path=str(file_path),
+            title=audio.get("title", [None])[0],
+            artist=audio.get("artist", [None])[0],
+            album=audio.get("album", [None])[0],
+            genre=audio.get("genre", [None])[0],
+            duration_seconds=duration,
+            mtime=mtime_dt,
+        )
+    except (OSError, mutagen.MutagenError) as e:  # type: ignore[attr-defined]
+        logger.warning(f"Failed to extract metadata from {file_path}: {e}")
         return None
-
-    duration = int(audio.info.length) if hasattr(audio.info, "length") else None
-
-    return AudioMetadata(
-        file_path=str(file_path),
-        title=audio.get("title", [None])[0],
-        artist=audio.get("artist", [None])[0],
-        album=audio.get("album", [None])[0],
-        genre=audio.get("genre", [None])[0],
-        duration_seconds=duration,
-        mtime=mtime_dt,
-    )
+    except Exception as e:
+        logger.warning(f"Unexpected error extracting metadata from {file_path}: {e}")
+        return None
 
 
 def load_audio_for_librosa(file_path: Path, sr: int | None = 48000) -> Path | io.BytesIO:

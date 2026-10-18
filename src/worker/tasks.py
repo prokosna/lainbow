@@ -111,6 +111,7 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
             processed_songs = 0
             deleted_count = 0
             updated_count = 0
+            skipped_count = 0
             song_infos = [
                 (Path(config.MUSIC_NAS_ROOT_DIR) / s.file_path, s.mtime) for s in all_songs
             ]
@@ -122,65 +123,96 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                 }
 
                 for future in as_completed(future_to_info):
-                    result = future.result()
                     processed_songs += 1
-
-                    if result.status == "NOT_EXIST":
-                        file_path = str(
-                            Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
-                        )
-                        logger.info(f"'{file_path}' does not exist. Deleting metadata.")
-
-                        # Delete from PostgreSQL
-                        db.exec(delete(SongFeatures).where(SongFeatures.file_path == file_path))  # type: ignore
-                        db.exec(delete(SongEmbedding).where(SongEmbedding.file_path == file_path))  # type: ignore
-                        db.exec(delete(Song).where(Song.file_path == file_path))  # type: ignore
-                        deleted_count += 1
-
-                        # Delete from vector store
-                        acoustic_features.delete_vectors(file_paths=[file_path])
-                        clap.delete_vectors(file_paths=[file_path])
-                        mert.delete_vectors(file_paths=[file_path])
-                        muq.delete_vectors(file_paths=[file_path])
-                        muq_mulan.delete_vectors(file_paths=[file_path])
-                    elif result.status == "STALE":
-                        file_path = str(
-                            Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
-                        )
-
-                        assert result.metadata is not None, (
-                            "Metadata should not be None for STALE status"
-                        )
-
-                        logger.info(
-                            f"'{file_path}' is stale. Updating metadata and deleting embeddings."
-                        )
-
-                        # Delete related analysis and embeddings from PostgreSQL to mark for re-calculation
-                        db.exec(delete(SongFeatures).where(SongFeatures.file_path == file_path))  # type: ignore
-                        db.exec(delete(SongEmbedding).where(SongEmbedding.file_path == file_path))  # type: ignore
-
-                        # Delete from vector store
-                        acoustic_features.delete_vectors(file_paths=[file_path])
-                        clap.delete_vectors(file_paths=[file_path])
-                        mert.delete_vectors(file_paths=[file_path])
-                        muq.delete_vectors(file_paths=[file_path])
-                        muq_mulan.delete_vectors(file_paths=[file_path])
-
-                        # Then, update the song's metadata
-                        db.exec(
-                            update(Song)
-                            .where(col(Song.file_path) == file_path)
-                            .values(
-                                title=result.metadata.title,
-                                artist=result.metadata.artist,
-                                album=result.metadata.album,
-                                genre=result.metadata.genre,
-                                duration_seconds=result.metadata.duration_seconds,
-                                mtime=result.metadata.mtime,
+                    try:
+                        result = future.result()
+                    except Exception as e:
+                        info = future_to_info[future]
+                        logger.warning(
+                            _get_log_message(
+                                VacuumTaskPayload.NAME,
+                                task_id,
+                                f"Failed to check audio file status for {info[0]}: {e}",
                             )
                         )
-                        updated_count += 1
+                        skipped_count += 1
+                    else:
+                        if result.status == "NOT_EXIST":
+                            file_path = str(
+                                Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
+                            )
+                            logger.info(f"'{file_path}' does not exist. Deleting metadata.")
+
+                            # Delete from PostgreSQL
+                            db.exec(
+                                delete(SongFeatures).where(col(SongFeatures.file_path) == file_path)
+                            )
+                            db.exec(
+                                delete(SongEmbedding).where(
+                                    col(SongEmbedding.file_path) == file_path
+                                )
+                            )
+                            db.exec(delete(Song).where(col(Song.file_path) == file_path))
+                            deleted_count += 1
+
+                            # Delete from vector store
+                            acoustic_features.delete_vectors(file_paths=[file_path])
+                            clap.delete_vectors(file_paths=[file_path])
+                            mert.delete_vectors(file_paths=[file_path])
+                            muq.delete_vectors(file_paths=[file_path])
+                            muq_mulan.delete_vectors(file_paths=[file_path])
+                        elif result.status == "STALE":
+                            file_path = str(
+                                Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
+                            )
+
+                            assert result.metadata is not None, (
+                                "Metadata should not be None for STALE status"
+                            )
+
+                            logger.info(
+                                f"'{file_path}' is stale. Updating metadata and deleting embeddings."
+                            )
+
+                            # Delete related analysis and embeddings from PostgreSQL to mark for re-calculation
+                            db.exec(
+                                delete(SongFeatures).where(col(SongFeatures.file_path) == file_path)
+                            )
+                            db.exec(
+                                delete(SongEmbedding).where(
+                                    col(SongEmbedding.file_path) == file_path
+                                )
+                            )
+
+                            # Delete from vector store
+                            acoustic_features.delete_vectors(file_paths=[file_path])
+                            clap.delete_vectors(file_paths=[file_path])
+                            mert.delete_vectors(file_paths=[file_path])
+                            muq.delete_vectors(file_paths=[file_path])
+                            muq_mulan.delete_vectors(file_paths=[file_path])
+
+                            # Then, update the song's metadata
+                            db.exec(
+                                update(Song)
+                                .where(col(Song.file_path) == file_path)
+                                .values(
+                                    title=result.metadata.title,
+                                    artist=result.metadata.artist,
+                                    album=result.metadata.album,
+                                    genre=result.metadata.genre,
+                                    duration_seconds=result.metadata.duration_seconds,
+                                    mtime=result.metadata.mtime,
+                                )
+                            )
+                            updated_count += 1
+                        elif result.status == "UNREADABLE":
+                            file_path = str(
+                                Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
+                            )
+                            logger.warning(
+                                f"'{file_path}' is unreadable. Leaving DB/vector store untouched."
+                            )
+                            skipped_count += 1
 
                     # Update progress periodically
                     if processed_songs % 50 == 0 or processed_songs == total_songs:
@@ -197,14 +229,14 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                 _get_log_message(
                     VacuumTaskPayload.NAME,
                     task_id,
-                    f"Deleted {deleted_count} songs, Updated {updated_count} songs.",
+                    f"Deleted {deleted_count} songs, Updated {updated_count} songs, Skipped {skipped_count} songs.",
                 )
             )
 
             task_manager.mark_task_as_success(
                 db,
                 task_id=task_uuid,
-                message=f"Vacuum complete. Deleted: {deleted_count}, Updated: {updated_count}.",
+                message=f"Vacuum complete. Deleted: {deleted_count}, Updated: {updated_count}, Skipped (unreadable): {skipped_count}.",
                 elapsed_time=int(time.time() - start),
             )
     except Exception as e:
@@ -319,6 +351,8 @@ def scan_library_task(task_id: str, payload: dict[str, Any]) -> None:
                 new_audio_files[i : i + chunk_size] for i in range(0, total_files, chunk_size)
             ]
             processed_files = 0
+            successful_count = 0
+            skipped_count = 0
             with ThreadPoolExecutor(max_workers=10) as executor:
                 future_to_chunk = {
                     executor.submit(audio.extract_metadata_bulk, chunk): chunk
@@ -326,25 +360,39 @@ def scan_library_task(task_id: str, payload: dict[str, Any]) -> None:
                 }
                 for future in as_completed(future_to_chunk):
                     chunk = future_to_chunk[future]
-                    metadata_chunk = future.result()
-
-                    if metadata_chunk:
-                        songs_to_insert = [
-                            Song(
-                                file_path=str(
-                                    Path(m.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
-                                ),
-                                title=m.title,
-                                artist=m.artist,
-                                album=m.album,
-                                genre=m.genre,
-                                duration_seconds=m.duration_seconds,
-                                mtime=m.mtime,
+                    try:
+                        metadata_chunk = future.result()
+                    except Exception as e:
+                        logger.warning(
+                            _get_log_message(
+                                ScanTaskPayload.NAME,
+                                task_id,
+                                f"Failed to extract metadata chunk: {e}",
                             )
-                            for m in metadata_chunk
-                        ]
-                        db.add_all(songs_to_insert)
-                        db.commit()
+                        )
+                        skipped_count += len(chunk)
+                    else:
+                        chunk_skipped = len(chunk) - len(metadata_chunk)
+                        skipped_count += chunk_skipped
+                        successful_count += len(metadata_chunk)
+
+                        if metadata_chunk:
+                            songs_to_insert = [
+                                Song(
+                                    file_path=str(
+                                        Path(m.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
+                                    ),
+                                    title=m.title,
+                                    artist=m.artist,
+                                    album=m.album,
+                                    genre=m.genre,
+                                    duration_seconds=m.duration_seconds,
+                                    mtime=m.mtime,
+                                )
+                                for m in metadata_chunk
+                            ]
+                            db.add_all(songs_to_insert)
+                            db.commit()
 
                     processed_files += len(chunk)
                     progress = int((processed_files / total_files) * 100)
@@ -358,7 +406,7 @@ def scan_library_task(task_id: str, payload: dict[str, Any]) -> None:
             task_manager.mark_task_as_success(
                 db,
                 task_id=task_uuid,
-                message=f"Successfully scanned and processed {processed_files} files.",
+                message=f"Successfully scanned and processed {successful_count} files. Skipped (unreadable): {skipped_count}.",
                 elapsed_time=int(time.time() - start),
             )
 
