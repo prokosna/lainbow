@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Literal
 
 import numpy as np
@@ -38,14 +39,19 @@ class ModelManager:
         self.mode: ModelManagerMode = mode
         self._models: dict[str, InferenceModel] = {}
         self._currently_loaded_model: str | None = None
+        self._lock = threading.RLock()
         logger.info(f"ModelManager initialized in '{self.mode}' mode.")
         if len(config.INFERENCE_LOAD_MODELS_ON_STARTUP) > 0:
             for model_name in config.INFERENCE_LOAD_MODELS_ON_STARTUP:
+                if not model_name:
+                    continue
                 if model_name in MODEL_REGISTRY:
                     self.get_model(model_name)
                 else:
                     logger.warning(f"Model '{model_name}' is not registered. Skipping.")
-            logger.info(f"Models loaded on startup: {config.INFERENCE_LOAD_MODELS_ON_STARTUP}")
+            startup_models = [m for m in config.INFERENCE_LOAD_MODELS_ON_STARTUP if m]
+            if startup_models:
+                logger.info(f"Models loaded on startup: {startup_models}")
 
     def _load_model(self, model_name: str) -> InferenceModel:
         """Loads a model by its registered name."""
@@ -61,33 +67,35 @@ class ModelManager:
 
     def get_model(self, model_name: str) -> InferenceModel:
         """Retrieves a model, loading it if necessary and handling single/multi mode."""
-        if (
-            self.mode == "single"
-            and self._currently_loaded_model
-            and self._currently_loaded_model != model_name
-        ):
-            logger.info(
-                f"Single-model mode: Unloading '{self._currently_loaded_model}' to load '{model_name}'."
-            )
-            self.release_model(self._currently_loaded_model)
+        with self._lock:
+            if (
+                self.mode == "single"
+                and self._currently_loaded_model
+                and self._currently_loaded_model != model_name
+            ):
+                logger.info(
+                    f"Single-model mode: Unloading '{self._currently_loaded_model}' to load '{model_name}'."
+                )
+                self.release_model(self._currently_loaded_model)
 
-        if model_name not in self._models:
-            self._models[model_name] = self._load_model(model_name)
+            if model_name not in self._models:
+                self._models[model_name] = self._load_model(model_name)
 
-        self._currently_loaded_model = model_name
-        return self._models[model_name]
+            self._currently_loaded_model = model_name
+            return self._models[model_name]
 
     def release_model(self, model_name: str) -> None:
         """Releases a specific model from memory."""
-        if model_name in self._models:
-            logger.info(f"Releasing model '{model_name}'...")
-            self._models[model_name].release()
-            del self._models[model_name]
-            if self._currently_loaded_model == model_name:
-                self._currently_loaded_model = None
-            logger.info(f"Model '{model_name}' released.")
-        else:
-            logger.warning(f"Attempted to release a model that was not loaded: '{model_name}'.")
+        with self._lock:
+            if model_name in self._models:
+                logger.info(f"Releasing model '{model_name}'...")
+                self._models[model_name].release()
+                del self._models[model_name]
+                if self._currently_loaded_model == model_name:
+                    self._currently_loaded_model = None
+                logger.info(f"Model '{model_name}' released.")
+            else:
+                logger.warning(f"Attempted to release a model that was not loaded: '{model_name}'.")
 
     def run_inference(
         self, model_name: str, input_data: npt.NDArray[np.float32]
@@ -102,5 +110,6 @@ class ModelManager:
         Returns:
             A NumPy array representing the embedding.
         """
-        model = self.get_model(model_name)
-        return model.run_inference(input_data)
+        with self._lock:
+            model = self.get_model(model_name)
+            return model.run_inference(input_data)

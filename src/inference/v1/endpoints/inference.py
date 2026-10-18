@@ -6,6 +6,7 @@ from typing import Annotated
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from inference.core.model_manager import MODEL_REGISTRY, ModelManager
 
@@ -41,7 +42,8 @@ async def run_inference(
     try:
         # Run inference with the batch of segments
         model_manager: ModelManager = request.app.state.model_manager
-        embedding = model_manager.run_inference(
+        embedding = await run_in_threadpool(
+            model_manager.run_inference,
             model_name=model_name,
             input_data=input_data,
         )

@@ -38,7 +38,11 @@ INFERENCE_API_URL = os.getenv(
     "INFERENCE_API_URL", f"http://{INFERENCE_SERVER_ENDPOINT}:{INFERENCE_API_PORT}"
 )
 INFERENCE_REQUEST_TIMEOUT = float(os.getenv("INFERENCE_REQUEST_TIMEOUT", "300.0"))
-INFERENCE_LOAD_MODELS_ON_STARTUP = os.getenv("INFERENCE_MODELS_TO_LOAD_ON_STARTUP", "").split(",")
+INFERENCE_LOAD_MODELS_ON_STARTUP = [
+    model.strip()
+    for model in os.getenv("INFERENCE_MODELS_TO_LOAD_ON_STARTUP", "").split(",")
+    if model.strip()
+]
 
 # Batch
 TASK_CHUNK_SIZE = int(os.getenv("TASK_CHUNK_SIZE", "10"))

@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
@@ -183,3 +185,66 @@ def test_individual_model_inference_and_release(
 
     clap_model.release()
     assert not hasattr(clap_model, "model")
+
+
+def test_manager_serializes_concurrent_calls(
+    mock_model_inits: None, dummy_audio_segment: np.ndarray
+) -> None:
+    """Tests that the manager serializes concurrent run_inference calls in single mode."""
+    manager = ModelManager(mode="single")
+    dummy_input = np.stack([dummy_audio_segment])
+
+    intervals: dict[str, tuple[float, float]] = {}
+    active_count = 0
+    max_active = 0
+    stats_lock = threading.Lock()
+
+    def fake_mert_infer(input_data: np.ndarray) -> np.ndarray:
+        nonlocal active_count, max_active
+        t_enter = time.perf_counter()
+        with stats_lock:
+            active_count += 1
+            if active_count > max_active:
+                max_active = active_count
+        time.sleep(0.1)
+        with stats_lock:
+            active_count -= 1
+        t_exit = time.perf_counter()
+        intervals["mert"] = (t_enter, t_exit)
+        return np.zeros(512, dtype=np.float32)
+
+    def fake_clap_infer(input_data: np.ndarray) -> np.ndarray:
+        nonlocal active_count, max_active
+        t_enter = time.perf_counter()
+        with stats_lock:
+            active_count += 1
+            if active_count > max_active:
+                max_active = active_count
+        time.sleep(0.1)
+        with stats_lock:
+            active_count -= 1
+        t_exit = time.perf_counter()
+        intervals["clap"] = (t_enter, t_exit)
+        return np.zeros(512, dtype=np.float32)
+
+    barrier = threading.Barrier(2)
+
+    def worker(model_name: str) -> None:
+        barrier.wait()
+        manager.run_inference(model_name, dummy_input)
+
+    with (
+        patch.object(MERTModel, "run_inference", side_effect=fake_mert_infer),
+        patch.object(CLAPModel, "run_inference", side_effect=fake_clap_infer),
+    ):
+        t1 = threading.Thread(target=worker, args=("mert",))
+        t2 = threading.Thread(target=worker, args=("clap",))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+    assert max_active == 1
+    mert_enter, mert_exit = intervals["mert"]
+    clap_enter, clap_exit = intervals["clap"]
+    assert mert_exit <= clap_enter or clap_exit <= mert_enter
