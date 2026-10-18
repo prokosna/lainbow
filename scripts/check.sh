@@ -44,7 +44,7 @@ mypy_gate() {
 }
 
 shellcheck_gate() {
-	uvx --from shellcheck-py shellcheck scripts/*.sh
+	uvx --from shellcheck-py shellcheck scripts/*.sh lainbow
 }
 
 run ruff-check uv run --no-sync ruff check src tests

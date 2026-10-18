@@ -157,6 +157,9 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Hugging Face downloads (e.g. MuQ-MuLan's text encoder) persist with the models
+      HF_HOME: /src/models/.hf-cache
     ports:
       - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
     volumes:
@@ -186,6 +189,9 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Hugging Face downloads (e.g. MuQ-MuLan's text encoder) persist with the models
+      HF_HOME: /src/models/.hf-cache
     ports:
       - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
     volumes:
@@ -222,6 +228,9 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Hugging Face downloads (e.g. MuQ-MuLan's text encoder) persist with the models
+      HF_HOME: /src/models/.hf-cache
     ports:
       - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
     volumes:

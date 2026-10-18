@@ -1,0 +1,852 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ORIG_CWD="$PWD"
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+if [ -n "${LAINBOW_ENV_FILE:-}" ]; then
+  case "$LAINBOW_ENV_FILE" in
+    /*) ENV_FILE="$LAINBOW_ENV_FILE" ;;
+    *)  ENV_FILE="$ORIG_CWD/$LAINBOW_ENV_FILE" ;;
+  esac
+else
+  ENV_FILE="$ROOT_DIR/.env"
+fi
+
+cd "$ROOT_DIR" || exit 1
+
+compose() {
+  docker compose --env-file "$ENV_FILE" "$@"
+}
+
+is_key_set() {
+  local key="$1"
+  if [ ! -f "$ENV_FILE" ]; then
+    return 1
+  fi
+  grep -q -E "^[[:space:]]*${key}=" "$ENV_FILE"
+}
+
+get_env_val() {
+  local key="$1"
+  local default_val="${2:-}"
+  if [ -f "$ENV_FILE" ]; then
+    local val
+    val=$(sed -n -E "s/^[[:space:]]*${key}=(.*)/\1/p" "$ENV_FILE" | tail -n 1)
+    if [ -n "$val" ]; then
+      val="${val#\"}"
+      val="${val%\"}"
+      val="${val#\'}"
+      val="${val%\'}"
+      echo "$val"
+      return 0
+    fi
+  fi
+  echo "$default_val"
+}
+
+get_key_val() {
+  get_env_val "$1" "${2:-}"
+}
+
+generate_pass() {
+  (
+    set +o pipefail
+    LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24
+  )
+}
+
+detect_accel() {
+  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && docker info 2>/dev/null | grep -q -i 'nvidia'; then
+    echo "cuda"
+  elif [ -e /dev/kfd ]; then
+    echo "rocm"
+  else
+    echo "cpu"
+  fi
+}
+
+is_port_in_use() {
+  local p="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -tuln 2>/dev/null | grep -q -E ":${p}[[:space:]]"
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -i ":${p}" >/dev/null 2>&1
+  else
+    (exec 3<>/dev/tcp/127.0.0.1/"$p") 2>/dev/null && exec 3<&- && exec 3>&-
+  fi
+}
+
+poll_task() {
+  local task_id="$1"
+  local api_base="$2"
+  echo "Task submitted: $task_id"
+  echo "Waiting for completion..."
+
+  while true; do
+    local task_json
+    task_json=$(curl -s -f "${api_base}/api/v1/batch/tasks/${task_id}" || true)
+    if [ -z "$task_json" ]; then
+      echo "Warning: failed to fetch task status, retrying..." >&2
+      sleep 2
+      continue
+    fi
+
+    local status progress message
+    status=$(printf '%s\n' "$task_json" | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    progress=$(printf '%s\n' "$task_json" | sed -n 's/.*"progress"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
+    message=$(printf '%s\n' "$task_json" | sed -n 's/.*"message"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+
+    printf '\rStatus: %-8s | Progress: %3s%%' "${status:-UNKNOWN}" "${progress:-0}"
+    if [ -n "$message" ]; then
+      printf ' | %s' "$message"
+    fi
+
+    case "$status" in
+      SUCCESS)
+        printf '\nTask completed successfully.\n'
+        return 0
+        ;;
+      FAILURE)
+        printf '\nTask failed!\n'
+        echo "$task_json" >&2
+        return 1
+        ;;
+      SKIPPED)
+        printf '\nTask was skipped.\n'
+        return 0
+        ;;
+    esac
+    sleep 2
+  done
+}
+
+setup_usage() {
+  cat <<'EOF'
+Usage: ./lainbow setup [options]
+
+Options:
+  --yes, -y           Non-interactive mode (use defaults for unspecified options)
+  --music-dir DIR     Path to music library root directory (required)
+  --accel ACCEL       Accelerator type: auto, cpu, cuda, rocm (default: auto)
+  --models LIST       Comma-separated list of models to analyze (replaces default)
+  --with-clap         Include CLAP model
+  --with-mert         Include MERT model
+  --data-dir DIR      Directory to store database data (default: .)
+  --api-port PORT     Web API port (default: 8000)
+  --no-download       Skip downloading model weights
+  --help, -h          Show this help message
+EOF
+}
+
+setup_cmd() {
+  local yes=false
+  local music_dir=""
+  local music_dir_arg_passed=false
+  local accel=""
+  local accel_arg_passed=false
+  local models=""
+  local models_arg_passed=false
+  local with_clap=false
+  local with_mert=false
+  local data_dir=""
+  local data_dir_arg_passed=false
+  local api_port=""
+  local api_port_arg_passed=false
+  local no_download=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --yes|-y)
+        yes=true
+        shift
+        ;;
+      --music-dir)
+        music_dir="$2"
+        music_dir_arg_passed=true
+        shift 2
+        ;;
+      --accel)
+        accel="$2"
+        accel_arg_passed=true
+        shift 2
+        ;;
+      --models)
+        models="$2"
+        models_arg_passed=true
+        shift 2
+        ;;
+      --with-clap)
+        with_clap=true
+        shift
+        ;;
+      --with-mert)
+        with_mert=true
+        shift
+        ;;
+      --data-dir)
+        data_dir="$2"
+        data_dir_arg_passed=true
+        shift 2
+        ;;
+      --api-port)
+        api_port="$2"
+        api_port_arg_passed=true
+        shift 2
+        ;;
+      --no-download)
+        no_download=true
+        shift
+        ;;
+      --help|-h)
+        setup_usage
+        return 0
+        ;;
+      *)
+        echo "Error: Unknown setup option: $1" >&2
+        setup_usage >&2
+        return 1
+        ;;
+    esac
+  done
+
+  if [ "${LAINBOW_SKIP_PREREQS:-0}" != "1" ]; then
+    if ! command -v docker >/dev/null 2>&1; then
+      echo "Error: Docker is not installed." >&2
+      echo "Please install Docker Engine: https://docs.docker.com/engine/install/" >&2
+      return 1
+    fi
+
+    if ! docker compose version >/dev/null 2>&1; then
+      echo "Error: Docker Compose is not installed." >&2
+      echo "Please install Docker Compose v2 (v2.20 or newer): https://docs.docker.com/compose/install/" >&2
+      return 1
+    fi
+
+    local compose_ver
+    compose_ver=$(docker compose version --short 2>/dev/null || docker compose version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
+    if [ -n "$compose_ver" ]; then
+      compose_ver="${compose_ver#v}"
+      if ! printf '%s\n%s\n' "2.20" "$compose_ver" | sort -V -C; then
+        echo "Error: Docker Compose v2.20 or newer is required (found $compose_ver)." >&2
+        echo "Please update Docker Compose: https://docs.docker.com/compose/install/" >&2
+        return 1
+      fi
+    fi
+
+    if ! docker info >/dev/null 2>&1; then
+      echo "Error: Docker daemon is not reachable." >&2
+      echo "Ensure the Docker service is running, or add your user to the docker group: sudo usermod -aG docker \$USER" >&2
+      return 1
+    fi
+  fi
+
+  if [ -z "$accel" ]; then
+    if [ "$yes" = false ]; then
+      read -r -p "Select accelerator [auto/cpu/cuda/rocm] (default: auto): " input_accel
+      accel="${input_accel:-auto}"
+    else
+      accel="auto"
+    fi
+  fi
+
+  local resolved_accel=""
+  case "$accel" in
+    auto)
+      resolved_accel=$(detect_accel)
+      ;;
+    nvidia|cuda)
+      resolved_accel="cuda"
+      ;;
+    rocm)
+      resolved_accel="rocm"
+      ;;
+    cpu)
+      resolved_accel="cpu"
+      ;;
+    *)
+      echo "Error: Invalid accelerator '$accel'. Choose from auto, cpu, cuda, rocm." >&2
+      return 1
+      ;;
+  esac
+
+  local gpu_gid=""
+  if [ "$resolved_accel" = "rocm" ]; then
+    if [ -e /dev/kfd ]; then
+      gpu_gid=$(stat -c %g /dev/kfd)
+    else
+      gpu_gid="video"
+    fi
+  fi
+
+  if [ -z "$music_dir" ] && is_key_set MUSIC_NAS_ROOT_DIR; then
+    music_dir=$(get_env_val MUSIC_NAS_ROOT_DIR "")
+  fi
+
+  if [ -z "$music_dir" ]; then
+    if [ "$yes" = false ]; then
+      read -r -p "Path to music library: " input_music
+      music_dir="${input_music:-}"
+    fi
+  fi
+
+  if [ -z "$music_dir" ]; then
+    echo "Error: Music directory is required (pass --music-dir <path>)." >&2
+    return 1
+  fi
+
+  if [ ! -d "$music_dir" ]; then
+    echo "Error: Music directory '$music_dir' does not exist." >&2
+    return 1
+  fi
+
+  if [ -z "$data_dir" ] && is_key_set DATABASE_DATA_ROOT_DIR; then
+    data_dir=$(get_env_val DATABASE_DATA_ROOT_DIR ".")
+  fi
+  if [ -z "$data_dir" ]; then
+    if [ "$yes" = false ]; then
+      read -r -p "Data directory [default: .]: " input_data
+      data_dir="${input_data:-.}"
+    else
+      data_dir="."
+    fi
+  fi
+
+  if [ -z "$api_port" ] && is_key_set WEB_API_PORT; then
+    api_port=$(get_env_val WEB_API_PORT "8000")
+  fi
+  if [ -z "$api_port" ]; then
+    if [ "$yes" = false ]; then
+      read -r -p "Web API port [default: 8000]: " input_port
+      api_port="${input_port:-8000}"
+    else
+      api_port="8000"
+    fi
+  fi
+
+  local models_to_write=""
+  if [ -n "$models" ]; then
+    models_to_write="$models"
+  else
+    if [ "$yes" = false ]; then
+      read -r -p "Include CLAP model (zero-shot text & audio search)? [y/N]: " ans_clap
+      if [[ "$ans_clap" =~ ^[Yy] ]]; then
+        with_clap=true
+      fi
+      read -r -p "Include MERT model (acoustic feature extraction)? [y/N]: " ans_mert
+      if [[ "$ans_mert" =~ ^[Yy] ]]; then
+        with_mert=true
+      fi
+    fi
+
+    models_to_write="muq,muq_mulan"
+    if [ "$with_clap" = true ]; then
+      models_to_write="${models_to_write},clap"
+    fi
+    if [ "$with_mert" = true ]; then
+      models_to_write="${models_to_write},mert"
+    fi
+  fi
+
+  local effective_accel="$resolved_accel"
+
+  if [ ! -f "$ENV_FILE" ]; then
+    local postgres_pass rabbitmq_pass
+    postgres_pass=$(generate_pass)
+    rabbitmq_pass=$(generate_pass)
+    while [ "$rabbitmq_pass" = "$postgres_pass" ]; do
+      rabbitmq_pass=$(generate_pass)
+    done
+
+    mkdir -p "$(dirname "$ENV_FILE")"
+    (
+      umask 077
+      touch "$ENV_FILE"
+    )
+    chmod 600 "$ENV_FILE"
+
+    cat <<EOF > "$ENV_FILE"
+COMPOSE_PROFILES=db,app,inference-${resolved_accel}
+LAINBOW_PROJECT_NAME=lainbow
+MUSIC_NAS_ROOT_DIR=${music_dir}
+DATABASE_DATA_ROOT_DIR=${data_dir}
+WEB_API_PORT=${api_port}
+POSTGRES_PASSWORD=${postgres_pass}
+RABBITMQ_DEFAULT_PASS=${rabbitmq_pass}
+LAINBOW_ANALYZE_MODELS=${models_to_write}
+EOF
+
+    if [ "$resolved_accel" = "rocm" ] && [ -n "$gpu_gid" ]; then
+      cat <<EOF >> "$ENV_FILE"
+LAINBOW_GPU_GID=${gpu_gid}
+EOF
+    fi
+
+    if [ "$resolved_accel" = "cpu" ]; then
+      cat <<EOF >> "$ENV_FILE"
+TASK_CHUNK_SIZE=2
+INFERENCE_REQUEST_TIMEOUT=600
+TASK_STALE_AFTER_SEC=7200
+EOF
+    fi
+
+    effective_accel="$resolved_accel"
+  else
+    if is_key_set COMPOSE_PROFILES; then
+      local existing_profiles
+      existing_profiles=$(get_key_val COMPOSE_PROFILES)
+      if [ "$accel_arg_passed" = true ]; then
+        case "$existing_profiles" in
+          *inference-${resolved_accel}*)
+            ;;
+          *)
+            echo "Note: keeping existing COMPOSE_PROFILES; ignoring conflicting --accel argument." >&2
+            ;;
+        esac
+      fi
+    fi
+
+    if is_key_set MUSIC_NAS_ROOT_DIR; then
+      local existing_music
+      existing_music=$(get_key_val MUSIC_NAS_ROOT_DIR)
+      if [ "$music_dir_arg_passed" = true ] && [ "$music_dir" != "$existing_music" ]; then
+        echo "Note: keeping existing MUSIC_NAS_ROOT_DIR; ignoring conflicting --music-dir argument." >&2
+      fi
+    fi
+
+    if is_key_set DATABASE_DATA_ROOT_DIR; then
+      local existing_data
+      existing_data=$(get_key_val DATABASE_DATA_ROOT_DIR)
+      if [ "$data_dir_arg_passed" = true ] && [ "$data_dir" != "$existing_data" ]; then
+        echo "Note: keeping existing DATABASE_DATA_ROOT_DIR; ignoring conflicting --data-dir argument." >&2
+      fi
+    fi
+
+    if is_key_set WEB_API_PORT; then
+      local existing_port
+      existing_port=$(get_key_val WEB_API_PORT)
+      if [ "$api_port_arg_passed" = true ] && [ "$api_port" != "$existing_port" ]; then
+        echo "Note: keeping existing WEB_API_PORT; ignoring conflicting --api-port argument." >&2
+      fi
+    fi
+
+    if is_key_set LAINBOW_ANALYZE_MODELS; then
+      local existing_models
+      existing_models=$(get_key_val LAINBOW_ANALYZE_MODELS)
+      if [ "$models_arg_passed" = true ] && [ "$models" != "$existing_models" ]; then
+        echo "Note: keeping existing LAINBOW_ANALYZE_MODELS; ignoring conflicting --models argument." >&2
+      fi
+    fi
+
+    if is_key_set COMPOSE_PROFILES; then
+      local cur_profiles
+      cur_profiles=$(get_key_val COMPOSE_PROFILES)
+      case "$cur_profiles" in
+        *inference-cuda*) effective_accel="cuda" ;;
+        *inference-rocm*) effective_accel="rocm" ;;
+        *inference-cpu*)  effective_accel="cpu" ;;
+      esac
+    fi
+
+    local lines_to_append=()
+
+    if ! is_key_set COMPOSE_PROFILES; then
+      lines_to_append+=("COMPOSE_PROFILES=db,app,inference-${resolved_accel}")
+      effective_accel="$resolved_accel"
+    fi
+
+    if ! is_key_set LAINBOW_PROJECT_NAME; then
+      lines_to_append+=("LAINBOW_PROJECT_NAME=lainbow")
+    fi
+
+    if ! is_key_set MUSIC_NAS_ROOT_DIR; then
+      lines_to_append+=("MUSIC_NAS_ROOT_DIR=${music_dir}")
+    fi
+
+    if ! is_key_set DATABASE_DATA_ROOT_DIR; then
+      lines_to_append+=("DATABASE_DATA_ROOT_DIR=${data_dir}")
+    fi
+
+    if ! is_key_set WEB_API_PORT; then
+      lines_to_append+=("WEB_API_PORT=${api_port}")
+    fi
+
+    if ! is_key_set POSTGRES_PASSWORD; then
+      echo "Note: Using legacy default password 'password' for POSTGRES_PASSWORD because this install predates generated passwords."
+      lines_to_append+=("POSTGRES_PASSWORD=password")
+    fi
+
+    if ! is_key_set RABBITMQ_DEFAULT_PASS; then
+      echo "Note: Using legacy default password 'password' for RABBITMQ_DEFAULT_PASS because this install predates generated passwords."
+      lines_to_append+=("RABBITMQ_DEFAULT_PASS=password")
+    fi
+
+    if ! is_key_set LAINBOW_ANALYZE_MODELS; then
+      lines_to_append+=("LAINBOW_ANALYZE_MODELS=${models_to_write}")
+    fi
+
+    if [ "$effective_accel" = "rocm" ] && [ -n "$gpu_gid" ]; then
+      if ! is_key_set LAINBOW_GPU_GID; then
+        lines_to_append+=("LAINBOW_GPU_GID=${gpu_gid}")
+      fi
+    fi
+
+    if [ "$effective_accel" = "cpu" ]; then
+      if ! is_key_set TASK_CHUNK_SIZE; then
+        lines_to_append+=("TASK_CHUNK_SIZE=2")
+      fi
+      if ! is_key_set INFERENCE_REQUEST_TIMEOUT; then
+        lines_to_append+=("INFERENCE_REQUEST_TIMEOUT=600")
+      fi
+      if ! is_key_set TASK_STALE_AFTER_SEC; then
+        lines_to_append+=("TASK_STALE_AFTER_SEC=7200")
+      fi
+    fi
+
+    if [ ${#lines_to_append[@]} -gt 0 ]; then
+      local backup_file
+      backup_file="${ENV_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
+      cp "$ENV_FILE" "$backup_file"
+
+      if [ -s "$ENV_FILE" ] && [ -n "$(tail -c 1 "$ENV_FILE")" ]; then
+        printf '\n' >> "$ENV_FILE"
+      fi
+
+      printf '\n# Added by ./lainbow setup on %s\n' "$(date)" >> "$ENV_FILE"
+      for line in "${lines_to_append[@]}"; do
+        printf '%s\n' "$line" >> "$ENV_FILE"
+      done
+      chmod 600 "$ENV_FILE"
+    fi
+  fi
+
+  if [ "$no_download" = false ]; then
+    local models_dir
+    models_dir=$(get_env_val "LAINBOW_MODELS_DIR" "./models")
+    mkdir -p "$models_dir"
+
+    local download_cmd=(
+      docker compose --env-file "$ENV_FILE" run --rm --no-deps
+      --user "$(id -u):$(id -g)"
+      -e HOME=/tmp
+      -e HF_HOME=/src/models/.hf-cache
+      "inference-$effective_accel"
+      python -m inference.download_models
+    )
+    if [ -n "$models" ]; then
+      download_cmd+=(--models "$models")
+    fi
+    "${download_cmd[@]}"
+  fi
+
+  echo
+  echo "Setup complete!"
+  echo "Next steps:"
+  echo "  ./lainbow up"
+  echo "  ./lainbow scan && ./lainbow analyze"
+}
+
+up_cmd() {
+  compose up -d "$@"
+  echo "Waiting for services to become healthy (up to 5 minutes)..."
+  local timeout=300
+  local elapsed=0
+  local interval=5
+  while [ "$elapsed" -lt "$timeout" ]; do
+    local ps_output
+    ps_output=$(compose ps)
+    if echo "$ps_output" | grep -q "(unhealthy)"; then
+      echo "Error: One or more services are unhealthy:" >&2
+      echo "$ps_output" | grep "(unhealthy)" >&2
+      return 1
+    fi
+    if ! echo "$ps_output" | grep -q "(health: starting)"; then
+      if echo "$ps_output" | grep -q "(healthy)"; then
+        echo "All services are healthy! (${elapsed}s elapsed)"
+        return 0
+      fi
+    fi
+    echo "Services starting... (${elapsed}s/${timeout}s)"
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+  echo "Error: Timed out waiting for services to become healthy after ${timeout}s" >&2
+  compose ps >&2
+  return 1
+}
+
+down_cmd() {
+  compose down "$@"
+}
+
+status_cmd() {
+  compose ps
+  local port
+  port=$(get_env_val "WEB_API_PORT" "8000")
+  echo
+  echo "=== API Health (http://127.0.0.1:${port}/health) ==="
+  if curl -s -f "http://127.0.0.1:${port}/health"; then
+    echo
+  else
+    echo "API is not reachable or unhealthy at http://127.0.0.1:${port}/health" >&2
+  fi
+  echo
+  echo "=== API Stats (http://127.0.0.1:${port}/api/v1/stats) ==="
+  if curl -s -f "http://127.0.0.1:${port}/api/v1/stats"; then
+    echo
+  else
+    echo "Failed to retrieve stats from http://127.0.0.1:${port}/api/v1/stats" >&2
+  fi
+}
+
+logs_cmd() {
+  compose logs -f --tail 200 "$@"
+}
+
+scan_cmd() {
+  local port api_base response task_id
+  port=$(get_env_val "WEB_API_PORT" "8000")
+  api_base="http://127.0.0.1:${port}"
+  echo "Starting library scan..."
+  response=$(curl -s -f -X POST "${api_base}/api/v1/batch/scan/run") || {
+    echo "Error: Failed to request library scan at ${api_base}/api/v1/batch/scan/run" >&2
+    return 1
+  }
+  task_id=$(printf '%s\n' "$response" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  if [ -z "$task_id" ]; then
+    echo "Error: Failed to parse task ID from response: $response" >&2
+    return 1
+  fi
+  poll_task "$task_id" "$api_base"
+}
+
+vacuum_cmd() {
+  local port api_base response task_id
+  port=$(get_env_val "WEB_API_PORT" "8000")
+  api_base="http://127.0.0.1:${port}"
+  echo "Starting library vacuum..."
+  response=$(curl -s -f -X POST "${api_base}/api/v1/batch/vacuum/run") || {
+    echo "Error: Failed to request library vacuum at ${api_base}/api/v1/batch/vacuum/run" >&2
+    return 1
+  }
+  task_id=$(printf '%s\n' "$response" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  if [ -z "$task_id" ]; then
+    echo "Error: Failed to parse task ID from response: $response" >&2
+    return 1
+  fi
+  poll_task "$task_id" "$api_base"
+}
+
+analyze_cmd() {
+  local models_arg=""
+  local retry_failed=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --models)
+        models_arg="$2"
+        shift 2
+        ;;
+      --retry-failed)
+        retry_failed=true
+        shift
+        ;;
+      --help|-h)
+        echo "Usage: ./lainbow analyze [--models a,b] [--retry-failed]"
+        return 0
+        ;;
+      *)
+        echo "Error: Unknown analyze option: $1" >&2
+        return 1
+        ;;
+    esac
+  done
+
+  local payload="{}"
+  if [ -n "$models_arg" ] || [ "$retry_failed" = true ]; then
+    local parts=()
+    if [ -n "$models_arg" ]; then
+      local json_models
+      json_models=$(printf '%s' "$models_arg" | awk -F',' '{for(i=1;i<=NF;i++) printf "%s\"%s\"", (i>1?", ":""), $i}')
+      parts+=("\"models\": [${json_models}]")
+    fi
+    if [ "$retry_failed" = true ]; then
+      parts+=("\"retry_failed\": true")
+    fi
+    payload="{"
+    for i in "${!parts[@]}"; do
+      if [ "$i" -gt 0 ]; then payload="${payload}, "; fi
+      payload="${payload}${parts[$i]}"
+    done
+    payload="${payload}}"
+  fi
+
+  local port api_base response task_id
+  port=$(get_env_val "WEB_API_PORT" "8000")
+  api_base="http://127.0.0.1:${port}"
+  echo "Starting song analysis with payload: $payload"
+  response=$(curl -s -f -X POST "${api_base}/api/v1/batch/analyze/run" -H "Content-Type: application/json" -d "$payload") || {
+    echo "Error: Failed to request song analysis at ${api_base}/api/v1/batch/analyze/run" >&2
+    return 1
+  }
+  task_id=$(printf '%s\n' "$response" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  if [ -z "$task_id" ]; then
+    echo "Error: Failed to parse task ID from response: $response" >&2
+    return 1
+  fi
+  poll_task "$task_id" "$api_base"
+}
+
+update_cmd() {
+  git pull --ff-only
+  compose build
+  up_cmd "$@"
+}
+
+doctor_cmd() {
+  echo "=== Docker Compose Version ==="
+  if command -v docker >/dev/null 2>&1; then
+    docker compose version || echo "docker compose version failed"
+  else
+    echo "docker not found"
+  fi
+  echo
+
+  echo "=== Detected Accelerator ==="
+  local detected_accel
+  detected_accel=$(detect_accel)
+  echo "Host detected accelerator: $detected_accel"
+
+  local version img
+  version=$(get_env_val "LAINBOW_VERSION" "local")
+  img="lainbow/inference-${detected_accel}:${version}"
+  if command -v docker >/dev/null 2>&1 && docker image inspect "$img" >/dev/null 2>&1; then
+    echo "Inference image '$img' found. Running scripts/accel-check.sh..."
+    scripts/accel-check.sh "$img" || echo "accel-check reported issues"
+  else
+    echo "Inference image '$img' does not exist yet (run ./lainbow setup or docker compose build)."
+  fi
+  echo
+
+  echo "=== Music Directory ==="
+  local music_dir
+  music_dir=$(get_env_val "MUSIC_NAS_ROOT_DIR" "")
+  if [ -z "$music_dir" ]; then
+    echo "MUSIC_NAS_ROOT_DIR is not set in $ENV_FILE"
+  elif [ ! -e "$music_dir" ]; then
+    echo "Music directory '$music_dir' does not exist!"
+  elif [ ! -r "$music_dir" ]; then
+    echo "Music directory '$music_dir' is not readable!"
+  else
+    echo "Music directory '$music_dir' exists and is readable."
+  fi
+  echo
+
+  echo "=== Published Ports Check ==="
+  local ports=(
+    "WEB_API_PORT:8000"
+    "INFERENCE_API_PORT:8001"
+    "POSTGRES_PORT:5433"
+    "RABBITMQ_PORT:5672"
+    "RABBITMQ_MANAGEMENT_PORT:15672"
+    "QDRANT_PORT_HTTP:6333"
+    "QDRANT_PORT_GRPC:6334"
+  )
+  for entry in "${ports[@]}"; do
+    local var default_port p
+    var="${entry%%:*}"
+    default_port="${entry#*:}"
+    p=$(get_env_val "$var" "$default_port")
+    if is_port_in_use "$p"; then
+      echo "Port $p ($var) is already in use by another process."
+    else
+      echo "Port $p ($var) is free."
+    fi
+  done
+  echo
+
+  echo "=== Free Disk Space ==="
+  local data_dir models_dir
+  data_dir=$(get_env_val "DATABASE_DATA_ROOT_DIR" ".")
+  models_dir=$(get_env_val "LAINBOW_MODELS_DIR" "./models")
+  echo "Data directory ($data_dir):"
+  df -h "$data_dir" 2>/dev/null || echo "Unable to check disk space for $data_dir"
+  echo "Models directory ($models_dir):"
+  df -h "$models_dir" 2>/dev/null || echo "Unable to check disk space for $models_dir"
+}
+
+usage() {
+  cat <<'EOF'
+Usage: ./lainbow <command> [options]
+
+Commands:
+  setup     Set up .env configuration and download models
+  up        Start services and wait for healthchecks
+  down      Stop services
+  status    Show service status and API health / statistics
+  logs      Follow container logs
+  scan      Start library scan task and wait for completion
+  vacuum    Start library vacuum task and wait for completion
+  analyze   Start song analysis task and wait for completion
+  update    Pull updates, rebuild containers, and restart
+  doctor    Diagnose system environment, GPU, ports, and disk space
+  help      Show this help message
+
+For subcommand options, run:
+  ./lainbow setup --help
+  ./lainbow analyze --help
+EOF
+}
+
+main() {
+  if [ $# -eq 0 ]; then
+    usage
+    exit 0
+  fi
+
+  local cmd="$1"
+  shift
+
+  case "$cmd" in
+    setup)
+      setup_cmd "$@"
+      ;;
+    up)
+      up_cmd "$@"
+      ;;
+    down)
+      down_cmd "$@"
+      ;;
+    status)
+      status_cmd "$@"
+      ;;
+    logs)
+      logs_cmd "$@"
+      ;;
+    scan)
+      scan_cmd "$@"
+      ;;
+    vacuum)
+      vacuum_cmd "$@"
+      ;;
+    analyze)
+      analyze_cmd "$@"
+      ;;
+    update)
+      update_cmd "$@"
+      ;;
+    doctor)
+      doctor_cmd "$@"
+      ;;
+    help|--help|-h)
+      usage
+      ;;
+    *)
+      echo "Error: Unknown command '$cmd'" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

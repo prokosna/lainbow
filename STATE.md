@@ -6,16 +6,17 @@
 
 ```yaml
 last_updated: 2026-10-19
-last_commit: c953db0          # WI-M3-01b
+last_commit: e3e5406          # WI-M3-02
 current_milestone: M3
-current_wi: WI-M3-03
+current_wi: WI-M3-04
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M3-03: `./lainbow` CLI（Critical: 既存の `.env` を上書きしない。Supervisor がテストを先に書く）
-2. WI-M3-04（API の analyze の既定値を `config.ANALYZE_MODELS` にする。CPU 向けの値は M3-03 の setup に含めた）→ WI-M3-05（README）
+1. WI-M3-04（API の analyze の既定値を `config.ANALYZE_MODELS` にする。CPU 向けの値は M3-03 の setup に含めた）
+2. WI-M3-05: README の全面改訂（Work Order 作成済み）
+3. M4（CI、GHCR、E2E スモークテスト）
 
 M1 と M2 はすべて完了（M2 は 2026-10-19）。
 
@@ -54,6 +55,7 @@ M1 と M2 はすべて完了（M2 は 2026-10-19）。
 - このマシンでは本番の Lainbow が `/opt/apps/lainbow` から稼働している（コンテナ名 `lainbow_*`）。作業ツリー（`~/dev/lainbow`）とは別物で、作業ツリーの `src` の編集は本番に影響しない。**本番の DB やコンテナには触らないこと**（auto mode の classifier も本番の読み取りを拒否する）
 - **作業ツリーで `docker compose` をそのまま実行しないこと。** ディレクトリ名が本番（`/opt/apps/lainbow`）と同じなので、compose のプロジェクト名がどちらも `lainbow` になり、`container_name` も固定されている。作業ツリーで compose を使う場合は必ず `-p lainbow-dev` を付ける（M3-01 でプロジェクト名を `.env` から設定できるようにする）。イメージの検証は `docker build -t lainbow-dev/...` で行う
 - このホストの GPU は AMD（`/dev/kfd` あり、`nvidia-smi` なし）。本番の inference は CPU の profile で動いている。ROCm イメージの GPU 認識はこのホストで確認できる
+- ディスク使用率が 91%。検証用のイメージ（`lainbow-dev/inference-{cpu,cuda,rocm}:check` で約 26GB、`lainbow/*:local`）はセッションの終わりに削除する
 - テスト用の Postgres `lainbow_test_pg`（127.0.0.1:55432、`--rm` 付き）を起動したままにしてある。不要になったら `docker stop lainbow_test_pg`
 - 本番のスキーマは `timestamp without time zone`。`schemas.py` の `sa_type=type(DateTime(timezone=True))` はクラスを渡しているため、timezone=True が効いていない。ベースラインのリビジョンは本番の実態に合わせてある
 
@@ -79,6 +81,7 @@ M1 と M2 はすべて完了（M2 は 2026-10-19）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-19 | WI-M3-03 | PASS | gemini-3.8-flash-high | 1 | Critical。Supervisor のテスト 8 本は変更なしで通過。852 行の bash で shellcheck は問題なし。実機で確認: auto 検出で rocm と GID 992 を記録、mode 600、生成した .env で compose config が通る、doctor が本番の使用中ポートを正しく報告。Supervisor が compose の inference に `HF_HOME=/src/models/.hf-cache` を追加（MuQ-MuLan のテキストエンコーダがコンテナを作り直すたびに再ダウンロードされるため） |
 | 2026-10-19 | WI-M3-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: config と download_models が domain.schemas（sqlmodel）を import しており、sqlmodel のない inference イメージでは起動できなかった。dev の .venv には全グループが入っているため、テストでは検出できなかった。enum を domain/enums.py に分離し、sqlmodel を遮断したサブプロセスで import するテストを追加。Supervisor が実イメージで確認: muq_mulan のダウンロード（15 分）、再実行でのスキップ、CPU での muq_mulan 解析、自然言語検索が 200。モデルファイルが root 所有になる問題は M3-03 で `--user` を付けて対処する |
 | 2026-10-19 | WI-M3-01b | PASS | gemini-3.8-flash-high | 1 | compose.yaml / compose.dev.yaml に統合し、旧ファイル 4 つと down.sh を削除。Supervisor が認証情報を x-app-env で明示的に渡すよう修正（env_file だけに頼ると DB と食い違う）。`-p lainbow-dev` と別ポートで実際に起動し、全サービスが healthy、scan → analyze(acoustic) → similar が通ることを確認。モデルがない状態の検索は 503 |
 | 2026-10-19 | WI-M3-01a | PASS | gemini-3.8-flash-high | 1 | `*_HOST` / `*_CONNECT_PORT` を追加。旧設定だけの場合に URL が変わらないことをテストで確認 |
