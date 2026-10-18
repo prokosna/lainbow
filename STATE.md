@@ -6,7 +6,7 @@
 
 ```yaml
 last_updated: 2026-10-19
-last_commit: 0a59f25          # WI-M4-01
+last_commit: 937c728          # WI-M4-02
 current_milestone: M4
 current_wi: none
 branch: improve/m1-correctness
@@ -55,8 +55,8 @@ M0 から M4 まですべて完了（2026-10-19）。
 - このマシンでは本番の Lainbow が `/opt/apps/lainbow` から稼働している（コンテナ名 `lainbow_*`）。作業ツリー（`~/dev/lainbow`）とは別物で、作業ツリーの `src` の編集は本番に影響しない。**本番の DB やコンテナには触らないこと**（auto mode の classifier も本番の読み取りを拒否する）
 - **作業ツリーで `docker compose` をそのまま実行しないこと。** ディレクトリ名が本番（`/opt/apps/lainbow`）と同じなので、compose のプロジェクト名がどちらも `lainbow` になり、`container_name` も固定されている。作業ツリーで compose を使う場合は必ず `-p lainbow-dev` を付ける（M3-01 でプロジェクト名を `.env` から設定できるようにする）。イメージの検証は `docker build -t lainbow-dev/...` で行う
 - このホストの GPU は AMD（`/dev/kfd` あり、`nvidia-smi` なし）。本番の inference は CPU の profile で動いている。ROCm イメージの GPU 認識はこのホストで確認できる
-- ディスク使用率が 91%。検証用のイメージ（`lainbow-dev/inference-{cpu,cuda,rocm}:check` で約 26GB、`lainbow/*:local`）はセッションの終わりに削除する
-- テスト用の Postgres `lainbow_test_pg`（127.0.0.1:55432、`--rm` 付き）を起動したままにしてある。不要になったら `docker stop lainbow_test_pg`
+- 検証用のイメージは 2026-10-19 に削除済み。Docker の build cache は残っている（必要なら `docker builder prune`）
+- テスト用の Postgres `lainbow_test_pg` は停止済み（`--rm` 付きなので削除もされている）。postgres のテストを実行するときは AGENTS.md §2-1b のコマンドで起動し直す
 - 本番のスキーマは `timestamp without time zone`。`schemas.py` の `sa_type=type(DateTime(timezone=True))` はクラスを渡しているため、timezone=True が効いていない。ベースラインのリビジョンは本番の実態に合わせてある
 
 ## ゲートのベースライン
