@@ -14,9 +14,9 @@ branch: improve/m1-correctness
 
 ## 次の 3 アクション
 
-1. **ユーザーの判断待ち**: ブランチ `improve/m1-correctness`（M0 から M4 まで、`main` から積み上げ）を push して PR を作るか。CI（.github/workflows/ci.yml）は push 後に初めて GitHub 上で動く
-2. **ユーザーの判断待ち**: 最初のリリースタグ（例 `v0.2.0`）を打つか。打つと release.yml が GHCR に 5 つのイメージを公開する。GHCR のパッケージは初回 private なので、公開する場合は GitHub の Packages 画面で public に変更する必要がある
-3. 本番（/opt/apps/lainbow）の移行はユーザーが README の「Upgrading from the old layout」に沿って行う。その前に CUDA の GPU 認識（NVIDIA 環境がある場合）と、M5 の任意項目を検討する
+1. ブランチ `improve/m1-correctness` を push し（2026-10-19 にユーザーが承認）、CI が GitHub 上で通ることを確認する。CI は `pull_request` でしか動かないので draft PR を作る
+2. WI-M5-01: 埋め込み品質の評価の仕組みを作り、比較してから方式を決める（ユーザーと合意済み）
+3. ユーザーの判断待ち: 最初のリリースタグ（例 `v0.2.0`）を打つか。本番（/opt/apps/lainbow）の移行は README の手順でユーザーが行う
 
 M0 から M4 まですべて完了（2026-10-19）。
 
@@ -75,6 +75,7 @@ M0 から M4 まですべて完了（2026-10-19）。
 - 2026-10-18: WI-M0-03 の設計を変更（テストに SQLite を使い、`TaskResult.details` を JSON / JSONB の variant にする）
 - 2026-10-18: WI-M0-04（mypy を 0 にする）を追加
 - 2026-10-18: Q3 を変更。CPU と GPU でモデルの構成を揃え、既定はどちらも `muq`（類似曲検索）と `muq_mulan`（自然言語検索）とする。Q5 は解消
+- 2026-10-19: M5 の区間の項目を WI-M5-01（埋め込み品質を評価してから方式を決める）と WI-M5-02（CLAP/MERT の区間の取りこぼし）に書き直す。計画書の `models-init` の記述を実装に合わせる
 
 ## Review log
 

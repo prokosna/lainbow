@@ -75,7 +75,7 @@ compose.yaml（1 ファイル。profile で切り替える）
 ├─ api        (python:3.12-slim, 軽量)   … torch なし。テキスト埋め込みは inference に HTTP で依頼する
 ├─ batch      (python:3.12-slim + ffmpeg)… Celery ワーカー
 ├─ inference-{cpu|cuda|rocm}  profile    … アクセラレータごとに torch のビルドを分ける
-├─ models-init (one-shot)                … 推論イメージで必要なモデルだけを ./models にダウンロードする
+├─ (モデルのダウンロード)                 … ./lainbow setup が推論イメージで compose run を実行して ./models に入れる
 └─ flower      profile: debug
 
 compose.dev.yaml   … src の bind mount と --reload（開発用）
@@ -252,7 +252,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 **WI-M3-03 `./lainbow` CLI（S1, S10）** — `.env` を上書きしない部分は Critical Module
 - 変更対象: `lainbow`（bash）, `tests/cli/`（bats、または bash で書いたテストスクリプト）
 - サブコマンド:
-  - `setup`: 前提条件（docker と compose v2）のチェック、アクセラレータの検出（ROCm の場合は `stat -c %g /dev/kfd` の値を `LAINBOW_GPU_GID` として書き込む。slim イメージには `render` グループがないため、数値の GID が必要）、音楽ディレクトリの入力と存在確認、ポートとモデルの選択、ランダムな DB パスワードの生成、`.env` の生成、`models-init` の実行。`--music-dir --accel --models --yes` を付ければ非対話でも実行できる。**既存の `.env` がある場合は差分だけを追記し、上書きしない。**
+  - `setup`: 前提条件（docker と compose v2）のチェック、アクセラレータの検出（ROCm の場合は `stat -c %g /dev/kfd` の値を `LAINBOW_GPU_GID` として書き込む。slim イメージには `render` グループがないため、数値の GID が必要）、音楽ディレクトリの入力と存在確認、ポートとモデルの選択、ランダムな DB パスワードの生成、`.env` の生成、推論イメージでのモデルのダウンロード（`compose run`）。`--music-dir --accel --models --yes` を付ければ非対話でも実行できる。**既存の `.env` がある場合は差分だけを追記し、上書きしない。**
   - `up` / `down` / `status`（各サービスの health と `/api/v1/stats`）/ `logs [svc]` / `scan` / `analyze [--models ...]` / `update`（pull、マイグレーション、再起動）/ `doctor`（GPU の可視性、ポートの衝突、音楽ディレクトリの権限などの診断）
 - ゲート: `shellcheck lainbow`。`setup --yes` を一時ディレクトリで実行し、`.env` が期待どおりに生成されること、2 回目の実行で既存の値が保持されることをテストする。
 
@@ -278,7 +278,8 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 - `LAINBOW_API_TOKEN`（任意）による Bearer 認証。Sola MPD 側の対応が必要になるので、既定では無効にする（I1）。
 - RabbitMQ の `consumer_timeout` を調整する。長いタスクの `acks_late` との整合を取る。
 - `ModelManager` のロックをモデル単位にする（WI-M2-02a のレビューで判明。現状は 1 つのロックなので、バッチ推論中のテキスト検索が推論の完了を待つ。pinned モデルどうしで VRAM を奪い合わない範囲で並行実行を許す）
-- `extract_audio_segments` の「最後のセグメントを除外する」意図が短い曲で守られていない問題を修正する。
+- **WI-M5-01 埋め込み品質の評価（2026-10-19 にユーザーと合意。全曲の再解析は許容）**: 既定モデル（`strategy="full"`）は先頭 `MUQ_FILE_DURATION_SEC=180` 秒だけを使う。MuQ は 180 秒を 1 回で推論して最終層を平均し、MuQ-MuLan はライブラリ内で 10 秒クリップに分けて平均している。作者の意図は「長い曲は末尾（拍手など）を外し、短い曲は情報を減らさないよう全部使う」。本番とは別のスタックでライブラリの一部（約 2,000 曲）を使い、次の案を比べてから方式を決める: (1) 曲全体を使い末尾だけ外す（上限あり）、(2) MuQ もクリップ分割して平均、(3) クリップごとに正規化してから平均、(4) MuQ の中間層。指標は類似曲検索の上位 10 件に同じアーティストやアルバムが入る割合と、自然言語検索のクエリ約 10 個に対するユーザーの判定。採用した方式で本番を 1 回だけ再解析する。
+- **WI-M5-02 `segments` 方式の取りこぼしの修正（CLAP と MERT のみ。既定のモデルには影響しない）**: `extract_audio_segments` は区間数を `int(長さ/10)` で切り捨てるため、10〜20 秒の曲は中央の 10 秒だけを使い、20〜40 秒の曲は区間の間に隙間ができる。40 秒未満の曲は `ceil(長さ/10)` 個の区間を重ねて全体を覆う。40 秒以上は従来どおり 4 区間を取り、最後を外す。
 
 ---
 
