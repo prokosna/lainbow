@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Protects code quality, linting, type safety, unit tests, and PostgreSQL migrations.
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.5-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: lainbow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --group dev --group api --group batch --group inference --group inference-cpu
+      - name: Run checks
+        env:
+          LAINBOW_TEST_POSTGRES_URL: postgresql+psycopg://test:test@localhost:5432/lainbow_test
+        run: scripts/check.sh
+
+  # Protects compose configuration validity and environment interpolation across deployment profiles.
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose configurations
+        run: |
+          printf 'POSTGRES_PASSWORD=x\nRABBITMQ_DEFAULT_PASS=x\nMUSIC_NAS_ROOT_DIR=/tmp\n' > /tmp/lainbow-ci.env
+          docker compose -p lainbow-ci --env-file /tmp/lainbow-ci.env --profile db --profile app --profile inference-cpu config -q
+          docker compose -p lainbow-ci --env-file /tmp/lainbow-ci.env --profile db --profile app --profile inference-cuda --profile debug config -q
+          docker compose -p lainbow-ci --env-file /tmp/lainbow-ci.env --profile app config -q
+          docker compose -p lainbow-ci --env-file /tmp/lainbow-ci.env -f compose.yaml -f compose.dev.yaml --profile db --profile app --profile inference-rocm config -q
+
+  # Protects container image buildability and CPU dependency resolution.
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: api
+            file: docker/api.Dockerfile
+            build-args: ""
+          - image: batch
+            file: docker/batch.Dockerfile
+            build-args: ""
+          - image: inference
+            file: docker/inference.Dockerfile
+            build-args: ACCEL=cpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.build-args }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Protects end-to-end functionality: service health, audio scanning, analysis, and similarity search.
+  e2e:
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run E2E smoke tests
+        run: scripts/e2e-smoke.sh
