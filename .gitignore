@@ -11,3 +11,5 @@ models/*
 alembic/*
 alembic.ini
 .env
+.agent/
+.dispatch-*.log

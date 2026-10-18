@@ -6,17 +6,17 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: 600efa1          # この計画を書いた時点の HEAD。計画のコミット後に更新すること
+last_commit: 2d06bfc          # docs: add improvement plan（M0-01 のコミットはこの次）
 current_milestone: M0
-current_wi: none
-branch: main                  # M0 の開始時に improve/m0-agent-workflow を作る
+current_wi: WI-M0-02
+branch: improve/m0-agent-workflow
 ```
 
 ## 次の 3 アクション
 
-1. ブランチ `improve/m0-agent-workflow` を作り、計画ドキュメントをコミットする（ユーザーの指示を待つ）
-2. WI-M0-01: `scripts/dispatch-implementer.sh` と `scripts/scout.sh` を作る（Supervisor が直接実装）
-3. WI-M0-02: `scripts/check.sh` を作り、ruff / mypy のベースラインをここに記録する
+1. WI-M0-02: `scripts/check.sh` を作り、ruff / mypy のベースラインをここに記録する（Supervisor が直接実装）
+2. WI-M0-03: タスクロジックのテスト基盤（ここから Implementer へのディスパッチを使い始める）
+3. M1 の Work Order を順に発行する（M1-01 は Supervisor がテストを先に書く）
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -40,6 +40,14 @@ branch: main                  # M0 の開始時に improve/m0-agent-workflow を
 - （M2-01 完了後）CUDA と ROCm のコンテナで `scripts/accel-check.sh` が `True` を返すこと
 - （M3-01 完了後）既存のデータディレクトリを使ったまま新しい compose で起動でき、Sola MPD の検索と類似曲検索が従来どおり動くこと
 
+## ツールについての確認結果（WI-M0-01、2026-10-18）
+
+- `agy --mode plan` は読み取り専用として機能する。ファイル作成を指示しても、計画を agy 自身のディレクトリに書くだけで、リポジトリは変更されない。`scout.sh` はさらにツリーの変化も検査している
+- `scout.sh`（gemini-3.8-flash-low）の応答は 1 問あたり約 15 秒で、file:line 付きの回答は正確だった
+- `dispatch-implementer.sh` を print モードで実行すると、権限の確認なしでファイルを編集できる（probe は約 25 秒で完了し、HEAD は動かなかった）
+- agy は `--print-timeout` に達しても exit 0 を返し、ログに `print timeout after` を書く。スクリプトはこれを検出して exit 1 にする（1s で実際に発生させて確認済み）
+- このマシンには shellcheck が入っていないので、`uvx --from shellcheck-py shellcheck <files>` で実行する
+
 ## ゲートのベースライン
 
 （WI-M0-02 で記録する）
@@ -54,3 +62,4 @@ branch: main                  # M0 の開始時に improve/m0-agent-workflow を
 
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
+| 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
