@@ -6,16 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: b1f7c57          # WI-M2-05
+last_commit: 47c3e56          # WI-M2-02a
 current_milestone: M2
-current_wi: WI-M2-02b
+current_wi: WI-M2-01
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-02b: API からモデルと worker の import を除き、依存を軽くする（Work Order 作成済み）
-2. WI-M2-01: アクセラレータ別の torch（API が torch に依存しなくなる M2-02b の後でないと、uv のグループが衝突する）
+1. WI-M2-01: アクセラレータ別の torch（Work Order 作成済み）。Implementer の作業後、Supervisor が cpu / cuda / rocm のイメージを `docker build -t lainbow-dev/...` でビルドし、rocm はこのホストの AMD GPU で `scripts/accel-check.sh` を実行する
+2. M3-01（compose を 1 つにまとめる）以降へ進む
 
 M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 
@@ -52,6 +52,8 @@ M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 ## 環境についての注意
 
 - このマシンでは本番の Lainbow が `/opt/apps/lainbow` から稼働している（コンテナ名 `lainbow_*`）。作業ツリー（`~/dev/lainbow`）とは別物で、作業ツリーの `src` の編集は本番に影響しない。**本番の DB やコンテナには触らないこと**（auto mode の classifier も本番の読み取りを拒否する）
+- **作業ツリーで `docker compose` をそのまま実行しないこと。** ディレクトリ名が本番（`/opt/apps/lainbow`）と同じなので、compose のプロジェクト名がどちらも `lainbow` になり、`container_name` も固定されている。作業ツリーで compose を使う場合は必ず `-p lainbow-dev` を付ける（M3-01 でプロジェクト名を `.env` から設定できるようにする）。イメージの検証は `docker build -t lainbow-dev/...` で行う
+- このホストの GPU は AMD（`/dev/kfd` あり、`nvidia-smi` なし）。本番の inference は CPU の profile で動いている。ROCm イメージの GPU 認識はこのホストで確認できる
 - テスト用の Postgres `lainbow_test_pg`（127.0.0.1:55432、`--rm` 付き）を起動したままにしてある。不要になったら `docker stop lainbow_test_pg`
 - 本番のスキーマは `timestamp without time zone`。`schemas.py` の `sa_type=type(DateTime(timezone=True))` はクラスを渡しているため、timezone=True が効いていない。ベースラインのリビジョンは本番の実態に合わせてある
 
@@ -77,6 +79,7 @@ M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M2-02b | PASS | gemini-3.8-flash-high | 1 | API は send_task でタスクを投入し、torch / librosa / laion_clap / muq / mutagen を import しない（サブプロセスのテストで確認）。検索は inference に依頼し、到達できなければ 503 を返す |
 | 2026-10-18 | WI-M2-02a | PASS | gemini-3.8-flash-high | 1 | `POST /api/v1/text-embedding/{model}` と pinned モデル（既定 muq_mulan）。既知の制約: ロックが 1 つなので、バッチ推論中のテキスト検索は推論の完了を待つ（M5 の候補: モデル単位のロック） |
 | 2026-10-18 | WI-M2-05 | PASS | gemini-3.8-flash-high | 1 | Critical Module。Supervisor がテスト 4 本と legacy の fixture（600efa1 の create_all で生成）を先に作成。リビジョン ID は Alembic の 32 文字制限のため `0002_rename_vector_collection` に（DCR として妥当）。check.sh に postgres テストを追加 |
 | 2026-10-18 | WI-M2-04 | PASS | gemini-3.8-flash-high | 1 | -502 行。pymilvus を削除し、移行スクリプトを tools/ へ移動。README の 1 文を Supervisor が言い換え |

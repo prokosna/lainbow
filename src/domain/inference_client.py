@@ -89,3 +89,31 @@ def run_inference(model_name: str, audio_data: npt.NDArray[np.float32]) -> npt.N
         except Exception as e:
             logger.error(f"An unexpected error occurred during inference request: {e}")
             raise
+
+
+def run_text_embedding(model_name: str, text: str) -> list[float]:
+    """
+    Sends a text query to the inference API and returns the text embedding.
+
+    Args:
+        model_name: The name of the model to use for text embedding (e.g., 'clap', 'muq_mulan').
+        text: The natural language text to embed.
+
+    Returns:
+        The embedding vector as a list of floats.
+
+    Raises:
+        httpx.HTTPStatusError: If the API returns an error response.
+        httpx.RequestError: If a connection or network error occurs.
+    """
+    api_url = f"{config.INFERENCE_API_URL}/api/v1/text-embedding/{model_name}"
+    client = _get_client()
+    logger.info(f"Sending text embedding request for '{model_name}' to {api_url}")
+    response = client.post(
+        api_url,
+        json={"text": text},
+        timeout=config.INFERENCE_TEXT_TIMEOUT,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return cast(list[float], data["embedding"])

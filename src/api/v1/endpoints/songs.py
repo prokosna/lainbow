@@ -2,13 +2,13 @@ import logging
 from collections import Counter
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
-from api.core.text_embedding import get_text_embedding_service
 from api.session_manager_wrap import get_db_session
-from domain import vector_store_utils
+from domain import inference_client, vector_store_utils
 from domain.embedding_models import MODEL_SPECS
 from domain.schemas import EmbeddingModel, Song, SongEmbedding, SongFeatures, TextEmbeddingModel
 
@@ -197,8 +197,20 @@ def search_songs_by_natural_language(
     Searches for songs using a natural language query by embedding the query text
     and finding the most similar songs in the selected embedding space.
     """
-    text_embedding_service = get_text_embedding_service()
-    text_embed = text_embedding_service.get_text_embedding(q, model_name)
+    try:
+        query_vector = inference_client.run_text_embedding(model_name.value, q)
+    except (httpx.ConnectError, httpx.TimeoutException) as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Natural language search needs the inference server, which is not reachable: {e}",
+        ) from e
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code >= 500:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Natural language search needs the inference server, which is not reachable: {e}",
+            ) from e
+        raise
 
     if model_name == TextEmbeddingModel.CLAP:
         spec = MODEL_SPECS[EmbeddingModel.CLAP]
@@ -211,7 +223,7 @@ def search_songs_by_natural_language(
 
     search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
-        query_vector=text_embed.tolist(),
+        query_vector=query_vector,
         limit=limit,
     )
 

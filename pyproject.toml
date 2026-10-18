@@ -19,9 +19,6 @@ api = [
     "celery[zstd]",
     "fastapi",
     "httpx",
-    "laion-clap",
-    "librosa",
-    "mutagen",
     "numpy",
     "pika",
     "psycopg[binary]",
@@ -30,11 +27,7 @@ api = [
     "SQLAlchemy",
     "sqlmodel",
     "tenacity",
-    "torch",
-    "torchaudio",
-    "torchvision",
     "uvicorn[standard]",
-    "muq>=0.1.0",
     "qdrant-client>=1.16.2",
 ]
 
@@ -67,6 +60,9 @@ inference = [
     "numpy",
     "pydantic",
     "python-multipart",
+    "torch",
+    "torchaudio",
+    "torchvision",
     "transformers",
     "uvicorn[standard]",
 ]

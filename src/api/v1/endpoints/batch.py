@@ -8,7 +8,7 @@ from api.session_manager_wrap import get_db_session
 from domain import task_manager
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
 from domain.schemas import EmbeddingModel, TaskResult
-from worker.tasks import analyze_song_task, scan_library_task, vacuum_library_task
+from worker.celery_app import celery_app
 
 router = APIRouter()
 
@@ -27,7 +27,11 @@ def run_scan(
     try:
         db_task = task_manager.create_task(db, name=str(ScanTaskPayload.NAME))
         payload = ScanTaskPayload(task_id=db_task.id, target_path=".")
-        scan_library_task.delay(task_id=str(db_task.id), payload=payload.model_dump())
+        celery_app.send_task(
+            "worker.tasks.scan_library_task",
+            kwargs={"task_id": str(db_task.id), "payload": payload.model_dump()},
+            queue="cpu_queue",
+        )
         return db_task
 
     except Exception as e:
@@ -66,7 +70,11 @@ def run_vacuum(
         db_task = task_manager.create_task(db, name=VacuumTaskPayload.NAME)
         task_payload = VacuumTaskPayload(task_id=db_task.id)
 
-        vacuum_library_task.delay(task_id=str(db_task.id), payload=task_payload.model_dump())
+        celery_app.send_task(
+            "worker.tasks.vacuum_library_task",
+            kwargs={"task_id": str(db_task.id), "payload": task_payload.model_dump()},
+            queue="cpu_queue",
+        )
         return db_task
     except Exception as e:
         if db_task is not None:
@@ -98,7 +106,11 @@ def run_analysis(
             retry_failed=request.retry_failed,
         )
 
-        analyze_song_task.delay(task_id=str(db_task.id), payload=task_payload.model_dump())
+        celery_app.send_task(
+            "worker.tasks.analyze_song_task",
+            kwargs={"task_id": str(db_task.id), "payload": task_payload.model_dump()},
+            queue="cpu_queue",
+        )
         return db_task
     except Exception as e:
         if db_task is not None:

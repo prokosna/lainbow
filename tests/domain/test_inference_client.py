@@ -236,3 +236,42 @@ def test_lazy_module_level_client_reuse_and_recreation(monkeypatch: pytest.Monke
     assert client3 is not client1
     assert not client3.is_closed
     client3.close()
+
+
+def test_run_text_embedding_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_embedding = [0.1, 0.2, 0.3, 0.4]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/text-embedding/muq_mulan"
+        assert request.headers["content-type"] == "application/json"
+        import json
+
+        body = json.loads(request.content.decode("utf-8"))
+        assert body == {"text": "mellow jazz guitar"}
+        return httpx.Response(200, json={"embedding": expected_embedding}, request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(inference_client, "_client", client)
+
+    result = inference_client.run_text_embedding("muq_mulan", "mellow jazz guitar")
+    assert result == expected_embedding
+
+
+def test_run_text_embedding_propagates_error_without_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(503, text="Service Unavailable", request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(inference_client, "_client", client)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        inference_client.run_text_embedding("muq_mulan", "test")
+
+    # Errors should propagate immediately without retry
+    assert request_count == 1

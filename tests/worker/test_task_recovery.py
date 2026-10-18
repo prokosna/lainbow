@@ -70,7 +70,7 @@ def test_embedding_subtask_never_raises_when_progress_recording_fails(
 
 def test_enqueue_failure_marks_task_failure(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        batch.scan_library_task, "delay", MagicMock(side_effect=RuntimeError("broker down"))
+        batch.celery_app, "send_task", MagicMock(side_effect=RuntimeError("broker down"))
     )
 
     with pytest.raises(HTTPException) as exc_info:

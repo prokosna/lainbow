@@ -239,6 +239,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
   - batch サービスの名前を `batch` にし、並列数は `BATCH_CONCURRENCY` で指定する。
   - Flower は `profiles: [debug]` に入れる。
   - API 以外のポートは既定で `127.0.0.1` にだけ bind する。
+  - 先頭に `name: ${LAINBOW_PROJECT_NAME:-lainbow}` を置き、`container_name` は使わない（同じホストで開発用と本番用の 2 つのスタックが衝突しないようにするため。2026-10-18 にこの作業環境で実際に衝突の危険が見つかった）。README の移行手順に「旧構成を `down` してから新構成を `up`」を書く。
   - データの配置は D-E のとおり維持する。
   - 分散構成のために `profiles` を `db` / `app` / `inference-*` に分け、組み合わせて起動できるようにする。
 - ゲート: `docker compose config` が全 profile で通ること。CPU の profile で `up` し、全サービスが healthy になること（Supervisor が手元で確認）。

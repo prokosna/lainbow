@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from api.core.db_manager import create_db_and_tables, wait_for_databases_ready
-from api.core.text_embedding import get_text_embedding_service
 from api.v1.api import api_router
 from domain.session_manager import init_db_session
 
@@ -31,11 +30,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Creating database tables...")
     create_db_and_tables()
     logger.info("Database tables created.")
-
-    # 4. Pre-load the text embedding model.
-    logger.info("Loading text embedding model...")
-    get_text_embedding_service()
-    logger.info("Text embedding model loaded.")
 
     yield
 
