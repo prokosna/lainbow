@@ -61,22 +61,19 @@ graph TD
 
 **Before running the application, you need to download the required deep learning models.**
 
-1.  **Install Dependencies**:
-    Ensure you have `uv` installed.
+Run the inference container to download and place the models in the `./models` directory (`./lainbow setup` will do this automatically once it exists):
 
-2.  **Download Models**:
-    Run the provided script to download and place the models in the `./models` directory. The script will skip any models that are already downloaded.
-    ```bash
-    uv run --with httpx --with huggingface-hub --with muq python download_models.py
-    ```
+```bash
+docker compose run --rm inference-<cpu|cuda|rocm> python -m inference.download_models
+```
 
-This script will download:
-- The MERT model (`m-a-p/MERT-v1-330M`)
-- The CLAP model (`laion/clap-htsat-unfused`)
-- The MuQ model (`OpenMuQ/MuQ-large-msd-iter`)
-- The MuQ-MuLan model (`OpenMuQ/MuQ-MuLan-large`)
+By default, this downloads the models needed for analysis and search (`muq` and `muq_mulan`). Use `--models` to add CLAP/MERT:
 
-Once the script completes, the application will be ready to run.
+```bash
+docker compose run --rm inference-<cpu|cuda|rocm> python -m inference.download_models --models muq,muq_mulan,clap,mert
+```
+
+Once the download completes, the application will be ready to run.
 
 ## Setup and Configuration
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from domain.schemas import EmbeddingModel
+from domain.enums import EmbeddingModel
 
 
 @dataclass(frozen=True)

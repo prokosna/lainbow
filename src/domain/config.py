@@ -1,5 +1,7 @@
 import os
 
+from domain.enums import EmbeddingModel
+
 # Database server endpoint (legacy fallback for all datastores)
 DATABASE_SERVER_ENDPOINT = os.getenv("DATABASE_SERVER_ENDPOINT", "host.docker.internal")
 
@@ -59,3 +61,18 @@ INFERENCE_PINNED_MODELS = [
 TASK_CHUNK_SIZE = int(os.getenv("TASK_CHUNK_SIZE", "10"))
 MUQ_FILE_DURATION_SEC = int(os.getenv("MUQ_FILE_DURATION_SEC", "180"))
 TASK_STALE_AFTER_SEC = int(os.getenv("TASK_STALE_AFTER_SEC", "1800"))
+
+
+def _parse_analyze_models(raw: str) -> list[str]:
+    valid_names = {model.value for model in EmbeddingModel}
+    models = [m.strip() for m in raw.split(",") if m.strip()]
+    for m in models:
+        if m not in valid_names:
+            raise ValueError(
+                f"Unknown model '{m}' in LAINBOW_ANALYZE_MODELS. "
+                f"Valid choices are: {', '.join(sorted(valid_names))}"
+            )
+    return models
+
+
+ANALYZE_MODELS = _parse_analyze_models(os.getenv("LAINBOW_ANALYZE_MODELS", "muq,muq_mulan"))

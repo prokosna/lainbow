@@ -21,6 +21,7 @@ CONFIG_ENV_VARS = [
     "QDRANT_HOST",
     "QDRANT_PORT_HTTP",
     "QDRANT_CONNECT_PORT",
+    "LAINBOW_ANALYZE_MODELS",
 ]
 
 
@@ -77,6 +78,9 @@ def test_default_config(clean_env: pytest.MonkeyPatch) -> None:
     assert cfg.QDRANT_HOST == "host.docker.internal"
     assert cfg.QDRANT_PORT == 6333
     assert cfg.QDRANT_CONNECT_PORT == 6333
+
+    # Models / Analysis
+    assert cfg.ANALYZE_MODELS == ["muq", "muq_mulan"]
 
 
 def test_legacy_config(clean_env: pytest.MonkeyPatch) -> None:
