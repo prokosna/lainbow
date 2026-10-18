@@ -6,17 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-19
-last_commit: 1af4593          # WI-M2-02b
+last_commit: 574f3fc          # WI-M2-01
 current_milestone: M3
-current_wi: WI-M3-01a
+current_wi: WI-M3-01b
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M3-01a: サービスごとの接続設定（後方互換。Work Order 作成済み）
-2. WI-M3-01b: compose を 1 ファイルにまとめる（Work Order 作成済み）。その後 Supervisor が `-p lainbow-dev` で CPU 構成を起動し、全サービスが healthy になることを確認する
-3. WI-M3-02（モデル取得のコンテナ化）→ WI-M3-03（`./lainbow` CLI）
+1. WI-M3-01b: compose を 1 ファイルにまとめる（Work Order 作成済み）。その後 Supervisor が `-p lainbow-dev` で CPU 構成を起動し、全サービスが healthy になることを確認する
+2. WI-M3-02（モデル取得のコンテナ化）→ WI-M3-03（`./lainbow` CLI）
 
 M1 と M2 はすべて完了（M2 は 2026-10-19）。
 
@@ -80,6 +79,7 @@ M1 と M2 はすべて完了（M2 は 2026-10-19）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-19 | WI-M3-01a | PASS | gemini-3.8-flash-high | 1 | `*_HOST` / `*_CONNECT_PORT` を追加。旧設定だけの場合に URL が変わらないことをテストで確認 |
 | 2026-10-19 | WI-M2-01 | PASS | gemini-3.8-flash-high | 1 | DCR: ROCm の index は explicit なので `pytorch-triton-rocm` をグループに追加（承認）。Supervisor が 3 つのイメージをビルドし（cpu 1.7GB / 49 秒、cuda 7.9GB / 15 分、rocm 16.3GB / 26 分）、ROCm は GPU の認識を実機で確認。accel-check を修正（slim イメージには render グループがないため数値の GID を渡す、`set --` で第 2 引数が上書きされる不具合）。torch のバージョンを 3 つとも 2.9.1 に固定（cuda だけ 2.11 に解決されていた） |
 | 2026-10-18 | WI-M2-02b | PASS | gemini-3.8-flash-high | 1 | API は send_task でタスクを投入し、torch / librosa / laion_clap / muq / mutagen を import しない（サブプロセスのテストで確認）。検索は inference に依頼し、到達できなければ 503 を返す |
 | 2026-10-18 | WI-M2-02a | PASS | gemini-3.8-flash-high | 1 | `POST /api/v1/text-embedding/{model}` と pinned モデル（既定 muq_mulan）。既知の制約: ロックが 1 つなので、バッチ推論中のテキスト検索は推論の完了を待つ（M5 の候補: モデル単位のロック） |

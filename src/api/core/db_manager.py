@@ -84,7 +84,7 @@ def check_vector_db() -> None:
     if db_state.vector_db_ready:
         return
     try:
-        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_CONNECT_PORT)
         client.get_collections()
         logger.info("Qdrant connection successful.")
         db_state.vector_db_ready = True

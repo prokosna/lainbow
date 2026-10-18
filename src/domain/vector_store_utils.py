@@ -23,7 +23,7 @@ _client: QdrantClient | None = None
 def _get_client() -> QdrantClient:
     global _client
     if _client is None:
-        _client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+        _client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_CONNECT_PORT)
     return _client
 
 

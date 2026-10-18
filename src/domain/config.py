@@ -1,26 +1,36 @@
 import os
 
-# Database server endpoint
+# Database server endpoint (legacy fallback for all datastores)
 DATABASE_SERVER_ENDPOINT = os.getenv("DATABASE_SERVER_ENDPOINT", "host.docker.internal")
 
 # PostgreSQL
+# POSTGRES_PORT is the host-published port (used by Docker Compose).
+# POSTGRES_HOST and POSTGRES_CONNECT_PORT are used by application containers to connect.
 POSTGRES_USER = os.getenv("POSTGRES_USER", "user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "lainbow_db")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5433")
-POSTGRES_URL = f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DATABASE_SERVER_ENDPOINT}:{POSTGRES_PORT}/{POSTGRES_DB}"
-CELERY_BACKEND_URL = f"db+postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DATABASE_SERVER_ENDPOINT}:{POSTGRES_PORT}/{POSTGRES_DB}"
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", DATABASE_SERVER_ENDPOINT)
+POSTGRES_CONNECT_PORT = os.getenv("POSTGRES_CONNECT_PORT", POSTGRES_PORT)
+POSTGRES_URL = f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_CONNECT_PORT}/{POSTGRES_DB}"
+CELERY_BACKEND_URL = f"db+postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_CONNECT_PORT}/{POSTGRES_DB}"
 
 # RabbitMQ
+# RABBITMQ_PORT is the host-published port (used by Docker Compose).
+# RABBITMQ_HOST and RABBITMQ_CONNECT_PORT are used by application containers to connect.
 RABBITMQ_USER = os.getenv("RABBITMQ_DEFAULT_USER", "user")
 RABBITMQ_PASS = os.getenv("RABBITMQ_DEFAULT_PASS", "password")
-RABBITMQ_HOST = f"{DATABASE_SERVER_ENDPOINT}"
 RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", "5672")
-RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", DATABASE_SERVER_ENDPOINT)
+RABBITMQ_CONNECT_PORT = os.getenv("RABBITMQ_CONNECT_PORT", RABBITMQ_PORT)
+RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_CONNECT_PORT}/"
 
 # Qdrant
-QDRANT_HOST = f"{DATABASE_SERVER_ENDPOINT}"
+# QDRANT_PORT (from QDRANT_PORT_HTTP) is the host-published port (used by Docker Compose).
+# QDRANT_HOST and QDRANT_CONNECT_PORT are used by application clients to connect.
 QDRANT_PORT = int(os.getenv("QDRANT_PORT_HTTP", "6333"))
+QDRANT_HOST = os.getenv("QDRANT_HOST", DATABASE_SERVER_ENDPOINT)
+QDRANT_CONNECT_PORT = int(os.getenv("QDRANT_CONNECT_PORT", str(QDRANT_PORT)))
 
 # Music NAS folder path (in the container - you should not change this)
 MUSIC_NAS_ROOT_DIR = "/music_library"
