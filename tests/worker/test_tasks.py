@@ -91,7 +91,7 @@ def test_generate_song_embedding_success(
         assert emb.model_name == EmbeddingModel.MUQ
         assert emb.status == Status.COMPLETED
         assert emb.dimension == 1024
-        assert emb.milvus_collection_name == MODEL_SPECS[EmbeddingModel.MUQ].collection_name
+        assert emb.vector_collection_name == MODEL_SPECS[EmbeddingModel.MUQ].collection_name
 
     muq_collection = MODEL_SPECS[EmbeddingModel.MUQ].collection_name
     assert muq_collection in fake_vector_store

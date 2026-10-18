@@ -15,6 +15,7 @@ dev = [
 ]
 
 api = [
+    "alembic",
     "celery[zstd]",
     "fastapi",
     "httpx",

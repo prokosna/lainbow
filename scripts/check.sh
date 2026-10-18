@@ -51,6 +51,13 @@ run ruff-check uv run --no-sync ruff check src tests
 run ruff-format uv run --no-sync ruff format --check src tests
 run mypy mypy_gate
 run pytest uv run --no-sync pytest -q
+
+# Tests marked postgres need a disposable PostgreSQL; they run only when one is given.
+if [ -n "${LAINBOW_TEST_POSTGRES_URL:-}" ]; then
+	run pytest-postgres uv run --no-sync pytest -q -m postgres
+else
+	echo "=== pytest-postgres: skipped (set LAINBOW_TEST_POSTGRES_URL to run)"
+fi
 run shellcheck shellcheck_gate
 
 echo "==="

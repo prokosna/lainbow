@@ -194,7 +194,7 @@ class SongEmbedding(RecordBase, table=True):
         default=None, description="The dimension of the embedding vector."
     )
 
-    milvus_collection_name: str | None = Field(
+    vector_collection_name: str | None = Field(
         default=None,
         description="The name of the collection in the vector store where the vector is stored.",
     )

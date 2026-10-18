@@ -662,7 +662,7 @@ def vectorize_song_features(
                                     file_path=file_path,
                                     model_name=EmbeddingModel.ACOUSTIC_FEATURES,
                                     status=Status.COMPLETED,
-                                    milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                                    vector_collection_name=acoustic_features.COLLECTION_NAME,
                                     dimension=acoustic_features.EMBEDDING_DIMENSION,
                                 )
                             )
@@ -679,7 +679,7 @@ def vectorize_song_features(
                                     file_path=file_path,
                                     model_name=EmbeddingModel.ACOUSTIC_FEATURES,
                                     status=Status.FAILED,
-                                    milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                                    vector_collection_name=acoustic_features.COLLECTION_NAME,
                                     dimension=None,
                                 )
                             )
@@ -754,7 +754,7 @@ def generate_song_embedding(
                     file_path=file_path,
                     model_name=model_name_enum,
                     status=Status.COMPLETED,
-                    milvus_collection_name=spec.collection_name,
+                    vector_collection_name=spec.collection_name,
                     dimension=spec.dimension,
                 )
             )
@@ -771,7 +771,7 @@ def generate_song_embedding(
                     file_path=file_path,
                     model_name=model_name_enum,
                     status=Status.FAILED,
-                    milvus_collection_name=spec.collection_name,
+                    vector_collection_name=spec.collection_name,
                     dimension=None,
                 )
             )

@@ -6,18 +6,19 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: cad611e          # WI-M1-07
+last_commit: cf9354e          # WI-M2-04
 current_milestone: M2
-current_wi: WI-M2-05
+current_wi: WI-M2-02a
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-05: Alembic の導入（Critical Module。Supervisor がテストを先に書く）
-2. WI-M2-01（アクセラレータ別の torch）→ WI-M2-02（テキスト埋め込みの移設と pinned モデル）
+1. WI-M2-02a: inference にテキスト埋め込みのエンドポイントと pinned モデルを追加する（Work Order 作成済み）
+2. WI-M2-02b: API からモデルと worker の import を除き、依存を軽くする（Work Order 作成済み）
+3. WI-M2-01: アクセラレータ別の torch（API が torch に依存しなくなる M2-02b の後でないと、uv のグループが衝突する）
 
-M1 はすべて完了（2026-10-18）。
+M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -49,6 +50,12 @@ M1 はすべて完了（2026-10-18）。
 - agy は `--print-timeout` に達しても exit 0 を返し、ログに `print timeout after` を書く。スクリプトはこれを検出して exit 1 にする（1s で実際に発生させて確認済み）
 - このマシンには shellcheck が入っていないので、`uvx --from shellcheck-py shellcheck <files>` で実行する
 
+## 環境についての注意
+
+- このマシンでは本番の Lainbow が `/opt/apps/lainbow` から稼働している（コンテナ名 `lainbow_*`）。作業ツリー（`~/dev/lainbow`）とは別物で、作業ツリーの `src` の編集は本番に影響しない。**本番の DB やコンテナには触らないこと**（auto mode の classifier も本番の読み取りを拒否する）
+- テスト用の Postgres `lainbow_test_pg`（127.0.0.1:55432、`--rm` 付き）を起動したままにしてある。不要になったら `docker stop lainbow_test_pg`
+- 本番のスキーマは `timestamp without time zone`。`schemas.py` の `sa_type=type(DateTime(timezone=True))` はクラスを渡しているため、timezone=True が効いていない。ベースラインのリビジョンは本番の実態に合わせてある
+
 ## ゲートのベースライン
 
 2026-10-18（WI-M0-02）時点:
@@ -61,6 +68,7 @@ M1 はすべて完了（2026-10-18）。
 
 - 2026-10-18: 計画書の初版を作成（docs/plan/improvement-plan.md）
 - 2026-10-18: Q1〜Q4 の回答を反映。D-A を承認済みにし、D-F（既定モデル）を追加。M2-02 に pinned モデルを、M3-04 に `LAINBOW_ANALYZE_MODELS` を追加
+- 2026-10-18: M2 の順序を変更。M2-02 を 02a（inference 側）と 02b（API 側。send_task に切り替えて worker の import をやめる）に分割し、M2-01 より先に行う
 - 2026-10-18: WI-M0-03 の設計を変更（テストに SQLite を使い、`TaskResult.details` を JSON / JSONB の variant にする）
 - 2026-10-18: WI-M0-04（mypy を 0 にする）を追加
 - 2026-10-18: Q3 を変更。CPU と GPU でモデルの構成を揃え、既定はどちらも `muq`（類似曲検索）と `muq_mulan`（自然言語検索）とする。Q5 は解消
@@ -70,6 +78,7 @@ M1 はすべて完了（2026-10-18）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M2-05 | PASS | gemini-3.8-flash-high | 1 | Critical Module。Supervisor がテスト 4 本と legacy の fixture（600efa1 の create_all で生成）を先に作成。リビジョン ID は Alembic の 32 文字制限のため `0002_rename_vector_collection` に（DCR として妥当）。check.sh に postgres テストを追加 |
 | 2026-10-18 | WI-M2-04 | PASS | gemini-3.8-flash-high | 1 | -502 行。pymilvus を削除し、移行スクリプトを tools/ へ移動。README の 1 文を Supervisor が言い換え |
 | 2026-10-18 | WI-M1-07 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: 全対象を 1 回の `in_()` に渡していたため、約 6.5 万曲を超えると psycopg のパラメータ上限に達する。1000 件ずつのチャンクで解消。コレクション全体を同じ統計で再 upsert する |
 | 2026-10-18 | WI-M1-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: full 戦略が推論エラーも曲単位で握りつぶし、推論サーバーが停止すると全曲が FAILED になっていた。読み込みと推論の失敗を分離して解消。`retry_failed` を追加（既定の挙動は変えない） |

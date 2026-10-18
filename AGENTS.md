@@ -41,6 +41,14 @@ uv sync --group dev --group api --group batch --group inference   # CPU 版 torc
 scripts/check.sh   # ruff check / ruff format --check / mypy（ベースライン以下）/ pytest / shellcheck
 ```
 
+Postgres が必要なテスト（`@pytest.mark.postgres`。マイグレーションなど）は、使い捨ての Postgres を起動して URL を渡したときだけ実行されます。**本番の `lainbow_postgres` には絶対に接続しないこと。**
+
+```sh
+docker run -d --rm --name lainbow_test_pg -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test \
+  -e POSTGRES_DB=lainbow_test -p 127.0.0.1:55432:5432 postgres:17.5-alpine
+LAINBOW_TEST_POSTGRES_URL=postgresql+psycopg://test:test@127.0.0.1:55432/lainbow_test scripts/check.sh
+```
+
 mypy は `scripts/mypy-baseline.txt` の件数を超えたら失敗します。件数が減ったらその値を下げ、上げることはしません。
 
 ### 2-2. 1 つの WI を回すサイクル

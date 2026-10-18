@@ -63,7 +63,7 @@ def test_missing_song_gets_failed_embedding_and_no_vector(
     assert emb1 is not None
     assert emb1.status == Status.FAILED
     assert emb1.dimension is None
-    assert emb1.milvus_collection_name == muq_collection
+    assert emb1.vector_collection_name == muq_collection
     assert song1 not in fake_vector_store.get(muq_collection, {})
 
     # song2: present, COMPLETED status, vector stored
@@ -214,7 +214,7 @@ def test_acoustic_extraction_failure_gets_failed_row_and_advances_progress(
     assert failed_emb is not None
     assert failed_emb.status == Status.FAILED
     assert failed_emb.dimension is None
-    assert failed_emb.milvus_collection_name == worker.acoustic_features.COLLECTION_NAME
+    assert failed_emb.vector_collection_name == worker.acoustic_features.COLLECTION_NAME
     assert song_failed not in fake_vector_store.get(worker.acoustic_features.COLLECTION_NAME, {})
 
     # Verify song_ok has COMPLETED SongEmbedding and vector

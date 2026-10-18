@@ -6,9 +6,10 @@ import pika
 from pika import exceptions as pika_exceptions
 from qdrant_client import QdrantClient
 from sqlalchemy.exc import OperationalError
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 
 from domain import config, schemas, session_manager  # noqa: F401
+from domain.migrations import migrate_database
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def create_db_and_tables() -> None:
     if session_manager.engine is None:
         raise RuntimeError("Database engine is not initialized. Call init_db_session() first.")
     try:
-        SQLModel.metadata.create_all(session_manager.engine)
+        migrate_database(session_manager.engine)
         logger.info("Database tables are ready.")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
