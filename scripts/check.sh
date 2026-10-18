@@ -58,6 +58,8 @@ if [ -n "${LAINBOW_TEST_POSTGRES_URL:-}" ]; then
 else
 	echo "=== pytest-postgres: skipped (set LAINBOW_TEST_POSTGRES_URL to run)"
 fi
+
+# End-to-end smoke test (scripts/e2e-smoke.sh) requires Docker and an isolated stack; run separately.
 run shellcheck shellcheck_gate
 
 echo "==="
