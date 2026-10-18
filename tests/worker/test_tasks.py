@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from sqlmodel import Session, col, select, text
 
-import worker.muq
 from domain import task_manager
+from domain.embedding_models import MODEL_SPECS
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload
 from domain.schemas import EmbeddingModel, SongEmbedding, Status, TaskStatus
 from worker import tasks
@@ -92,13 +92,14 @@ def test_generate_song_embedding_success(
         assert emb.model_name == EmbeddingModel.MUQ
         assert emb.status == Status.COMPLETED
         assert emb.dimension == 1024
-        assert emb.milvus_collection_name == worker.muq.COLLECTION_NAME
+        assert emb.milvus_collection_name == MODEL_SPECS[EmbeddingModel.MUQ].collection_name
 
-    assert worker.muq.COLLECTION_NAME in fake_vector_store
-    assert len(fake_vector_store[worker.muq.COLLECTION_NAME]) == 2
+    muq_collection = MODEL_SPECS[EmbeddingModel.MUQ].collection_name
+    assert muq_collection in fake_vector_store
+    assert len(fake_vector_store[muq_collection]) == 2
     for fp in file_paths:
-        assert fp in fake_vector_store[worker.muq.COLLECTION_NAME]
-        assert len(fake_vector_store[worker.muq.COLLECTION_NAME][fp]) == 1024
+        assert fp in fake_vector_store[muq_collection]
+        assert len(fake_vector_store[muq_collection][fp]) == 1024
 
 
 @pytest.mark.xfail(strict=True, reason="F3: partial failure in batch fails whole chunk")

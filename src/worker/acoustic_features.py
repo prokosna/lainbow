@@ -8,14 +8,15 @@ import numpy as np
 from sqlmodel import col, func, select
 
 from domain import config, vector_store_utils
-from domain.schemas import SongFeatures, Status
+from domain.embedding_models import MODEL_SPECS
+from domain.schemas import EmbeddingModel, SongFeatures, Status
 from domain.session_manager import db_session_context
 from worker import audio
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "acoustic_features"
-EMBEDDING_DIMENSION = 55
+COLLECTION_NAME = MODEL_SPECS[EmbeddingModel.ACOUSTIC_FEATURES].collection_name
+EMBEDDING_DIMENSION = MODEL_SPECS[EmbeddingModel.ACOUSTIC_FEATURES].dimension
 ID_FIELD = "file_path"
 VECTOR_FIELD = "feature_vector"
 INDEX_PARAMS = {

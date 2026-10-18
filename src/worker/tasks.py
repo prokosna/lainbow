@@ -12,6 +12,7 @@ from celery.canvas import Signature
 from sqlmodel import Session, col, delete, select, update
 
 from domain import config, task_manager, vector_store_utils
+from domain.embedding_models import INFERENCE_MODELS, MODEL_SPECS
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
 from domain.schemas import (
     EmbeddingModel,
@@ -23,7 +24,7 @@ from domain.schemas import (
     TaskStatus,
 )
 from domain.session_manager import db_session_context
-from worker import acoustic_features, audio, clap, mert, muq, muq_mulan
+from worker import acoustic_features, audio, embeddings
 from worker.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -156,11 +157,8 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                             deleted_count += 1
 
                             # Delete from vector store
-                            acoustic_features.delete_vectors(file_paths=[file_path])
-                            clap.delete_vectors(file_paths=[file_path])
-                            mert.delete_vectors(file_paths=[file_path])
-                            muq.delete_vectors(file_paths=[file_path])
-                            muq_mulan.delete_vectors(file_paths=[file_path])
+                            for spec in MODEL_SPECS.values():
+                                embeddings.delete_vectors(spec, file_paths=[file_path])
                         elif result.status == "STALE":
                             file_path = str(
                                 Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
@@ -185,11 +183,8 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                             )
 
                             # Delete from vector store
-                            acoustic_features.delete_vectors(file_paths=[file_path])
-                            clap.delete_vectors(file_paths=[file_path])
-                            mert.delete_vectors(file_paths=[file_path])
-                            muq.delete_vectors(file_paths=[file_path])
-                            muq_mulan.delete_vectors(file_paths=[file_path])
+                            for spec in MODEL_SPECS.values():
+                                embeddings.delete_vectors(spec, file_paths=[file_path])
 
                             # Then, update the song's metadata
                             db.exec(
@@ -468,13 +463,7 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
                     ).all()
                 )
 
-            embedding_model_types = {
-                EmbeddingModel.CLAP,
-                EmbeddingModel.MERT,
-                EmbeddingModel.MUQ,
-                EmbeddingModel.MUQ_MULAN,
-            }
-            for model_type in embedding_model_types:
+            for model_type in INFERENCE_MODELS:
                 if model_type in models:
                     target_songs[model_type] = list(
                         db.exec(
@@ -539,7 +528,7 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
 
             # Other Embedding Models Group
             embedding_tasks = []
-            for model_type in embedding_model_types:
+            for model_type in INFERENCE_MODELS:
                 if model_type not in models:
                     continue
                 if songs_for_embedding := target_songs.get(model_type):
@@ -665,6 +654,12 @@ def generate_song_embedding(
     """
     try:
         model_name_enum = EmbeddingModel(model_name)
+        if (
+            model_name_enum == EmbeddingModel.ACOUSTIC_FEATURES
+            or model_name_enum not in MODEL_SPECS
+        ):
+            raise ValueError(f"Unsupported model: {model_name}")
+        spec = MODEL_SPECS[model_name_enum]
     except ValueError as e:
         _handle_exception("Generate song embedding", task_id, start_time, e)
         return False
@@ -674,108 +669,29 @@ def generate_song_embedding(
 
     logger.info(f"Generating {model_name_enum.value} embedding for {file_paths}")
     full_audio_paths = [Path(config.MUSIC_NAS_ROOT_DIR) / file_path for file_path in file_paths]
-    embeddings_dict = {}
     try:
-        if model_name_enum == EmbeddingModel.CLAP:
-            embeddings_dict = clap.get_audio_embeddings_batch(full_audio_paths)
-            vector_store_data.extend(
-                [
-                    {
-                        clap.ID_FIELD: file_path,
-                        clap.VECTOR_FIELD: embeddings_dict[
-                            str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)
-                        ],
-                    }
-                    for file_path in file_paths
-                ]
-            )
-            new_embedding_records.extend(
-                [
-                    SongEmbedding(
-                        file_path=file_path,
-                        model_name=model_name_enum,
-                        status=Status.COMPLETED,
-                        milvus_collection_name=clap.COLLECTION_NAME,
-                        dimension=clap.EMBEDDING_DIMENSION,
-                    )
-                    for file_path in file_paths
-                ]
-            )
-        elif model_name_enum == EmbeddingModel.MERT:
-            embeddings_dict = mert.get_audio_embeddings_batch(full_audio_paths)
-            vector_store_data.extend(
-                [
-                    {
-                        mert.ID_FIELD: file_path,
-                        mert.VECTOR_FIELD: embeddings_dict[
-                            str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)
-                        ],
-                    }
-                    for file_path in file_paths
-                ]
-            )
-            new_embedding_records.extend(
-                [
-                    SongEmbedding(
-                        file_path=file_path,
-                        model_name=model_name_enum,
-                        status=Status.COMPLETED,
-                        milvus_collection_name=mert.COLLECTION_NAME,
-                        dimension=mert.EMBEDDING_DIMENSION,
-                    )
-                    for file_path in file_paths
-                ]
-            )
-        elif model_name_enum == EmbeddingModel.MUQ:
-            embeddings_dict = muq.get_audio_embeddings_batch(full_audio_paths)
-            vector_store_data.extend(
-                [
-                    {
-                        muq.ID_FIELD: file_path,
-                        muq.VECTOR_FIELD: embeddings_dict[
-                            str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)
-                        ],
-                    }
-                    for file_path in file_paths
-                ]
-            )
-            new_embedding_records.extend(
-                [
-                    SongEmbedding(
-                        file_path=file_path,
-                        model_name=model_name_enum,
-                        status=Status.COMPLETED,
-                        milvus_collection_name=muq.COLLECTION_NAME,
-                        dimension=muq.EMBEDDING_DIMENSION,
-                    )
-                    for file_path in file_paths
-                ]
-            )
-        elif model_name_enum == EmbeddingModel.MUQ_MULAN:
-            embeddings_dict = muq_mulan.get_audio_embeddings_batch(full_audio_paths)
-            vector_store_data.extend(
-                [
-                    {
-                        muq_mulan.ID_FIELD: file_path,
-                        muq_mulan.VECTOR_FIELD: embeddings_dict[
-                            str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)
-                        ],
-                    }
-                    for file_path in file_paths
-                ]
-            )
-            new_embedding_records.extend(
-                [
-                    SongEmbedding(
-                        file_path=file_path,
-                        model_name=model_name_enum,
-                        status=Status.COMPLETED,
-                        milvus_collection_name=muq_mulan.COLLECTION_NAME,
-                        dimension=muq_mulan.EMBEDDING_DIMENSION,
-                    )
-                    for file_path in file_paths
-                ]
-            )
+        embeddings_dict = embeddings.get_audio_embeddings_batch(spec, full_audio_paths)
+        vector_store_data.extend(
+            [
+                {
+                    "file_path": file_path,
+                    "embedding": embeddings_dict[str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)],
+                }
+                for file_path in file_paths
+            ]
+        )
+        new_embedding_records.extend(
+            [
+                SongEmbedding(
+                    file_path=file_path,
+                    model_name=model_name_enum,
+                    status=Status.COMPLETED,
+                    milvus_collection_name=spec.collection_name,
+                    dimension=spec.dimension,
+                )
+                for file_path in file_paths
+            ]
+        )
     except Exception as e:
         _handle_exception(
             "Generate song embedding",
@@ -788,18 +704,8 @@ def generate_song_embedding(
         return False
 
     try:
-        if model_name_enum == EmbeddingModel.CLAP:
-            clap.ensure_vector_collection_ready()
-            vector_store_utils.upsert_vectors(clap.COLLECTION_NAME, vector_store_data)
-        elif model_name_enum == EmbeddingModel.MERT:
-            mert.ensure_vector_collection_ready()
-            vector_store_utils.upsert_vectors(mert.COLLECTION_NAME, vector_store_data)
-        elif model_name_enum == EmbeddingModel.MUQ:
-            muq.ensure_vector_collection_ready()
-            vector_store_utils.upsert_vectors(muq.COLLECTION_NAME, vector_store_data)
-        elif model_name_enum == EmbeddingModel.MUQ_MULAN:
-            muq_mulan.ensure_vector_collection_ready()
-            vector_store_utils.upsert_vectors(muq_mulan.COLLECTION_NAME, vector_store_data)
+        embeddings.ensure_vector_collection_ready(spec)
+        vector_store_utils.upsert_vectors(spec.collection_name, vector_store_data)
         with db_session_context() as db:
             db.exec(
                 delete(SongEmbedding)

@@ -9,38 +9,10 @@ from sqlmodel import Session, col, select
 from api.core.text_embedding import get_text_embedding_service
 from api.session_manager_wrap import get_db_session
 from domain import vector_store_utils
+from domain.embedding_models import MODEL_SPECS
 from domain.schemas import EmbeddingModel, Song, SongEmbedding, SongFeatures, TextEmbeddingModel
-from worker import acoustic_features, clap, mert, muq, muq_mulan
 
 logger = logging.getLogger(__name__)
-
-MODEL_CONFIGS = {
-    EmbeddingModel.ACOUSTIC_FEATURES: {
-        "collection_name": acoustic_features.COLLECTION_NAME,
-        "id_field": acoustic_features.ID_FIELD,
-        "vector_field": acoustic_features.VECTOR_FIELD,
-    },
-    EmbeddingModel.CLAP: {
-        "collection_name": clap.COLLECTION_NAME,
-        "id_field": clap.ID_FIELD,
-        "vector_field": clap.VECTOR_FIELD,
-    },
-    EmbeddingModel.MERT: {
-        "collection_name": mert.COLLECTION_NAME,
-        "id_field": mert.ID_FIELD,
-        "vector_field": mert.VECTOR_FIELD,
-    },
-    EmbeddingModel.MUQ: {
-        "collection_name": muq.COLLECTION_NAME,
-        "id_field": muq.ID_FIELD,
-        "vector_field": muq.VECTOR_FIELD,
-    },
-    EmbeddingModel.MUQ_MULAN: {
-        "collection_name": muq_mulan.COLLECTION_NAME,
-        "id_field": muq_mulan.ID_FIELD,
-        "vector_field": muq_mulan.VECTOR_FIELD,
-    },
-}
 
 router = APIRouter()
 
@@ -154,15 +126,12 @@ def find_similar_songs(
     """
     Finds songs acoustically similar to the given song using a specified vector embedding.
     """
-    config = MODEL_CONFIGS[model_name]
-    collection_name = config["collection_name"]
-    id_field = config["id_field"]
-    vector_field = config["vector_field"]
+    collection_name = MODEL_SPECS[model_name].collection_name
 
     query_vec = vector_store_utils.query_vector(
         collection_name=collection_name,
         vector_id=file_path,
-        vector_field=vector_field,
+        vector_field="embedding",
     )
     if not query_vec:
         raise HTTPException(
@@ -173,14 +142,14 @@ def find_similar_songs(
     search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=query_vec,
-        vector_field=vector_field,
+        vector_field="embedding",
         limit=limit + 1,
     )
 
     similar_songs_data: list[dict[str, Any]] = []
     for hit in search_results:
-        if hit[id_field] != file_path:
-            similar_songs_data.append({"file_path": hit[id_field], "score": hit["distance"]})
+        if hit["file_path"] != file_path:
+            similar_songs_data.append({"file_path": hit["file_path"], "score": hit["distance"]})
 
     similar_songs_data = similar_songs_data[:limit]
 
@@ -234,20 +203,18 @@ def search_songs_by_natural_language(
     text_embed = text_embedding_service.get_text_embedding(q, model_name)
 
     if model_name == TextEmbeddingModel.CLAP:
-        config = MODEL_CONFIGS[EmbeddingModel.CLAP]
+        spec = MODEL_SPECS[EmbeddingModel.CLAP]
     elif model_name == TextEmbeddingModel.MUQ_MULAN:
-        config = MODEL_CONFIGS[EmbeddingModel.MUQ_MULAN]
+        spec = MODEL_SPECS[EmbeddingModel.MUQ_MULAN]
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported model: {model_name}")
 
-    collection_name = config["collection_name"]
-    id_field = config["id_field"]
-    vector_field = config["vector_field"]
+    collection_name = spec.collection_name
 
     search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=text_embed.tolist(),
-        vector_field=vector_field,
+        vector_field="embedding",
         limit=limit,
     )
 
@@ -255,7 +222,7 @@ def search_songs_by_natural_language(
         return SearchSongResult(songs=[])
 
     search_hits_data = [
-        {"file_path": hit[id_field], "score": hit["distance"]} for hit in search_results
+        {"file_path": hit["file_path"], "score": hit["distance"]} for hit in search_results
     ]
 
     hit_file_paths = [hit["file_path"] for hit in search_hits_data]

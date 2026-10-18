@@ -10,11 +10,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-import worker.clap
-import worker.mert
-import worker.muq
-import worker.muq_mulan
+import worker.embeddings
 from domain import config, session_manager, vector_store_utils
+from domain.embedding_models import MODEL_SPECS
 from domain.schemas import Song
 
 
@@ -135,10 +133,7 @@ def fake_vector_store(
     monkeypatch.setattr(vector_store_utils, "query_vector", fake_query_vector)
     monkeypatch.setattr(vector_store_utils, "search_vectors", fake_search_vectors)
 
-    monkeypatch.setattr(worker.clap, "_is_vector_collection_ready", False)
-    monkeypatch.setattr(worker.mert, "_is_vector_collection_ready", False)
-    monkeypatch.setattr(worker.muq, "_is_vector_collection_ready", False)
-    monkeypatch.setattr(worker.muq_mulan, "_is_vector_collection_ready", False)
+    monkeypatch.setattr(worker.embeddings, "_ready_collections", set())
 
     return store
 
@@ -151,19 +146,13 @@ class InferenceCall(NamedTuple):
 class FakeInference:
     """Fake inference runner recording calls and returning constant vectors."""
 
-    _DIMENSIONS: dict[str, int] = {
-        "clap": 512,
-        "mert": 1024,
-        "muq": 1024,
-        "muq_mulan": 512,
-    }
-
     def __init__(self) -> None:
         self.calls: list[InferenceCall] = []
 
     def __call__(self, model_name: str, audio_data: Any) -> np.ndarray:
         self.calls.append(InferenceCall(model_name=model_name, audio_data=audio_data))
-        dim = self._DIMENSIONS.get(model_name)
+        dimensions = {spec.name.value: spec.dimension for spec in MODEL_SPECS.values()}
+        dim = dimensions.get(model_name)
         if dim is None:
             raise ValueError(f"Unknown model_name for fake inference: {model_name}")
         batch_size = audio_data.shape[0] if hasattr(audio_data, "shape") else len(audio_data)
@@ -177,10 +166,7 @@ class FakeInference:
 @pytest.fixture
 def fake_inference(monkeypatch: pytest.MonkeyPatch) -> FakeInference:
     fake = FakeInference()
-    monkeypatch.setattr(worker.clap, "run_inference", fake)
-    monkeypatch.setattr(worker.mert, "run_inference", fake)
-    monkeypatch.setattr(worker.muq, "run_inference", fake)
-    monkeypatch.setattr(worker.muq_mulan, "run_inference", fake)
+    monkeypatch.setattr(worker.embeddings, "run_inference", fake)
     return fake
 
 

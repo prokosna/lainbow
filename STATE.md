@@ -6,17 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: a3c2821          # WI-M1-06
+last_commit: 281e946          # WI-M1-08
 current_milestone: M1
-current_wi: WI-M2-03
+current_wi: WI-M1-02
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-03: 埋め込みモデルの registry（D-F と Q4 を反映する）
-2. WI-M1-02（部分失敗）、WI-M1-07（正規化）を registry の上で行う
-3. M2-01（アクセラレータ別の torch）、M2-04（Milvus の削除）、M2-05（Alembic）
+1. WI-M1-02（部分失敗）、WI-M1-07（正規化）を registry の上で行う
+2. M2-01（アクセラレータ別の torch）、M2-04（Milvus の削除）、M2-05（Alembic）
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -69,6 +68,7 @@ branch: improve/m1-correctness
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M2-03 | PASS | gemini-3.8-flash-high | 1 | 10 分超（Bash の上限でバックグラウンドに移行）。-774/+66 行。registry の値はテストで固定。F3 は xfail のまま |
 | 2026-10-18 | WI-M1-08 | PASS | gemini-3.8-flash-high | 1 | /stats は COMPLETED のみ数える（Sola MPD に表示される件数は正しい値まで減る）。limit の範囲検証、Qdrant client の再利用、echo=False、visibility_timeout の削除、default_rng。test_audio の random のテスト 1 件を許可の範囲内で修正 |
 | 2026-10-18 | WI-M1-06 | PASS | gemini-3.8-flash-high | 1 | 推論は threadpool で実行し、ModelManager は RLock で直列化。/health が推論中も応答することをテストで確認 |
 | 2026-10-18 | WI-M1-05 | PASS | gemini-3.8-flash-high | 1 | リトライは接続エラーと 502/503/504 だけ。指数バックオフで最大 5 回、タイムアウトは 300 秒、client は再利用 |
