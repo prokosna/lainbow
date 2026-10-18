@@ -60,14 +60,31 @@ inference = [
     "numpy",
     "pydantic",
     "python-multipart",
-    "torch",
-    "torchaudio",
-    "torchvision",
     "transformers",
     "uvicorn[standard]",
 ]
 
+inference-cpu = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1",
+]
+
+inference-cuda = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1",
+]
+
+inference-rocm = [
+    "pytorch-triton-rocm",
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1",
+]
+
 [tool.uv]
+conflicts = [[{ group = "inference-cpu" }, { group = "inference-cuda" }, { group = "inference-rocm" }]]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 
@@ -76,10 +93,35 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
+
 [tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchaudio = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }
+torch = [
+    { index = "pytorch-cpu", group = "inference-cpu" },
+    { index = "pytorch-cu128", group = "inference-cuda" },
+    { index = "pytorch-rocm", group = "inference-rocm" },
+]
+torchaudio = [
+    { index = "pytorch-cpu", group = "inference-cpu" },
+    { index = "pytorch-cu128", group = "inference-cuda" },
+    { index = "pytorch-rocm", group = "inference-rocm" },
+]
+torchvision = [
+    { index = "pytorch-cpu", group = "inference-cpu" },
+    { index = "pytorch-cu128", group = "inference-cuda" },
+    { index = "pytorch-rocm", group = "inference-rocm" },
+]
+pytorch-triton-rocm = [
+    { index = "pytorch-rocm", group = "inference-rocm" },
+]
 
 [tool.ruff]
 src = ["src", "tests"]

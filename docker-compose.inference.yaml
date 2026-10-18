@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: cpu
     extra_hosts:
       - "host.docker.internal:host-gateway"
     container_name: lainbow_inference_api
@@ -27,6 +29,8 @@ services:
     build:
       context: .
       dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: cuda
     extra_hosts:
       - "host.docker.internal:host-gateway"
     container_name: lainbow_inference_api_cuda
@@ -57,7 +61,9 @@ services:
   inference_api_rocm:
     build:
       context: .
-      dockerfile: docker/inference.rocm.Dockerfile
+      dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: rocm
     extra_hosts:
       - "host.docker.internal:host-gateway"
     container_name: lainbow_inference_api_rocm

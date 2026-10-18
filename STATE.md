@@ -5,19 +5,20 @@
 > **150 行を超えないようにします。** 古い Review log は `docs/plan/review-log.md` に移します（短く書き直して消すことはしません）。
 
 ```yaml
-last_updated: 2026-10-18
-last_commit: 47c3e56          # WI-M2-02a
-current_milestone: M2
-current_wi: WI-M2-01
+last_updated: 2026-10-19
+last_commit: 1af4593          # WI-M2-02b
+current_milestone: M3
+current_wi: WI-M3-01a
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-01: アクセラレータ別の torch（Work Order 作成済み）。Implementer の作業後、Supervisor が cpu / cuda / rocm のイメージを `docker build -t lainbow-dev/...` でビルドし、rocm はこのホストの AMD GPU で `scripts/accel-check.sh` を実行する
-2. M3-01（compose を 1 つにまとめる）以降へ進む
+1. WI-M3-01a: サービスごとの接続設定（後方互換。Work Order 作成済み）
+2. WI-M3-01b: compose を 1 ファイルにまとめる（Work Order 作成済み）。その後 Supervisor が `-p lainbow-dev` で CPU 構成を起動し、全サービスが healthy になることを確認する
+3. WI-M3-02（モデル取得のコンテナ化）→ WI-M3-03（`./lainbow` CLI）
 
-M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
+M1 と M2 はすべて完了（M2 は 2026-10-19）。
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -38,7 +39,7 @@ M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 
 ## ユーザーによる実機確認が必要なもの
 
-- （M2-01 完了後）CUDA と ROCm のコンテナで `scripts/accel-check.sh` が `True` を返すこと
+- （M2-01）ROCm は Supervisor がこのホストの AMD Radeon 890M で確認済み（torch 2.9.1+rocm6.4、`is_available()` が True）。**CUDA は NVIDIA の GPU がないため未確認**。NVIDIA 環境で `scripts/accel-check.sh lainbow-dev/inference-cuda:<tag>` を実行して確認してもらう必要がある
 - （M3-01 完了後）既存のデータディレクトリを使ったまま新しい compose で起動でき、Sola MPD の検索と類似曲検索が従来どおり動くこと
 
 ## ツールについての確認結果（WI-M0-01、2026-10-18）
@@ -79,6 +80,7 @@ M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-19 | WI-M2-01 | PASS | gemini-3.8-flash-high | 1 | DCR: ROCm の index は explicit なので `pytorch-triton-rocm` をグループに追加（承認）。Supervisor が 3 つのイメージをビルドし（cpu 1.7GB / 49 秒、cuda 7.9GB / 15 分、rocm 16.3GB / 26 分）、ROCm は GPU の認識を実機で確認。accel-check を修正（slim イメージには render グループがないため数値の GID を渡す、`set --` で第 2 引数が上書きされる不具合）。torch のバージョンを 3 つとも 2.9.1 に固定（cuda だけ 2.11 に解決されていた） |
 | 2026-10-18 | WI-M2-02b | PASS | gemini-3.8-flash-high | 1 | API は send_task でタスクを投入し、torch / librosa / laion_clap / muq / mutagen を import しない（サブプロセスのテストで確認）。検索は inference に依頼し、到達できなければ 503 を返す |
 | 2026-10-18 | WI-M2-02a | PASS | gemini-3.8-flash-high | 1 | `POST /api/v1/text-embedding/{model}` と pinned モデル（既定 muq_mulan）。既知の制約: ロックが 1 つなので、バッチ推論中のテキスト検索は推論の完了を待つ（M5 の候補: モデル単位のロック） |
 | 2026-10-18 | WI-M2-05 | PASS | gemini-3.8-flash-high | 1 | Critical Module。Supervisor がテスト 4 本と legacy の fixture（600efa1 の create_all で生成）を先に作成。リビジョン ID は Alembic の 32 文字制限のため `0002_rename_vector_collection` に（DCR として妥当）。check.sh に postgres テストを追加 |

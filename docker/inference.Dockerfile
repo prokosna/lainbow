@@ -1,4 +1,6 @@
-FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
+FROM python:3.12-slim
+
+ARG ACCEL=cpu
 
 WORKDIR /src
 
@@ -12,7 +14,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY ./pyproject.toml ./uv.lock /src/
-RUN uv sync --locked --no-dev --group inference
+RUN uv sync --locked --no-dev --group inference --group inference-${ACCEL}
 
 EXPOSE 8001
 

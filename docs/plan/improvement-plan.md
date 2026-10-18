@@ -251,7 +251,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 **WI-M3-03 `./lainbow` CLI（S1, S10）** — `.env` を上書きしない部分は Critical Module
 - 変更対象: `lainbow`（bash）, `tests/cli/`（bats、または bash で書いたテストスクリプト）
 - サブコマンド:
-  - `setup`: 前提条件（docker と compose v2）のチェック、アクセラレータの検出、音楽ディレクトリの入力と存在確認、ポートとモデルの選択、ランダムな DB パスワードの生成、`.env` の生成、`models-init` の実行。`--music-dir --accel --models --yes` を付ければ非対話でも実行できる。**既存の `.env` がある場合は差分だけを追記し、上書きしない。**
+  - `setup`: 前提条件（docker と compose v2）のチェック、アクセラレータの検出（ROCm の場合は `stat -c %g /dev/kfd` の値を `LAINBOW_GPU_GID` として書き込む。slim イメージには `render` グループがないため、数値の GID が必要）、音楽ディレクトリの入力と存在確認、ポートとモデルの選択、ランダムな DB パスワードの生成、`.env` の生成、`models-init` の実行。`--music-dir --accel --models --yes` を付ければ非対話でも実行できる。**既存の `.env` がある場合は差分だけを追記し、上書きしない。**
   - `up` / `down` / `status`（各サービスの health と `/api/v1/stats`）/ `logs [svc]` / `scan` / `analyze [--models ...]` / `update`（pull、マイグレーション、再起動）/ `doctor`（GPU の可視性、ポートの衝突、音楽ディレクトリの権限などの診断）
 - ゲート: `shellcheck lainbow`。`setup --yes` を一時ディレクトリで実行し、`.env` が期待どおりに生成されること、2 回目の実行で既存の値が保持されることをテストする。
 

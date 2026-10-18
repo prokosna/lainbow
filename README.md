@@ -88,11 +88,7 @@ Once the script completes, the application will be ready to run.
 2.  **Edit `.env` file**: Open the `.env` file and customize the variables. **You must at least set `MUSIC_NAS_ROOT_DIR` to the absolute path of your music library.** The default settings should work out-of-the-box if you are running all components on a single machine with no port conflicts.
 
 ### GPU Configuration for Inference Server
-The `docker/inference.Dockerfile` uses a specific PyTorch base image optimized for author's GPU (RTX 5070 Ti). **You may need to modify the `FROM` instruction in this Dockerfile** to use a base image compatible with your GPU hardware.
-
-Additionally, **ensure that the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is properly installed and configured**. This is required for Docker to access and utilize the GPU.
-
-There is also `docker/inference.rocm.Dockerfile` for ROCm based inference server. To use this Docker image, you need to setup [ROCm on Docker](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html) similar to NVIDIA.
+The inference image is selected by the compose profile (`cpu`, `cuda`, `rocm`). Only the host driver plus the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) or ROCm device access is needed.
 
 ### Starting the Application
 

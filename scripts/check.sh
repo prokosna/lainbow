@@ -1,7 +1,7 @@
 #!/bin/sh
 # Runs every gate (AGENTS.md section 3-3) regardless of earlier failures, so one
 # failure never hides another. Needs the dev environment:
-#   uv sync --group dev --group api --group batch --group inference
+#   uv sync --group dev --group api --group batch --group inference --group inference-cpu
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -12,7 +12,7 @@ cd "$ROOT_DIR" || exit 1
 MYPY_BASELINE_FILE="$SCRIPT_DIR/mypy-baseline.txt"
 
 if [ ! -d .venv ]; then
-	echo "no .venv: run 'uv sync --group dev --group api --group batch --group inference'" >&2
+	echo "no .venv: run 'uv sync --group dev --group api --group batch --group inference --group inference-cpu'" >&2
 	exit 1
 fi
 
