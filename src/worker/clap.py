@@ -4,6 +4,7 @@ from typing import cast
 
 import librosa
 import numpy as np
+import numpy.typing as npt
 
 from domain import vector_store_utils
 from domain.inference_client import run_inference
@@ -72,7 +73,9 @@ def ensure_vector_collection_ready() -> None:
         raise e
 
 
-def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]:
+def get_audio_embeddings_batch(
+    audio_paths: list[Path],
+) -> dict[str, npt.NDArray[np.float32]]:
     """
     Computes L2-normalized audio embeddings for a batch of audio files.
 
@@ -100,7 +103,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
 
             segments = audio.extract_audio_segments(
                 audio_data=audio_data,
-                sample_rate=sr,
+                sample_rate=int(sr),
                 segment_duration=SEGMENT_DURATION_SEC,
                 num_segments=NUM_SEGMENTS + 1,
                 random_sampling=False,
@@ -134,7 +137,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
             avg_embedding = file_embeds.mean(axis=0)
             norm = np.linalg.norm(avg_embedding)
             normalized_embedding = avg_embedding / norm if norm > 0 else avg_embedding
-            results[path_key] = cast(np.ndarray, normalized_embedding)
+            results[path_key] = cast(npt.NDArray[np.float32], normalized_embedding)
 
         return results
 
@@ -142,7 +145,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
         raise Exception(f"Failed to get CLAP embeddings for batch: {e}") from e
 
 
-def get_audio_embedding(audio_path: Path) -> np.ndarray:
+def get_audio_embedding(audio_path: Path) -> npt.NDArray[np.float32]:
     """
     Computes a L2-normalized audio embedding for a given audio file.
     The normalized embedding is ready to be stored in the vector store for cosine similarity search.

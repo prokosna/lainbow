@@ -3,6 +3,7 @@ import logging
 import os
 
 import numpy as np
+import numpy.typing as npt
 import torch
 from muq import MuQ
 
@@ -31,12 +32,12 @@ class MuQModel(InferenceModel):
             logger.error(f"Failed to initialize MuQ model: {e}")
             raise e
 
-    def run_inference(self, audio_data: np.ndarray) -> np.ndarray:
+    def run_inference(self, audio_data: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         """
         Computes embeddings for a batch of audio tracks by processing each track individually.
         """
         if not audio_data.size:
-            return np.array([])
+            return np.array([], dtype=np.float32)
 
         all_embeddings = []
         for i in range(audio_data.shape[0]):
@@ -48,7 +49,7 @@ class MuQModel(InferenceModel):
                 all_embeddings.append(embedding.cpu().numpy())
 
         if not all_embeddings:
-            return np.array([])
+            return np.array([], dtype=np.float32)
 
         return np.vstack(all_embeddings)
 

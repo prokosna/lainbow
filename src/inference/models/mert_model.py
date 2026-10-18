@@ -4,6 +4,7 @@ import os
 from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 import torch
 from transformers import AutoModel, Wav2Vec2FeatureExtractor
 
@@ -47,7 +48,7 @@ class MERTModel(InferenceModel):
             logger.error(f"Failed to initialize MERT model: {e}")
             raise e
 
-    def run_inference(self, audio_data: np.ndarray) -> np.ndarray:
+    def run_inference(self, audio_data: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         """
         Computes embeddings for a batch of audio segments.
 
@@ -58,7 +59,7 @@ class MERTModel(InferenceModel):
             A NumPy array containing the embeddings for the segments.
         """
         if not audio_data.size:
-            return np.array([])
+            return np.array([], dtype=np.float32)
 
         audio_segments = list(audio_data)
 
@@ -68,10 +69,10 @@ class MERTModel(InferenceModel):
             return_tensors="pt",
             padding=True,
         )
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        model_inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = self.model(**inputs, output_hidden_states=True)
+            outputs = self.model(**model_inputs, output_hidden_states=True)
             all_layer_states = torch.stack(outputs.hidden_states, dim=1)
             time_reduced_states = all_layer_states.mean(dim=-2)
             segment_embeddings = (
@@ -81,7 +82,7 @@ class MERTModel(InferenceModel):
                 .numpy()
             )
 
-        return cast(np.ndarray, segment_embeddings)
+        return cast(npt.NDArray[np.float32], segment_embeddings)
 
     def release(self) -> None:
         """Releases the MERT model and clears CUDA cache."""

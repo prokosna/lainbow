@@ -154,7 +154,7 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                         muq_mulan.delete_vectors(file_paths=[file_path])
 
                         # Then, update the song's metadata
-                        db.exec(  # type: ignore
+                        db.exec(
                             update(Song)
                             .where(col(Song.file_path) == file_path)
                             .values(
@@ -581,7 +581,7 @@ def vectorize_song_features(
                     delete(SongEmbedding)
                     .where(col(SongEmbedding.file_path).in_(target_file_paths))
                     .where(col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES)
-                )  # type: ignore
+                )
                 db.add_all(new_embedding_records)
                 db.commit()
 
@@ -744,7 +744,7 @@ def generate_song_embedding(
                 delete(SongEmbedding)
                 .where(col(SongEmbedding.file_path).in_(file_paths))
                 .where(col(SongEmbedding.model_name) == model_name_enum)
-            )  # type: ignore
+            )
             db.add_all(new_embedding_records)
             db.commit()
     except Exception as e:

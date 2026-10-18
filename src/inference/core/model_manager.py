@@ -2,6 +2,7 @@ import logging
 from typing import Literal
 
 import numpy as np
+import numpy.typing as npt
 
 from domain import config
 from inference.models.base import InferenceModel
@@ -88,7 +89,9 @@ class ModelManager:
         else:
             logger.warning(f"Attempted to release a model that was not loaded: '{model_name}'.")
 
-    def run_inference(self, model_name: str, input_data: np.ndarray) -> np.ndarray:
+    def run_inference(
+        self, model_name: str, input_data: npt.NDArray[np.float32]
+    ) -> npt.NDArray[np.float32]:
         """
         Runs inference using the specified model.
 

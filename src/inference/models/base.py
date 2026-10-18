@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
+import numpy.typing as npt
 
 
 class InferenceModel(ABC):
     """An abstract base class for all inference models."""
 
     @abstractmethod
-    def run_inference(self, audio_data: np.ndarray) -> np.ndarray:
+    def run_inference(self, audio_data: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         """
         Runs inference on a batch of audio segments.
 

@@ -4,6 +4,7 @@ from typing import cast
 
 import librosa
 import numpy as np
+import numpy.typing as npt
 
 from domain import config, vector_store_utils
 from domain.inference_client import run_inference
@@ -69,7 +70,9 @@ def ensure_vector_collection_ready() -> None:
         raise e
 
 
-def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]:
+def get_audio_embeddings_batch(
+    audio_paths: list[Path],
+) -> dict[str, npt.NDArray[np.float32]]:
     """
     Computes L2-normalized MuQ-MuLan audio embeddings for a batch of audio files.
     This sends the entire audio file for inference.
@@ -93,7 +96,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
 
             norm = np.linalg.norm(final_embedding)
             normalized_embedding = final_embedding / norm if norm > 0 else final_embedding
-            results[str(audio_path)] = cast(np.ndarray, normalized_embedding)
+            results[str(audio_path)] = cast(npt.NDArray[np.float32], normalized_embedding)
 
         except Exception as e:
             logger.error(f"Failed to process {audio_path} for MuQ-MuLan, skipping: {e}")
@@ -101,7 +104,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
     return results
 
 
-def get_audio_embedding(audio_path: Path) -> np.ndarray:
+def get_audio_embedding(audio_path: Path) -> npt.NDArray[np.float32]:
     """
     Computes an L2-normalized MuQ-MuLan audio embedding for a single audio file.
     """

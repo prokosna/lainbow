@@ -5,6 +5,7 @@ from uuid import UUID, uuid5
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
     Distance,
+    PointIdsList,
     PointStruct,
     VectorParams,
 )
@@ -134,7 +135,11 @@ def delete_vectors(
 
     qdrant_ids = [_qdrant_point_id_from_file_path(file_path) for file_path in ids]
     logger.info(f"Deleting {len(qdrant_ids)} vectors from '{collection_name}'.")
-    client.delete(collection_name=collection_name, points_selector=qdrant_ids, wait=True)
+    client.delete(
+        collection_name=collection_name,
+        points_selector=PointIdsList(points=list(qdrant_ids)),
+        wait=True,
+    )
     logger.info(f"Successfully deleted {len(qdrant_ids)} vectors.")
 
 
@@ -169,10 +174,14 @@ def query_vector(
         logger.warning(f"Vector with ID '{vector_id}' not found in '{collection_name}'.")
         return None
 
-    vec_any = records[0].vector
-    if isinstance(vec_any, dict):
-        vec_any = vec_any[vector_field] if vector_field in vec_any else next(iter(vec_any.values()))
-    return [float(x) for x in vec_any]
+    vec_data: Any = records[0].vector
+    if isinstance(vec_data, dict):
+        vec_data = (
+            vec_data[vector_field] if vector_field in vec_data else next(iter(vec_data.values()))
+        )
+    if vec_data is None:
+        return None
+    return [float(x) for x in vec_data]
 
 
 def search_vectors(

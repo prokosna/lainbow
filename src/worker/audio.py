@@ -11,6 +11,7 @@ from typing import Literal
 
 import mutagen
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def extract_metadata(file_path: Path) -> AudioMetadata | None:
     mtime_ts = os.path.getmtime(file_path)
     mtime_dt = datetime.datetime.fromtimestamp(mtime_ts)
 
-    audio = mutagen.File(file_path, easy=True)
+    audio = mutagen.File(file_path, easy=True)  # type: ignore[attr-defined]  # mutagen does not explicitly export File
     if audio is None:
         return None
 
@@ -181,12 +182,12 @@ def load_audio_for_librosa(file_path: Path, sr: int | None = 48000) -> Path | io
 
 
 def extract_audio_segments(
-    audio_data: np.ndarray,
+    audio_data: npt.NDArray[np.float32],
     sample_rate: int,
     segment_duration: float,
     num_segments: int,
     random_sampling: bool = False,
-) -> list[np.ndarray]:
+) -> list[npt.NDArray[np.float32]]:
     """
     Extract multiple segments from audio data.
 

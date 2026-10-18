@@ -11,7 +11,7 @@ from domain.session_manager import init_db_session
 faulthandler.enable()
 
 
-@worker_process_init.connect  # type: ignore[misc]
+@worker_process_init.connect  # type: ignore[untyped-decorator]  # celery signal connect decorator is untyped
 def on_worker_init(**kwargs: dict[str, Any]) -> None:
     """Initialize database connection for the worker process."""
     init_db_session()

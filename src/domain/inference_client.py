@@ -4,6 +4,7 @@ from typing import cast
 
 import httpx
 import numpy as np
+import numpy.typing as npt
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_fixed
 
 from domain import config
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
     stop=stop_after_attempt(10),
     wait=wait_fixed(30),
     before_sleep=before_sleep_log(logger, logging.WARNING),
-)  # type: ignore[misc]
-def run_inference(model_name: str, audio_data: np.ndarray) -> np.ndarray:
+)
+def run_inference(model_name: str, audio_data: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """
     Sends a batch of audio data to the inference API and returns the embeddings.
 
@@ -47,7 +48,7 @@ def run_inference(model_name: str, audio_data: np.ndarray) -> np.ndarray:
                 response.raise_for_status()
 
             with io.BytesIO(response.content) as buffer:
-                embedding = cast(np.ndarray, np.load(buffer))
+                embedding = cast(npt.NDArray[np.float32], np.load(buffer))
                 logger.info(f"Successfully received embedding from '{model_name}' API.")
                 return embedding
         except httpx.HTTPStatusError as e:

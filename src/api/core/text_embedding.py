@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import laion_clap
 import numpy as np
+import numpy.typing as npt
 import torch
 from muq import MuQMuLan
 
@@ -98,7 +99,9 @@ class TextEmbeddingService:
 
         return self._models[model_name]
 
-    def get_text_embedding(self, text: str, model_name: TextEmbeddingModel) -> np.ndarray:
+    def get_text_embedding(
+        self, text: str, model_name: TextEmbeddingModel
+    ) -> npt.NDArray[np.float32]:
         """Generates a text embedding for a single string using the specified model."""
         model = self.get_model(model_name)
 
@@ -110,7 +113,7 @@ class TextEmbeddingService:
         else:
             raise ValueError(f"Unsupported model for text embedding: {model_name}")
 
-        return cast(np.ndarray, embedding.flatten())
+        return cast(npt.NDArray[np.float32], embedding.flatten())
 
 
 @lru_cache(maxsize=1)

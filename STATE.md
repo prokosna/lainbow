@@ -6,17 +6,17 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: f34a2d6          # WI-M0-01
+last_commit: 2ff32e3          # WI-M0-02
 current_milestone: M0
-current_wi: WI-M0-04
+current_wi: WI-M0-03
 branch: improve/m0-agent-workflow
 ```
 
 ## 次の 3 アクション
 
-1. WI-M0-04: mypy のエラーを 0 にする（Implementer へ渡す最初の WI）
-2. WI-M0-03: タスクロジックのテスト基盤（Implementer）
-3. M1 の Work Order を順に発行する（M1-01 は Supervisor がテストを先に書く）
+1. WI-M0-03: タスクロジックのテスト基盤（Implementer）
+2. M1 の Work Order を順に発行する（M1-01 は Supervisor がテストを先に書く）
+3. M2-03（モデルの registry）→ M1-02 / M1-07
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -53,7 +53,7 @@ branch: improve/m0-agent-workflow
 2026-10-18（WI-M0-02）時点:
 - ruff check: 0（設定の `include = ["src", "tests"]` がファイルに一致しておらず、**これまで ruff は何も検査していなかった**。設定を直し、import 順の 18 件を `--fix` で修正済み）
 - ruff format: 0（`tasks.py` を整形済み）
-- mypy: 41 件（`scripts/mypy-baseline.txt`）。WI-M0-04 で 0 にする
+- mypy: 41 件 → WI-M0-04 で 0 件（`scripts/mypy-baseline.txt` = 0）
 - pytest: 18 件すべて成功（推論テストはモデルファイルの存在チェックをモックするように修正）
 
 ## Design changes
@@ -68,4 +68,5 @@ branch: improve/m0-agent-workflow
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M0-04 | PASS | gemini-3.8-flash-high | 1 | 約 9 分。型注釈のみ。挙動の差分は 2 点（Qdrant の delete に明示的な PointIdsList を渡す、query_vector が None のベクトルで None を返す）で、どちらも無害 |
 | 2026-10-18 | WI-M0-02 | PASS | Supervisor（直接実装） | - | check.sh、ruff 設定の修正、pre-commit の整理、推論テストの修正。M0-04 を追加 |

@@ -4,6 +4,7 @@ from typing import cast
 
 import librosa
 import numpy as np
+import numpy.typing as npt
 
 from domain import vector_store_utils
 from domain.inference_client import run_inference
@@ -72,7 +73,9 @@ def ensure_vector_collection_ready() -> None:
         raise e
 
 
-def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]:
+def get_audio_embeddings_batch(
+    audio_paths: list[Path],
+) -> dict[str, npt.NDArray[np.float32]]:
     """
     Computes L2-normalized MERT audio embeddings for a batch of audio files.
 
@@ -95,7 +98,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
             audio_file = audio.load_audio_for_librosa(audio_path, sr=MERT_SAMPLING_RATE)
             audio_data, sr = librosa.load(audio_file, sr=MERT_SAMPLING_RATE, mono=True)
             segments = audio.extract_audio_segments(
-                audio_data, sr, SEGMENT_DURATION_SEC, NUM_SEGMENTS + 1, False
+                audio_data, int(sr), SEGMENT_DURATION_SEC, NUM_SEGMENTS + 1, False
             )
             segments_to_use = segments[:NUM_SEGMENTS]
             if segments_to_use:
@@ -124,7 +127,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
             avg_embedding = file_embeds.mean(axis=0)
             norm = np.linalg.norm(avg_embedding)
             normalized_embedding = avg_embedding / norm if norm > 0 else avg_embedding
-            results[path_key] = cast(np.ndarray, normalized_embedding)
+            results[path_key] = cast(npt.NDArray[np.float32], normalized_embedding)
 
         return results
 
@@ -132,7 +135,7 @@ def get_audio_embeddings_batch(audio_paths: list[Path]) -> dict[str, np.ndarray]
         raise Exception(f"Failed to get MERT embeddings for batch: {e}") from e
 
 
-def get_audio_embedding(audio_path: Path) -> np.ndarray:
+def get_audio_embedding(audio_path: Path) -> npt.NDArray[np.float32]:
     """
     Computes a L2-normalized MERT audio embedding for a given audio file.
     The normalized embedding is ready to be stored in the vector store for cosine similarity search.
