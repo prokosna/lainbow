@@ -258,7 +258,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 - DoD:
   - `AnalyzeSongTaskPayload` と `RunAnalysisRequest` の既定値を、ハードコードされたリストから `config.ANALYZE_MODELS`（環境変数 `LAINBOW_ANALYZE_MODELS`。未設定のときは `muq,muq_mulan` で、現在の挙動と同じ）に変える（D-F）。
   - `setup` はアクセラレータに関係なく `LAINBOW_ANALYZE_MODELS=muq,muq_mulan` を書き込む（D-F）。
-  - `accel=cpu` の場合に変えるのは性能面の設定だけにする（`TASK_CHUNK_SIZE=2`、`INFERENCE_REQUEST_TIMEOUT=600`）。`MUQ_FILE_DURATION_SEC` は変えない。
+  - `accel=cpu` の場合に変えるのは性能面の設定だけにする（`TASK_CHUNK_SIZE=2`、`INFERENCE_REQUEST_TIMEOUT=600`、`TASK_STALE_AFTER_SEC=7200`。CPU では 1 チャンクに 30 分以上かかり、M1-01 の stale 判定に誤って引っかかることがあるため）。`MUQ_FILE_DURATION_SEC` は変えない。
   - `setup` の中で、CLAP と MERT を追加するかを聞く（既定は「いいえ」）。
   - README にハードウェア別の処理時間の目安表を載せる（CPU でも同じ機能が使え、時間がかかるだけであることを明記する）。
 

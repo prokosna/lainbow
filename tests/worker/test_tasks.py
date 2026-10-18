@@ -141,7 +141,6 @@ def test_partial_failure_does_not_fail_whole_chunk(
     assert emb2.status == Status.COMPLETED
 
 
-@pytest.mark.xfail(strict=True, reason="F2: stale running task blocks new tasks")
 def test_stale_running_task_does_not_block_forever(
     db: Session,
     music_root: Path,
@@ -165,3 +164,8 @@ def test_stale_running_task_does_not_block_forever(
     refreshed_task2 = task_manager.get_task(db, task2.id)
     assert refreshed_task2 is not None
     assert refreshed_task2.status != TaskStatus.SKIPPED
+
+    # The stale task is closed out rather than left RUNNING forever
+    refreshed_task1 = task_manager.get_task(db, task1.id)
+    assert refreshed_task1 is not None
+    assert refreshed_task1.status == TaskStatus.FAILURE

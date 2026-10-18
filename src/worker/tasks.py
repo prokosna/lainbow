@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 import traceback
@@ -41,6 +42,19 @@ def _skip_task_if_already_running(db: Session, name: str, task_id: UUID, start: 
         TaskStatus.RUNNING,
         TaskStatus.PENDING,
     ]:
+        updated_at = existing_task.updated_at or existing_task.created_at
+        if updated_at is not None:
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=datetime.UTC)
+            age = (datetime.datetime.now(datetime.UTC) - updated_at).total_seconds()
+            if age > config.TASK_STALE_AFTER_SEC:
+                task_manager.mark_task_as_failure(
+                    db,
+                    task_id=existing_task.id,
+                    message=f"Marked as failed: no update for over {config.TASK_STALE_AFTER_SEC} seconds (stale).",
+                )
+                return False
+
         logger.info(_get_log_message(name, str(task_id), "Task already running."))
         task_manager.update_task_status(
             db,
@@ -513,7 +527,7 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
             )
             chord(task_groups)(callback)
     except Exception as e:
-        _handle_exception(AnalyzeSongTaskPayload.NAME, task_id, start, e)
+        _handle_exception(AnalyzeSongTaskPayload.NAME, task_id, start, e, status=TaskStatus.FAILURE)
 
 
 @celery_app.task(queue="cpu_queue")
@@ -747,6 +761,8 @@ def generate_song_embedding(
             )
             db.add_all(new_embedding_records)
             db.commit()
+        record_progress(task_id=task_id, start_time=start_time, processed_count=len(file_paths))
+        return True
     except Exception as e:
         _handle_exception(
             "Generate song embedding",
@@ -756,11 +772,14 @@ def generate_song_embedding(
         )
         return False
 
-    record_progress(task_id=task_id, start_time=start_time, processed_count=len(file_paths))
-    return True
 
-
-def _handle_exception(name: str, task_id: str, start: float, e: Exception) -> None:
+def _handle_exception(
+    name: str,
+    task_id: str,
+    start: float,
+    e: Exception,
+    status: TaskStatus = TaskStatus.RUNNING,
+) -> None:
     logger.error(_get_log_message(name, task_id, f"Failed with error: {e}"))
     try:
         with db_session_context() as db:
@@ -770,7 +789,7 @@ def _handle_exception(name: str, task_id: str, start: float, e: Exception) -> No
                 message=str(e),
                 traceback=traceback.format_exc(),
                 elapsed_time=int(time.time() - start),
-                status=TaskStatus.RUNNING,  # Failed, but still running.
+                status=status,
             )
     except Exception as db_error:
         logger.error(

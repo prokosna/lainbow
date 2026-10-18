@@ -23,6 +23,7 @@ def run_scan(
     db: Session = Depends(get_db_session),  # noqa: B008
 ) -> TaskResult:
     """Enqueues a task to scan the music library and records it in the database."""
+    db_task = None
     try:
         db_task = task_manager.create_task(db, name=str(ScanTaskPayload.NAME))
         payload = ScanTaskPayload(task_id=db_task.id, target_path=".")
@@ -30,6 +31,8 @@ def run_scan(
         return db_task
 
     except Exception as e:
+        if db_task is not None:
+            task_manager.mark_task_as_failure(db, task_id=db_task.id, message=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to enqueue scan task. Error: {e}",
@@ -58,16 +61,16 @@ def run_vacuum(
     db: Session = Depends(get_db_session),  # noqa: B008
 ) -> TaskResult:
     """Enqueue a new task to vacuum the music library."""
+    db_task = None
     try:
         db_task = task_manager.create_task(db, name=VacuumTaskPayload.NAME)
-        db.commit()
-        db.refresh(db_task)
-
         task_payload = VacuumTaskPayload(task_id=db_task.id)
 
         vacuum_library_task.delay(task_id=str(db_task.id), payload=task_payload.model_dump())
         return db_task
     except Exception as e:
+        if db_task is not None:
+            task_manager.mark_task_as_failure(db, task_id=db_task.id, message=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to enqueue vacuum task: {e}") from e
 
 
@@ -85,14 +88,14 @@ def run_analysis(
     """
     Enqueue a task to analyze all songs and generate embeddings.
     """
+    db_task = None
     try:
         db_task = task_manager.create_task(db, name=AnalyzeSongTaskPayload.NAME)
-        db.commit()
-        db.refresh(db_task)
-
         task_payload = AnalyzeSongTaskPayload(task_id=db_task.id, models=request.models)
 
         analyze_song_task.delay(task_id=str(db_task.id), payload=task_payload.model_dump())
         return db_task
     except Exception as e:
+        if db_task is not None:
+            task_manager.mark_task_as_failure(db, task_id=db_task.id, message=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to enqueue analysis task: {e}") from e
