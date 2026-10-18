@@ -88,16 +88,17 @@ Once the script completes, the application will be ready to run.
 2.  **Edit `.env` file**: Open the `.env` file and customize the variables. **You must at least set `MUSIC_NAS_ROOT_DIR` to the absolute path of your music library.** The default settings should work out-of-the-box if you are running all components on a single machine with no port conflicts.
 
 ### GPU Configuration for Inference Server
-The inference image is selected by the compose profile (`cpu`, `cuda`, `rocm`). Only the host driver plus the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) or ROCm device access is needed.
+The inference image is selected by the compose profile (`inference-cpu`, `inference-cuda`, `inference-rocm`). Only the host driver plus the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) or ROCm device access is needed.
 
 ### Starting the Application
 
-Start the services on your server(s). You can run each service on a separate server or on the same machine. **Ensure that the `.env` file on each server is configured correctly** to allow communication between the services.
+Start the services with Docker Compose:
 
-**Database Server**
 ```bash
-docker compose -f docker-compose.database.yaml up -d
+docker compose up -d
 ```
+
+Active services are determined by `COMPOSE_PROFILES` in your `.env` file (for single-host setups use `COMPOSE_PROFILES=db,app,inference-cpu` or your preferred accelerator; for multi-host setups, choose the appropriate subset of profiles such as `db`, `app`, or `inference-cuda` on each host).
 
 ### Migrating from Milvus to Qdrant (Optional)
 If you already have embeddings stored in Milvus and want to migrate them to Qdrant:
@@ -109,22 +110,6 @@ If you already have embeddings stored in Milvus and want to migrate them to Qdra
    ```
 
 After the migration finishes, you can disable Milvus again and keep using Qdrant.
-
-**Web API Server**
-```bash
-docker compose -f docker-compose.api.yaml up -d
-```
-
-**Inference API Server**
-```bash
-docker compose -f docker-compose.inference.yaml --profile [cuda|rocm] up -d
-```
-
-**Batch Server**
-```bash
-docker compose -f docker-compose.batch.yaml up -d --scale batch-cpu=N
-```
-*(Note: `N` is the number of parallel processes. A value around 4-6 is recommended.)*
 
 ## API Endpoints
 

@@ -16,6 +16,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY ./pyproject.toml ./uv.lock /src/
 RUN uv sync --locked --no-dev --group inference --group inference-${ACCEL}
 
+COPY src /src
+
 EXPOSE 8001
 
-CMD ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+CMD ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -1,0 +1,262 @@
+name: ${LAINBOW_PROJECT_NAME:-lainbow}
+
+x-app-env: &app-env
+  # Same values the datastores are created with, so the two can never disagree
+  POSTGRES_USER: ${POSTGRES_USER:-user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+  POSTGRES_DB: ${POSTGRES_DB:-lainbow_db}
+  RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-user}
+  RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+  POSTGRES_CONNECT_PORT: ${POSTGRES_CONNECT_PORT:-5432}
+  RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+  RABBITMQ_CONNECT_PORT: ${RABBITMQ_CONNECT_PORT:-5672}
+  QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+  QDRANT_CONNECT_PORT: ${QDRANT_CONNECT_PORT:-6333}
+  INFERENCE_API_URL: ${INFERENCE_API_URL:-http://inference:8001}
+
+services:
+  postgres:
+    profiles:
+      - db
+    image: postgres:17.5-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-lainbow_db}
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - type: bind
+        source: ${DATABASE_DATA_ROOT_DIR:-.}/postgres_data
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+
+  rabbitmq:
+    profiles:
+      - db
+    image: rabbitmq:4.1.2-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_PORT:-5672}:5672"
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - type: bind
+        source: ${DATABASE_DATA_ROOT_DIR:-.}/rabbitmq_data
+        target: /var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  qdrant:
+    profiles:
+      - db
+    image: qdrant/qdrant:v1.16
+    restart: unless-stopped
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${QDRANT_PORT_HTTP:-6333}:6333"
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${QDRANT_PORT_GRPC:-6334}:6334"
+    volumes:
+      - type: bind
+        source: ${DATABASE_DATA_ROOT_DIR:-.}/qdrant_data
+        target: /qdrant/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /readyz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3",
+        ]
+      interval: 30s
+      start_period: 60s
+      timeout: 20s
+      retries: 3
+
+  api:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: lainbow/api:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    ports:
+      - "${WEB_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      rabbitmq:
+        condition: service_healthy
+        required: false
+      qdrant:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  batch:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: docker/batch.Dockerfile
+    image: lainbow/batch:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    volumes:
+      - ${MUSIC_NAS_ROOT_DIR:?set MUSIC_NAS_ROOT_DIR in .env}:/music_library:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      rabbitmq:
+        condition: service_healthy
+        required: false
+      qdrant:
+        condition: service_healthy
+        required: false
+    command: celery -A worker.tasks worker -Q cpu_queue,celery -c ${BATCH_CONCURRENCY:-1} --loglevel=info --without-gossip
+
+  inference-cpu:
+    profiles:
+      - inference-cpu
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: cpu
+    image: lainbow/inference-cpu:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
+    volumes:
+      - ${LAINBOW_MODELS_DIR:-./models}:/src/models
+    networks:
+      default:
+        aliases:
+          - inference
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  inference-cuda:
+    profiles:
+      - inference-cuda
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: cuda
+    image: lainbow/inference-cuda:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
+    volumes:
+      - ${LAINBOW_MODELS_DIR:-./models}:/src/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      default:
+        aliases:
+          - inference
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  inference-rocm:
+    profiles:
+      - inference-rocm
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+      args:
+        ACCEL: rocm
+    image: lainbow/inference-rocm:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:${INFERENCE_API_PORT:-8001}:8001"
+    volumes:
+      - ${LAINBOW_MODELS_DIR:-./models}:/src/models
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - "${LAINBOW_GPU_GID:-video}"
+    networks:
+      default:
+        aliases:
+          - inference
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  flower:
+    profiles:
+      - debug
+    image: lainbow/batch:${LAINBOW_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    ports:
+      - "${LAINBOW_BIND_ADDRESS:-127.0.0.1}:5555:5555"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        required: false
+    command: celery -A worker.tasks flower --port=5555

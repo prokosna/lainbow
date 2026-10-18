@@ -1,0 +1,24 @@
+services:
+  api:
+    volumes:
+      - ./src:/src
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  batch:
+    volumes:
+      - ./src:/src
+
+  inference-cpu:
+    volumes:
+      - ./src:/src
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  inference-cuda:
+    volumes:
+      - ./src:/src
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  inference-rocm:
+    volumes:
+      - ./src:/src
+    command: ["uvicorn", "inference.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

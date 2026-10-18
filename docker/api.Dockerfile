@@ -12,6 +12,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY ./pyproject.toml ./uv.lock /src/
 RUN uv sync --locked --no-dev --group api
 
+COPY src /src
+
 EXPOSE 8000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

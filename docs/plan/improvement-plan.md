@@ -244,9 +244,10 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
   - 分散構成のために `profiles` を `db` / `app` / `inference-*` に分け、組み合わせて起動できるようにする。
 - ゲート: `docker compose config` が全 profile で通ること。CPU の profile で `up` し、全サービスが healthy になること（Supervisor が手元で確認）。
 
-**WI-M3-02 モデルのダウンロードをコンテナで行う（S2）**
-- 変更対象: `download_models.py` → `src/inference/download_models.py`（`--models muq,muq_mulan` で選択）、compose の `models-init` サービス
-- DoD: 冪等にする。ダウンロードが完了したら `.complete` マーカーを書き、途中で中断されたものは再取得する。`LAINBOW_ANALYZE_MODELS`（D-F）で指定したものだけを取得する。CLAP と MERT は、利用者が明示的に指定した場合だけ取得する。
+**WI-M3-02 モデルのダウンロードをコンテナで行う（S2）**（2026-10-19 に設計を変更: `models-init` サービスは作らない）
+- 変更対象: `download_models.py` → `src/inference/download_models.py`、`src/domain/config.py`（`ANALYZE_MODELS`）、`pyproject.toml`（必要なら httpx と huggingface-hub を inference グループへ）
+- 方式: そのホストが使う inference イメージをそのまま使い、`docker compose run --rm inference-<accel> python -m inference.download_models` で取得する（専用のサービスを置くと、GPU のホストでもダウンロードのためだけに CPU イメージをビルドすることになるため）。`./lainbow setup` がこれを呼ぶ。
+- DoD: 取得するのは `ANALYZE_MODELS`（環境変数 `LAINBOW_ANALYZE_MODELS`、既定 `muq,muq_mulan`）と、検索に常に使う `muq_mulan` の和集合。CLAP と MERT は明示的に指定された場合だけ取得する。冪等にする（完了したら `.complete` マーカーを書く。マーカーのない途中のディレクトリは削除して取り直す。旧スクリプトで取得済みでマーカーのない既存ディレクトリは、完了済みとして扱いマーカーを書く）。
 
 **WI-M3-03 `./lainbow` CLI（S1, S10）** — `.env` を上書きしない部分は Critical Module
 - 変更対象: `lainbow`（bash）, `tests/cli/`（bats、または bash で書いたテストスクリプト）
