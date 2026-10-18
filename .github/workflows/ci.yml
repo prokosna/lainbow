@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Working branches too, so CI runs before a PR exists
+    branches: [main, "improve/**"]
   pull_request:
 
 concurrency:
