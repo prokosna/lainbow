@@ -14,7 +14,7 @@ branch: improve/m1-correctness
 
 ## 次の 3 アクション
 
-1. ブランチ `improve/m1-correctness` を push し（2026-10-19 にユーザーが承認）、CI が GitHub 上で通ることを確認する。CI は `pull_request` でしか動かないので draft PR を作る
+1. ユーザーの判断待ち: `main` への PR を作るか。ブランチは push 済みで、CI（run 39176999270）は 4 ジョブすべて成功した（check 127 passed / 1 skipped（AMD GPU が必要なテスト）+ postgres 4 passed、compose、images ×3、e2e）。PR の作成は auto mode の classifier に拒否されたため、ユーザーが作るか許可する。CI は `improve/**` への push でも動くようにした。警告: actions/checkout@v4 と setup-uv@v5 が Node.js 20 対象、ubuntu-latest が Ubuntu 26 へ移行中
 2. WI-M5-01: 埋め込み品質の評価の仕組みを作り、比較してから方式を決める（ユーザーと合意済み）
 3. ユーザーの判断待ち: 最初のリリースタグ（例 `v0.2.0`）を打つか。本番（/opt/apps/lainbow）の移行は README の手順でユーザーが行う
 
