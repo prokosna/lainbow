@@ -54,6 +54,20 @@ class MuQMuLanModel(InferenceModel):
 
         return np.vstack(all_embeddings)
 
+    def embed_text(self, text: str) -> npt.NDArray[np.float32]:
+        """
+        Computes text embedding for a text string.
+
+        Args:
+            text: The text string to embed.
+
+        Returns:
+            A 1-D NumPy array containing the text embedding.
+        """
+        with torch.no_grad():
+            embedding = self.model(texts=[text]).cpu().numpy()
+        return np.asarray(embedding, dtype=np.float32).flatten()
+
     def release(self) -> None:
         """Releases the MuQ-MuLan model and clears CUDA cache."""
         logger.info(f"Releasing MuQ-MuLan model from {self.device}...")

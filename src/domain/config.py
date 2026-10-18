@@ -38,6 +38,11 @@ INFERENCE_LOAD_MODELS_ON_STARTUP = [
     for model in os.getenv("INFERENCE_MODELS_TO_LOAD_ON_STARTUP", "").split(",")
     if model.strip()
 ]
+INFERENCE_PINNED_MODELS = [
+    model.strip()
+    for model in os.getenv("INFERENCE_PINNED_MODELS", "muq_mulan").split(",")
+    if model.strip()
+]
 
 # Batch
 TASK_CHUNK_SIZE = int(os.getenv("TASK_CHUNK_SIZE", "10"))

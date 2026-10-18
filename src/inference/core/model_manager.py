@@ -35,8 +35,15 @@ class ModelManager:
     - 'single': Ensures only one model is loaded at any given time to save VRAM.
     """
 
-    def __init__(self, mode: ModelManagerMode = "multi") -> None:
+    def __init__(
+        self,
+        mode: ModelManagerMode = "multi",
+        pinned_models: list[str] | None = None,
+    ) -> None:
         self.mode: ModelManagerMode = mode
+        self.pinned_models: set[str] = set(
+            pinned_models if pinned_models is not None else config.INFERENCE_PINNED_MODELS
+        )
         self._models: dict[str, InferenceModel] = {}
         self._currently_loaded_model: str | None = None
         self._lock = threading.RLock()
@@ -68,15 +75,13 @@ class ModelManager:
     def get_model(self, model_name: str) -> InferenceModel:
         """Retrieves a model, loading it if necessary and handling single/multi mode."""
         with self._lock:
-            if (
-                self.mode == "single"
-                and self._currently_loaded_model
-                and self._currently_loaded_model != model_name
-            ):
-                logger.info(
-                    f"Single-model mode: Unloading '{self._currently_loaded_model}' to load '{model_name}'."
-                )
-                self.release_model(self._currently_loaded_model)
+            if self.mode == "single" and model_name not in self.pinned_models:
+                for loaded_name in list(self._models.keys()):
+                    if loaded_name != model_name and loaded_name not in self.pinned_models:
+                        logger.info(
+                            f"Single-model mode: Unloading '{loaded_name}' to load '{model_name}'."
+                        )
+                        self.release_model(loaded_name)
 
             if model_name not in self._models:
                 self._models[model_name] = self._load_model(model_name)
@@ -113,3 +118,18 @@ class ModelManager:
         with self._lock:
             model = self.get_model(model_name)
             return model.run_inference(input_data)
+
+    def run_text_embedding(self, model_name: str, text: str) -> npt.NDArray[np.float32]:
+        """
+        Runs text embedding using the specified model.
+
+        Args:
+            model_name: The name of the model to use (e.g., 'muq_mulan', 'clap').
+            text: The text string to embed.
+
+        Returns:
+            A 1-D NumPy array representing the embedding.
+        """
+        with self._lock:
+            model = self.get_model(model_name)
+            return model.embed_text(text)

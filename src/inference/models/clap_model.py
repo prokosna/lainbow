@@ -56,6 +56,19 @@ class CLAPModel(InferenceModel):
         embeddings = self.model.get_audio_embedding_from_data(x=audio_segments, use_tensor=False)
         return cast(npt.NDArray[np.float32], embeddings)
 
+    def embed_text(self, text: str) -> npt.NDArray[np.float32]:
+        """
+        Computes text embedding for a text string.
+
+        Args:
+            text: The text string to embed.
+
+        Returns:
+            A 1-D NumPy array containing the text embedding.
+        """
+        embedding = self.model.get_text_embedding([text], use_tensor=False)
+        return np.asarray(embedding, dtype=np.float32).flatten()
+
     def release(self) -> None:
         """Releases the CLAP model and clears CUDA cache."""
         logger.info(f"Releasing CLAP model from {self.device}...")

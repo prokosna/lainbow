@@ -20,6 +20,18 @@ class InferenceModel(ABC):
         """
         raise NotImplementedError
 
+    def embed_text(self, text: str) -> npt.NDArray[np.float32]:
+        """
+        Embeds a text string into an embedding vector.
+
+        Args:
+            text: The text string to embed.
+
+        Returns:
+            A 1-D NumPy array containing the text embedding.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support text embedding")
+
     @abstractmethod
     def release(self) -> None:
         """

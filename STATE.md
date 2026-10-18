@@ -6,17 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: cf9354e          # WI-M2-04
+last_commit: b1f7c57          # WI-M2-05
 current_milestone: M2
-current_wi: WI-M2-02a
+current_wi: WI-M2-02b
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-02a: inference にテキスト埋め込みのエンドポイントと pinned モデルを追加する（Work Order 作成済み）
-2. WI-M2-02b: API からモデルと worker の import を除き、依存を軽くする（Work Order 作成済み）
-3. WI-M2-01: アクセラレータ別の torch（API が torch に依存しなくなる M2-02b の後でないと、uv のグループが衝突する）
+1. WI-M2-02b: API からモデルと worker の import を除き、依存を軽くする（Work Order 作成済み）
+2. WI-M2-01: アクセラレータ別の torch（API が torch に依存しなくなる M2-02b の後でないと、uv のグループが衝突する）
 
 M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 
@@ -78,6 +77,7 @@ M1 はすべて完了（2026-10-18）。M2-03, M2-04, M2-05 は完了。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M2-02a | PASS | gemini-3.8-flash-high | 1 | `POST /api/v1/text-embedding/{model}` と pinned モデル（既定 muq_mulan）。既知の制約: ロックが 1 つなので、バッチ推論中のテキスト検索は推論の完了を待つ（M5 の候補: モデル単位のロック） |
 | 2026-10-18 | WI-M2-05 | PASS | gemini-3.8-flash-high | 1 | Critical Module。Supervisor がテスト 4 本と legacy の fixture（600efa1 の create_all で生成）を先に作成。リビジョン ID は Alembic の 32 文字制限のため `0002_rename_vector_collection` に（DCR として妥当）。check.sh に postgres テストを追加 |
 | 2026-10-18 | WI-M2-04 | PASS | gemini-3.8-flash-high | 1 | -502 行。pymilvus を削除し、移行スクリプトを tools/ へ移動。README の 1 文を Supervisor が言い換え |
 | 2026-10-18 | WI-M1-07 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: 全対象を 1 回の `in_()` に渡していたため、約 6.5 万曲を超えると psycopg のパラメータ上限に達する。1000 件ずつのチャンクで解消。コレクション全体を同じ統計で再 upsert する |

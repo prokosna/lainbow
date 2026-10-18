@@ -6,12 +6,21 @@ from typing import Annotated
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from inference.core.model_manager import MODEL_REGISTRY, ModelManager
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+class TextEmbeddingRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1000)
+
+
+class TextEmbeddingResponse(BaseModel):
+    embedding: list[float]
 
 
 @router.post("/inference/{model_name}")
@@ -66,3 +75,43 @@ async def run_inference(
         ) from e
     finally:
         logger.info(f"{model_name} inference completed in {time.time() - start:.2f} seconds.")
+
+
+@router.post(
+    "/text-embedding/{model_name}",
+    response_model=TextEmbeddingResponse,
+)
+async def run_text_embedding(
+    request: Request,
+    model_name: str,
+    body: TextEmbeddingRequest,
+) -> TextEmbeddingResponse:
+    """Runs text embedding on a given model with a JSON body."""
+    start = time.time()
+    if model_name not in MODEL_REGISTRY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model '{model_name}' not found.",
+        )
+
+    try:
+        model_manager: ModelManager = request.app.state.model_manager
+        embedding = await run_in_threadpool(
+            model_manager.run_text_embedding,
+            model_name=model_name,
+            text=body.text,
+        )
+        embedding_list = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+        return TextEmbeddingResponse(embedding=embedding_list)
+    except NotImplementedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during text embedding: {e}",
+        ) from e
+    finally:
+        logger.info(f"{model_name} text embedding completed in {time.time() - start:.2f} seconds.")

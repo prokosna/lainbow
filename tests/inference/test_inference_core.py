@@ -248,3 +248,61 @@ def test_manager_serializes_concurrent_calls(
     mert_enter, mert_exit = intervals["mert"]
     clap_enter, clap_exit = intervals["clap"]
     assert mert_exit <= clap_enter or clap_exit <= mert_enter
+
+
+def test_manager_single_mode_with_pinned_model(mock_model_inits: None) -> None:
+    """Tests that pinned models are not released and swapping skips pinned models in single mode."""
+    manager = ModelManager(mode="single", pinned_models=["clap"])
+
+    with (
+        patch.object(MERTModel, "release") as mock_mert_release,
+        patch.object(CLAPModel, "release") as mock_clap_release,
+        patch.object(manager, "_load_model", wraps=manager._load_model) as mock_load,
+    ):
+        # Load mert
+        mert_model = manager.get_model("mert")
+        assert "mert" in manager._models
+        assert mock_load.call_count == 1
+        assert mock_load.call_args[0][0] == "mert"
+
+        # Load clap (pinned)
+        clap_model = manager.get_model("clap")
+        assert isinstance(clap_model, CLAPModel)
+        assert "clap" in manager._models
+        assert "mert" in manager._models  # mert was not unloaded
+        assert mock_load.call_count == 2
+        assert mock_load.call_args[0][0] == "clap"
+        mock_mert_release.assert_not_called()
+        mock_clap_release.assert_not_called()
+
+        # Load mert again: mert should not be reloaded, and clap should never be released
+        mert_model_again = manager.get_model("mert")
+        assert mert_model_again is mert_model
+        assert mock_load.call_count == 2  # Not reloaded
+        mock_mert_release.assert_not_called()
+        mock_clap_release.assert_not_called()
+
+        # Loading mert then mert again does not release anything
+        mert_model_third = manager.get_model("mert")
+        assert mert_model_third is mert_model
+        assert mock_load.call_count == 2
+        mock_mert_release.assert_not_called()
+        mock_clap_release.assert_not_called()
+
+
+def test_manager_run_text_embedding(mock_model_inits: None) -> None:
+    """Tests that run_text_embedding calls the model's embed_text method."""
+    manager = ModelManager()
+    dummy_text_embedding = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+    with patch.object(CLAPModel, "embed_text", return_value=dummy_text_embedding) as mock_embed:
+        result = manager.run_text_embedding("clap", "search query")
+        mock_embed.assert_called_once_with("search query")
+        np.testing.assert_array_equal(result, dummy_text_embedding)
+
+
+def test_base_model_embed_text_not_implemented(mock_model_inits: None) -> None:
+    """Tests that calling embed_text on a model without text embedding raises NotImplementedError."""
+    mert_model = MERTModel()
+    with pytest.raises(NotImplementedError, match="MERTModel does not support text embedding"):
+        mert_model.embed_text("test")

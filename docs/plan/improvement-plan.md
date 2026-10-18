@@ -275,6 +275,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 
 - `LAINBOW_API_TOKEN`（任意）による Bearer 認証。Sola MPD 側の対応が必要になるので、既定では無効にする（I1）。
 - RabbitMQ の `consumer_timeout` を調整する。長いタスクの `acks_late` との整合を取る。
+- `ModelManager` のロックをモデル単位にする（WI-M2-02a のレビューで判明。現状は 1 つのロックなので、バッチ推論中のテキスト検索が推論の完了を待つ。pinned モデルどうしで VRAM を奪い合わない範囲で並行実行を許す）
 - `extract_audio_segments` の「最後のセグメントを除外する」意図が短い曲で守られていない問題を修正する。
 
 ---
