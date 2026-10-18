@@ -6,19 +6,19 @@
 
 ```yaml
 last_updated: 2026-10-19
-last_commit: ad8db9c          # WI-M3-03
-current_milestone: M3
-current_wi: WI-M3-05
+last_commit: da89866          # WI-M3-04
+current_milestone: M4
+current_wi: WI-M4-03
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M3-05: README の全面改訂（Work Order 作成済み）
-2. WI-M4-03（E2E スモークテストのスクリプト）→ WI-M4-01（CI）。どちらも Work Order 作成済み
-3. WI-M4-02（GHCR への公開。タグを打つのはユーザーの判断）
+1. WI-M4-03（E2E スモークテストのスクリプト）→ WI-M4-01（CI）。どちらも Work Order 作成済み
+2. WI-M4-02（GHCR への公開。タグを打つのはユーザーの判断）
+3. ユーザーへの報告: ブランチ improve/m1-correctness（M0 から M3 まで）の push と PR の作成について確認する
 
-M1 と M2 はすべて完了（M2 は 2026-10-19）。
+M1, M2, M3 はすべて完了（M3 は 2026-10-19）。
 
 ## 決定事項（2026-10-18 にユーザーが回答）
 
@@ -81,6 +81,7 @@ M1 と M2 はすべて完了（M2 は 2026-10-19）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-19 | WI-M3-05 | PASS | gemini-3.8-flash-high | 1 | README を全面改訂。言及している変数とコマンドがすべて実在することを機械的に確認。旧 inference の down に `--profile` を付ける修正を Supervisor が実施（profile 付きのサービスは profile を指定しないと止まらない） |
 | 2026-10-19 | WI-M3-04 | PASS | gemini-3.8-flash-high | 1 | analyze の既定モデルを `config.ANALYZE_MODELS` に。未設定なら従来どおり muq,muq_mulan |
 | 2026-10-19 | WI-M3-03 | PASS | gemini-3.8-flash-high | 1 | Critical。Supervisor のテスト 8 本は変更なしで通過。852 行の bash で shellcheck は問題なし。実機で確認: auto 検出で rocm と GID 992 を記録、mode 600、生成した .env で compose config が通る、doctor が本番の使用中ポートを正しく報告。Supervisor が compose の inference に `HF_HOME=/src/models/.hf-cache` を追加（MuQ-MuLan のテキストエンコーダがコンテナを作り直すたびに再ダウンロードされるため） |
 | 2026-10-19 | WI-M3-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: config と download_models が domain.schemas（sqlmodel）を import しており、sqlmodel のない inference イメージでは起動できなかった。dev の .venv には全グループが入っているため、テストでは検出できなかった。enum を domain/enums.py に分離し、sqlmodel を遮断したサブプロセスで import するテストを追加。Supervisor が実イメージで確認: muq_mulan のダウンロード（15 分）、再実行でのスキップ、CPU での muq_mulan 解析、自然言語検索が 200。モデルファイルが root 所有になる問題は M3-03 で `--user` を付けて対処する |
