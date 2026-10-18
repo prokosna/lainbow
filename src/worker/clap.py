@@ -4,9 +4,9 @@ from typing import cast
 
 import librosa
 import numpy as np
+
 from domain import vector_store_utils
 from domain.inference_client import run_inference
-
 from worker import audio
 
 logger = logging.getLogger(__name__)

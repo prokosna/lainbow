@@ -1,3 +1,7 @@
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlmodel import Session, col, func, select
+
 from api.session_manager_wrap import get_db_session
 from domain.schemas import (
     EmbeddingModel,
@@ -6,9 +10,6 @@ from domain.schemas import (
     TaskResult,
     TaskStatus,
 )
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from sqlmodel import Session, col, func, select
 
 router = APIRouter()
 

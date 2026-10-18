@@ -6,8 +6,9 @@ from typing import Any, cast
 import laion_clap
 import numpy as np
 import torch
-from domain.schemas import TextEmbeddingModel
 from muq import MuQMuLan
+
+from domain.schemas import TextEmbeddingModel
 
 logger = logging.getLogger(__name__)
 

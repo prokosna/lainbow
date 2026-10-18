@@ -3,11 +3,12 @@ import time
 from dataclasses import asdict, dataclass
 
 import pika
-from domain import config, schemas  # noqa: F401
 from pika import exceptions as pika_exceptions
 from qdrant_client import QdrantClient
 from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, create_engine
+
+from domain import config, schemas  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

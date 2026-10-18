@@ -3,9 +3,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import cast
 
-from domain.config import INFERENCE_MODEL_MANAGER_MODE
 from fastapi import FastAPI
 
+from domain.config import INFERENCE_MODEL_MANAGER_MODE
 from inference.core.model_manager import ModelManager, ModelManagerMode
 from inference.v1.endpoints import inference
 

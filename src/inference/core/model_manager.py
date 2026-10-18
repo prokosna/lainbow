@@ -2,8 +2,8 @@ import logging
 from typing import Literal
 
 import numpy as np
-from domain import config
 
+from domain import config
 from inference.models.base import InferenceModel
 from inference.models.clap_model import CLAPModel
 from inference.models.mert_model import MERTModel

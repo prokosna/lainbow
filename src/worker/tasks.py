@@ -8,6 +8,8 @@ from uuid import UUID
 
 from celery import chain, chord, group
 from celery.canvas import Signature
+from sqlmodel import Session, col, delete, select, update
+
 from domain import config, task_manager, vector_store_utils
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
 from domain.schemas import (
@@ -20,8 +22,6 @@ from domain.schemas import (
     TaskStatus,
 )
 from domain.session_manager import db_session_context
-from sqlmodel import Session, col, delete, select, update
-
 from worker import acoustic_features, audio, clap, mert, muq, muq_mulan
 from worker.celery_app import celery_app
 
@@ -134,9 +134,9 @@ def vacuum_library_task(task_id: str, payload: dict[str, Any]) -> None:
                             Path(result.file_path).relative_to(config.MUSIC_NAS_ROOT_DIR)
                         )
 
-                        assert (
-                            result.metadata is not None
-                        ), "Metadata should not be None for STALE status"
+                        assert result.metadata is not None, (
+                            "Metadata should not be None for STALE status"
+                        )
 
                         logger.info(
                             f"'{file_path}' is stale. Updating metadata and deleting embeddings."

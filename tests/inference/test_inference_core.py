@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 import torch
+
 from inference.core.model_manager import ModelManager
 from inference.models.clap_model import CLAPModel
 from inference.models.mert_model import MERTModel
@@ -35,6 +36,11 @@ def mock_model_inits() -> Iterator[None]:
     )
     # Patch CLAP's laion-clap loader
     clap_module_patch = patch("inference.models.clap_model.laion_clap.CLAP_Module")
+    # The models check for their files on disk before loading them
+    mert_exists_patch = patch("inference.models.mert_model.os.path.exists", return_value=True)
+    clap_exists_patch = patch("inference.models.clap_model.os.path.exists", return_value=True)
+    mert_exists_patch.start()
+    clap_exists_patch.start()
 
     mock_mert_model = mert_model_patch.start()
     _ = mert_processor_patch.start()
@@ -51,6 +57,8 @@ def mock_model_inits() -> Iterator[None]:
     mert_model_patch.stop()
     mert_processor_patch.stop()
     clap_module_patch.stop()
+    mert_exists_patch.stop()
+    clap_exists_patch.stop()
 
 
 def test_manager_loads_and_retrieves_model(mock_model_inits: None) -> None:

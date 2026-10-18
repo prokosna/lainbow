@@ -1,7 +1,8 @@
 from collections.abc import Generator
 
-from domain.session_manager import db_session_context
 from sqlmodel import Session
+
+from domain.session_manager import db_session_context
 
 
 def get_db_session() -> Generator[Session, None, None]:

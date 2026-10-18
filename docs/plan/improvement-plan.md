@@ -124,6 +124,11 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
   - 現在の挙動を固定する特性テストを最低 3 本書く（skip 判定、record_progress、vectorize）。
 - 備考: M1 の各 WI は、このフィクスチャを使って**再現テストを先に書く**。
 
+**WI-M0-04 mypy のエラーを 0 にする**（M0-02 で追加。最初に Implementer へ渡す WI）
+- 変更対象: `src/` 全体（型注釈のみ。挙動は変えない）
+- DoD: `uv run mypy src` のエラーを 0 にし、`scripts/mypy-baseline.txt` を 0 にする。`# type: ignore` を新たに追加するときは、エラーコードと理由を書いたものに限る。ロジックの変更はしない。
+- 備考: 内訳（2026-10-18 時点で 41 件）は type-arg 26、unused-ignore 5、arg-type 4、assignment 2、その他 4。
+
 ### M1: 正しさの修正（レビュー結果への対応）
 
 **WI-M1-01 スタックしたタスクの回復（F2）** — Supervisor がテストを先に書く
@@ -272,7 +277,7 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 ## 5. 実行順序と依存関係
 
 ```
-M0-01 → M0-02 → M0-03
+M0-01 → M0-02 → M0-04, M0-03
           ↓
 M1-01, M1-03, M1-04, M1-05, M1-06, M1-08   （互いに独立しているので順に回す）
 M2-03 → M1-02, M1-07                       （registry を先に作ると差分が小さくなる）

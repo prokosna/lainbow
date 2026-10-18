@@ -2,12 +2,12 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from domain.session_manager import init_db_session
 from fastapi import FastAPI
 
 from api.core.db_manager import create_db_and_tables, wait_for_databases_ready
 from api.core.text_embedding import get_text_embedding_service
 from api.v1.api import api_router
+from domain.session_manager import init_db_session
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

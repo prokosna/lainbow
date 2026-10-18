@@ -5,11 +5,11 @@ from typing import Any
 
 import librosa
 import numpy as np
+from sqlmodel import col, func, select
+
 from domain import config, vector_store_utils
 from domain.schemas import SongFeatures, Status
 from domain.session_manager import db_session_context
-from sqlmodel import col, func, select
-
 from worker import audio
 
 logger = logging.getLogger(__name__)

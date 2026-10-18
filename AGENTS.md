@@ -34,6 +34,15 @@
 
 STATE.md の `last_commit` より新しいコミットがあれば、まず STATE.md を実態に合わせます。
 
+### 2-1b. 開発環境とゲート
+
+```sh
+uv sync --group dev --group api --group batch --group inference   # CPU 版 torch。GPU は不要
+scripts/check.sh   # ruff check / ruff format --check / mypy（ベースライン以下）/ pytest / shellcheck
+```
+
+mypy は `scripts/mypy-baseline.txt` の件数を超えたら失敗します。件数が減ったらその値を下げ、上げることはしません。
+
 ### 2-2. 1 つの WI を回すサイクル
 
 ```

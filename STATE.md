@@ -6,16 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: 2d06bfc          # docs: add improvement plan（M0-01 のコミットはこの次）
+last_commit: f34a2d6          # WI-M0-01
 current_milestone: M0
-current_wi: WI-M0-02
+current_wi: WI-M0-04
 branch: improve/m0-agent-workflow
 ```
 
 ## 次の 3 アクション
 
-1. WI-M0-02: `scripts/check.sh` を作り、ruff / mypy のベースラインをここに記録する（Supervisor が直接実装）
-2. WI-M0-03: タスクロジックのテスト基盤（ここから Implementer へのディスパッチを使い始める）
+1. WI-M0-04: mypy のエラーを 0 にする（Implementer へ渡す最初の WI）
+2. WI-M0-03: タスクロジックのテスト基盤（Implementer）
 3. M1 の Work Order を順に発行する（M1-01 は Supervisor がテストを先に書く）
 
 ## 決定事項（2026-10-18 にユーザーが回答）
@@ -50,12 +50,17 @@ branch: improve/m0-agent-workflow
 
 ## ゲートのベースライン
 
-（WI-M0-02 で記録する）
+2026-10-18（WI-M0-02）時点:
+- ruff check: 0（設定の `include = ["src", "tests"]` がファイルに一致しておらず、**これまで ruff は何も検査していなかった**。設定を直し、import 順の 18 件を `--fix` で修正済み）
+- ruff format: 0（`tasks.py` を整形済み）
+- mypy: 41 件（`scripts/mypy-baseline.txt`）。WI-M0-04 で 0 にする
+- pytest: 18 件すべて成功（推論テストはモデルファイルの存在チェックをモックするように修正）
 
 ## Design changes
 
 - 2026-10-18: 計画書の初版を作成（docs/plan/improvement-plan.md）
 - 2026-10-18: Q1〜Q4 の回答を反映。D-A を承認済みにし、D-F（既定モデル）を追加。M2-02 に pinned モデルを、M3-04 に `LAINBOW_ANALYZE_MODELS` を追加
+- 2026-10-18: WI-M0-04（mypy を 0 にする）を追加
 - 2026-10-18: Q3 を変更。CPU と GPU でモデルの構成を揃え、既定はどちらも `muq`（類似曲検索）と `muq_mulan`（自然言語検索）とする。Q5 は解消
 
 ## Review log
@@ -63,3 +68,4 @@ branch: improve/m0-agent-workflow
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M0-02 | PASS | Supervisor（直接実装） | - | check.sh、ruff 設定の修正、pre-commit の整理、推論テストの修正。M0-04 を追加 |

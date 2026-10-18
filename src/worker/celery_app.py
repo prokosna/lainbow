@@ -3,9 +3,10 @@ from typing import Any
 
 from celery import Celery
 from celery.signals import worker_process_init
+from kombu import Exchange, Queue
+
 from domain import config
 from domain.session_manager import init_db_session
-from kombu import Exchange, Queue
 
 faulthandler.enable()
 

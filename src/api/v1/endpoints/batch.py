@@ -1,12 +1,13 @@
 from uuid import UUID
 
+from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlmodel import Session
+
 from api.session_manager_wrap import get_db_session
 from domain import task_manager
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
 from domain.schemas import EmbeddingModel, TaskResult
-from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlmodel import Session
 from worker.tasks import analyze_song_task, scan_library_task, vacuum_library_task
 
 router = APIRouter()
