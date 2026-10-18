@@ -1,3 +1,4 @@
+import logging
 from collections import Counter
 from typing import Any
 
@@ -10,6 +11,8 @@ from api.session_manager_wrap import get_db_session
 from domain import vector_store_utils
 from domain.schemas import EmbeddingModel, Song, SongEmbedding, SongFeatures, TextEmbeddingModel
 from worker import acoustic_features, clap, mert, muq, muq_mulan
+
+logger = logging.getLogger(__name__)
 
 MODEL_CONFIGS = {
     EmbeddingModel.ACOUSTIC_FEATURES: {
@@ -145,7 +148,7 @@ def find_similar_songs(
         default=EmbeddingModel.MUQ,
         description="The embedding model to use for similarity search.",
     ),
-    limit: int = Query(default=10),
+    limit: int = Query(default=10, ge=1, le=200),
     db: Session = Depends(get_db_session),  # noqa: B008
 ) -> SearchSongResult:
     """
@@ -218,7 +221,9 @@ def search_songs_by_natural_language(
         default=TextEmbeddingModel.MUQ_MULAN,
         description="The text embedding model to use for the search.",
     ),
-    limit: int = Query(default=10, description="Maximum number of results to return."),
+    limit: int = Query(
+        default=10, ge=1, le=200, description="Maximum number of results to return."
+    ),
     db: Session = Depends(get_db_session),  # noqa: B008
 ) -> SearchSongResult:
     """
@@ -257,11 +262,11 @@ def search_songs_by_natural_language(
 
     # Check for duplicates
     if len(hit_file_paths) != len(set(hit_file_paths)):
-        print("Duplicate file paths found in search results:")
+        logger.warning("Duplicate file paths found in search results:")
         counts = Counter(hit_file_paths)
         for path, count in counts.items():
             if count > 1:
-                print(f"- {path} (found {count} times)")
+                logger.warning("- %s (found %d times)", path, count)
 
     songs_from_db = db.exec(select(Song).where(col(Song.file_path).in_(hit_file_paths))).all()
     songs_map = {song.file_path: song for song in songs_from_db}

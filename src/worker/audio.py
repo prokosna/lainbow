@@ -265,9 +265,9 @@ def extract_audio_segments(
 
     if num_segments == 1:
         if random_sampling:
-            np.random.seed(42)
+            rng = np.random.default_rng(42)
             max_start_sample = len(audio_data) - segment_samples
-            start_sample = np.random.randint(0, max_start_sample + 1)
+            start_sample = int(rng.integers(0, max_start_sample + 1))
         else:
             # Single segment: extract from the center
             start_sample = int((len(audio_data) - segment_samples) / 2)
@@ -278,7 +278,7 @@ def extract_audio_segments(
     segments = []
 
     if random_sampling:
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
 
         available_start = 0
         available_end = len(audio_data) - segment_samples
@@ -292,7 +292,7 @@ def extract_audio_segments(
                 break
 
             interval_size = available_length // remaining_segments
-            random_offset = np.random.randint(0, interval_size + 1) if interval_size > 0 else 0
+            random_offset = int(rng.integers(0, interval_size + 1)) if interval_size > 0 else 0
             start_sample = available_start + random_offset
             end_sample = start_sample + segment_samples
             segments.append(audio_data[start_sample:end_sample])

@@ -30,7 +30,6 @@ celery_app.conf.update(
     task_default_priority=1,
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
-    visibility_timeout=1800,
     task_queues=(
         Queue(
             "cpu_queue",

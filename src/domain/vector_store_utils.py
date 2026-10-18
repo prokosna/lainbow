@@ -17,9 +17,14 @@ logger = logging.getLogger(__name__)
 
 QDRANT_ID_NAMESPACE = UUID("4e7c4f4d-0a4c-4f4f-9a32-3d7a3f0a6c3d")
 
+_client: QdrantClient | None = None
+
 
 def _get_client() -> QdrantClient:
-    return QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+    global _client
+    if _client is None:
+        _client = QdrantClient(host=config.QDRANT_HOST, port=config.QDRANT_PORT)
+    return _client
 
 
 def _qdrant_point_id_from_file_path(file_path: str) -> UUID:

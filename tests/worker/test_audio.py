@@ -87,23 +87,22 @@ class TestExtractAudioSegments:
                 segment, audio_data[expected_start : expected_start + sample_rate]
             )
 
-    @patch("numpy.random.seed")
-    @patch("numpy.random.randint")
-    def test_single_segment_random_sampling(
-        self, mock_randint: MagicMock, mock_seed: MagicMock
-    ) -> None:
+    @patch("numpy.random.default_rng")
+    def test_single_segment_random_sampling(self, mock_default_rng: MagicMock) -> None:
         """Test single segment with random sampling."""
         sample_rate = 44100
         audio_data = np.arange(sample_rate * 2)  # 2 seconds of audio
 
         # Mock random start position
-        mock_randint.return_value = int(0.3 * sample_rate)  # Start at 0.3 seconds
+        mock_rng = MagicMock()
+        mock_rng.integers.return_value = int(0.3 * sample_rate)  # Start at 0.3 seconds
+        mock_default_rng.return_value = mock_rng
 
         segments = extract_audio_segments(audio_data, sample_rate, 1.0, 1, random_sampling=True)
 
         assert len(segments) == 1
         assert len(segments[0]) == sample_rate
-        mock_seed.assert_called_with(42)
+        mock_default_rng.assert_called_with(42)
         expected_start = int(0.3 * sample_rate)
         np.testing.assert_array_equal(
             segments[0], audio_data[expected_start : expected_start + sample_rate]

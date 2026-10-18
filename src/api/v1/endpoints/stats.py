@@ -7,6 +7,7 @@ from domain.schemas import (
     EmbeddingModel,
     Song,
     SongEmbedding,
+    Status,
     TaskResult,
     TaskStatus,
 )
@@ -33,33 +34,48 @@ def get_db_stats(db: Session = Depends(get_db_session)) -> DBStats:  # noqa: B00
     total_songs = db.exec(select(func.count(col(Song.file_path)))).one()
 
     songs_with_acoustic_features = db.exec(
-        select(func.count(col(Song.file_path)))
-        .join(SongEmbedding, col(Song.file_path) == col(SongEmbedding.file_path), isouter=True)
-        .where(col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES)
+        select(func.count())
+        .select_from(SongEmbedding)
+        .where(
+            col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES,
+            col(SongEmbedding.status) == Status.COMPLETED,
+        )
     ).one()
 
     songs_with_clap = db.exec(
-        select(func.count(col(Song.file_path)))
-        .join(SongEmbedding, col(Song.file_path) == col(SongEmbedding.file_path), isouter=True)
-        .where(col(SongEmbedding.model_name) == EmbeddingModel.CLAP)
+        select(func.count())
+        .select_from(SongEmbedding)
+        .where(
+            col(SongEmbedding.model_name) == EmbeddingModel.CLAP,
+            col(SongEmbedding.status) == Status.COMPLETED,
+        )
     ).one()
 
     songs_with_mert = db.exec(
-        select(func.count(col(Song.file_path)))
-        .join(SongEmbedding, col(Song.file_path) == col(SongEmbedding.file_path), isouter=True)
-        .where(col(SongEmbedding.model_name) == EmbeddingModel.MERT)
+        select(func.count())
+        .select_from(SongEmbedding)
+        .where(
+            col(SongEmbedding.model_name) == EmbeddingModel.MERT,
+            col(SongEmbedding.status) == Status.COMPLETED,
+        )
     ).one()
 
     songs_with_muq = db.exec(
-        select(func.count(col(Song.file_path)))
-        .join(SongEmbedding, col(Song.file_path) == col(SongEmbedding.file_path), isouter=True)
-        .where(col(SongEmbedding.model_name) == EmbeddingModel.MUQ)
+        select(func.count())
+        .select_from(SongEmbedding)
+        .where(
+            col(SongEmbedding.model_name) == EmbeddingModel.MUQ,
+            col(SongEmbedding.status) == Status.COMPLETED,
+        )
     ).one()
 
     songs_with_muq_mulan = db.exec(
-        select(func.count(col(Song.file_path)))
-        .join(SongEmbedding, col(Song.file_path) == col(SongEmbedding.file_path), isouter=True)
-        .where(col(SongEmbedding.model_name) == EmbeddingModel.MUQ_MULAN)
+        select(func.count())
+        .select_from(SongEmbedding)
+        .where(
+            col(SongEmbedding.model_name) == EmbeddingModel.MUQ_MULAN,
+            col(SongEmbedding.status) == Status.COMPLETED,
+        )
     ).one()
 
     pending_tasks = db.exec(

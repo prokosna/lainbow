@@ -8,7 +8,7 @@ from qdrant_client import QdrantClient
 from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, create_engine
 
-from domain import config, schemas  # noqa: F401
+from domain import config, schemas, session_manager  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +31,16 @@ class DBConnectionState:
 
 
 db_state = DBConnectionState()
-engine = create_engine(config.POSTGRES_URL, echo=True)
+engine = create_engine(config.POSTGRES_URL, echo=False)
 
 
 def create_db_and_tables() -> None:
     """Initializes the database and creates tables if they don't exist."""
     logger.info("Checking and creating database tables...")
+    if session_manager.engine is None:
+        raise RuntimeError("Database engine is not initialized. Call init_db_session() first.")
     try:
-        SQLModel.metadata.create_all(engine)
+        SQLModel.metadata.create_all(session_manager.engine)
         logger.info("Database tables are ready.")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
