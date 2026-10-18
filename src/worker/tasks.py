@@ -385,6 +385,10 @@ def scan_library_task(task_id: str, payload: dict[str, Any]) -> None:
 
 @celery_app.task(queue="cpu_queue", ignore_result=True)
 def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
+    """Analyze songs and generate embeddings for requested models.
+
+    total_count counts one unit per song per requested model.
+    """
     start = time.time()
     logger.info(_get_log_message(AnalyzeSongTaskPayload.NAME, task_id, "Received task."))
     try:
@@ -535,7 +539,6 @@ def extract_acoustic_features(task_id: str, start_time: float, file_paths: list[
     """
     Extracts acoustic features for a chunk of songs and saves them to the database.
     """
-    processed_paths = []
     try:
         with db_session_context() as db:
             for file_path in file_paths:
@@ -544,11 +547,7 @@ def extract_acoustic_features(task_id: str, start_time: float, file_paths: list[
                 if features:
                     db.exec(delete(SongFeatures).where(SongFeatures.file_path == file_path))  # type: ignore
                     db.add(features)
-                    processed_paths.append(file_path)
                     db.commit()
-        record_progress(
-            task_id=task_id, start_time=start_time, processed_count=len(processed_paths)
-        )
         return True
     except Exception as e:
         _handle_exception("Extract acoustic features", task_id, start_time, e)
@@ -813,10 +812,13 @@ def record_progress(task_id: str, start_time: float, processed_count: int) -> No
             logger.warning(f"Could not find task {task_id} to record progress, or details not set.")
             return
 
+        if task.status == TaskStatus.SUCCESS:
+            return
+
         current_processed = task.details.get("processed_count", 0) + processed_count
         total_count = task.details.get("total_count", 0)
 
-        if current_processed == total_count:
+        if current_processed >= total_count:
             task_manager.mark_task_as_success(
                 db,
                 task_id=UUID(task_id),
@@ -826,7 +828,9 @@ def record_progress(task_id: str, start_time: float, processed_count: int) -> No
             )
             return
 
-        new_progress = int((current_processed / total_count) * 100) if total_count > 0 else 0
+        new_progress = (
+            min(100, int((current_processed / total_count) * 100)) if total_count > 0 else 0
+        )
 
         task.progress = new_progress
         task.details = {"processed_count": current_processed, "total_count": total_count}

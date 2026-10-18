@@ -6,16 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: f31957c          # WI-M0-03
+last_commit: 41f0d18          # WI-M1-01
 current_milestone: M1
-current_wi: WI-M1-03
+current_wi: WI-M1-04
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. M1-03, M1-04, M1-05, M1-06, M1-08 を順に発行する
-2. （M1-01 は完了）
+1. M1-04, M1-05, M1-06, M1-08 を順に発行する
+2. （M1-01 と M1-03 は完了）
 3. M2-03（モデルの registry）→ M1-02 / M1-07
 
 ## 決定事項（2026-10-18 にユーザーが回答）
@@ -69,6 +69,7 @@ branch: improve/m1-correctness
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M1-03 | PASS | gemini-3.8-flash-high | 1 | 音響特徴量は vectorize の段階でだけ数える。進捗は 100 で頭打ちにし、完了判定は `>=` |
 | 2026-10-18 | WI-M1-01 | PASS | gemini-3.8-flash-high | 1 | 約 5 分。Supervisor が先に 5 本のテストを書いた。stale は既定 1800 秒。CPU 向けには M3-04 で 7200 秒にする |
 | 2026-10-18 | WI-M0-03 | PASS | gemini-3.8-flash-high | 1 | 約 8 分。SQLite のハーネス、21 passed / 2 xfailed（F2, F3）。本番コードの変更は許可した 2 点のみ（JSON variant。Postgres の DDL が JSONB のままであることを確認済み。`UUID(task_id)` での比較） |
 | 2026-10-18 | WI-M0-04 | PASS | gemini-3.8-flash-high | 1 | 約 9 分。型注釈のみ。挙動の差分は 2 点（Qdrant の delete に明示的な PointIdsList を渡す、query_vector が None のベクトルで None を返す）で、どちらも無害 |
