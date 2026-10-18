@@ -34,6 +34,7 @@ class AnalyzeSongTaskPayload(PayloadBase):
     models: list[str] = Field(
         default_factory=lambda: [EmbeddingModel.MUQ.value, EmbeddingModel.MUQ_MULAN.value]
     )
+    retry_failed: bool = False
 
 
 class VacuumTaskPayload(PayloadBase):

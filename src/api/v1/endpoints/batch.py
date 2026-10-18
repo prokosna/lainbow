@@ -78,6 +78,7 @@ class RunAnalysisRequest(BaseModel):
     models: list[str] = Field(
         default_factory=lambda: [EmbeddingModel.MUQ.value, EmbeddingModel.MUQ_MULAN.value]
     )
+    retry_failed: bool = False
 
 
 @router.post("/analyze/run", response_model=TaskResult, summary="Run song analysis")
@@ -91,7 +92,11 @@ def run_analysis(
     db_task = None
     try:
         db_task = task_manager.create_task(db, name=AnalyzeSongTaskPayload.NAME)
-        task_payload = AnalyzeSongTaskPayload(task_id=db_task.id, models=request.models)
+        task_payload = AnalyzeSongTaskPayload(
+            task_id=db_task.id,
+            models=request.models,
+            retry_failed=request.retry_failed,
+        )
 
         analyze_song_task.delay(task_id=str(db_task.id), payload=task_payload.model_dump())
         return db_task

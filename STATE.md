@@ -6,9 +6,9 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: 281e946          # WI-M1-08
+last_commit: e06d33f          # WI-M2-03
 current_milestone: M1
-current_wi: WI-M1-02
+current_wi: WI-M1-07
 branch: improve/m1-correctness
 ```
 
@@ -68,6 +68,7 @@ branch: improve/m1-correctness
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M1-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: full 戦略が推論エラーも曲単位で握りつぶし、推論サーバーが停止すると全曲が FAILED になっていた。読み込みと推論の失敗を分離して解消。`retry_failed` を追加（既定の挙動は変えない） |
 | 2026-10-18 | WI-M2-03 | PASS | gemini-3.8-flash-high | 1 | 10 分超（Bash の上限でバックグラウンドに移行）。-774/+66 行。registry の値はテストで固定。F3 は xfail のまま |
 | 2026-10-18 | WI-M1-08 | PASS | gemini-3.8-flash-high | 1 | /stats は COMPLETED のみ数える（Sola MPD に表示される件数は正しい値まで減る）。limit の範囲検証、Qdrant client の再利用、echo=False、visibility_timeout の削除、default_rng。test_audio の random のテスト 1 件を許可の範囲内で修正 |
 | 2026-10-18 | WI-M1-06 | PASS | gemini-3.8-flash-high | 1 | 推論は threadpool で実行し、ModelManager は RLock で直列化。/health が推論中も応答することをテストで確認 |

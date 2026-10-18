@@ -4,7 +4,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
 from sqlmodel import Session, col, select, text
 
 from domain import task_manager
@@ -102,7 +101,6 @@ def test_generate_song_embedding_success(
         assert len(fake_vector_store[muq_collection][fp]) == 1024
 
 
-@pytest.mark.xfail(strict=True, reason="F3: partial failure in batch fails whole chunk")
 def test_partial_failure_does_not_fail_whole_chunk(
     db: Session,
     music_root: Path,

@@ -9,7 +9,7 @@ from uuid import UUID
 
 from celery import chain, chord, group
 from celery.canvas import Signature
-from sqlmodel import Session, col, delete, select, update
+from sqlmodel import Session, col, delete, or_, select, update
 
 from domain import config, task_manager, vector_store_utils
 from domain.embedding_models import INFERENCE_MODELS, MODEL_SPECS
@@ -426,6 +426,40 @@ def scan_library_task(task_id: str, payload: dict[str, Any]) -> None:
             )
 
 
+def _select_songs_for_model(
+    db: Session, model: EmbeddingModel | str, retry_failed: bool = False
+) -> list[Song]:
+    """Select songs that need analysis or embedding for a model."""
+    model_enum = EmbeddingModel(model) if isinstance(model, str) else model
+    if retry_failed:
+        has_no_row = (
+            ~select(SongEmbedding)
+            .where(
+                SongEmbedding.file_path == Song.file_path,
+                SongEmbedding.model_name == model_enum,
+            )
+            .exists()
+        )
+        has_failed_row = (
+            select(SongEmbedding)
+            .where(
+                SongEmbedding.file_path == Song.file_path,
+                SongEmbedding.model_name == model_enum,
+                SongEmbedding.status == Status.FAILED,
+            )
+            .exists()
+        )
+        stmt = select(Song).where(or_(has_no_row, has_failed_row))
+    else:
+        stmt = select(Song).where(
+            ~select(SongEmbedding)
+            .where(SongEmbedding.file_path == Song.file_path)
+            .where(SongEmbedding.model_name == model_enum)
+            .exists()
+        )
+    return list(db.exec(stmt).all())
+
+
 @celery_app.task(queue="cpu_queue", ignore_result=True)
 def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
     """Analyze songs and generate embeddings for requested models.
@@ -452,28 +486,14 @@ def analyze_song_task(task_id: str, payload: dict[str, Any]) -> None:
             target_songs: dict[EmbeddingModel, list[Song]] = {model: [] for model in models}
 
             if EmbeddingModel.ACOUSTIC_FEATURES in models:
-                target_songs[EmbeddingModel.ACOUSTIC_FEATURES] = list(
-                    db.exec(
-                        select(Song).where(
-                            ~select(SongEmbedding)
-                            .where(SongEmbedding.file_path == Song.file_path)
-                            .where(SongEmbedding.model_name == EmbeddingModel.ACOUSTIC_FEATURES)
-                            .exists()
-                        )
-                    ).all()
+                target_songs[EmbeddingModel.ACOUSTIC_FEATURES] = _select_songs_for_model(
+                    db, EmbeddingModel.ACOUSTIC_FEATURES, retry_failed=task_payload.retry_failed
                 )
 
             for model_type in INFERENCE_MODELS:
                 if model_type in models:
-                    target_songs[model_type] = list(
-                        db.exec(
-                            select(Song).where(
-                                ~select(SongEmbedding)
-                                .where(SongEmbedding.file_path == Song.file_path)
-                                .where(SongEmbedding.model_name == model_type)
-                                .exists()
-                            )
-                        ).all()
+                    target_songs[model_type] = _select_songs_for_model(
+                        db, model_type, retry_failed=task_payload.retry_failed
                     )
 
             total_count = sum(len(songs) for songs in target_songs.values())
@@ -603,21 +623,40 @@ def vectorize_song_features(
             songs_to_vectorize = db.exec(
                 select(SongFeatures).where(col(SongFeatures.file_path).in_(file_paths))
             ).all()
-            target_file_paths = [song.file_path for song in songs_to_vectorize]
+            features_by_path = {song.file_path: song for song in songs_to_vectorize}
 
             vector_store_data = [
                 acoustic_features.create_feature_vector_data(sf, stats) for sf in songs_to_vectorize
             ]
-            new_embedding_records = [
-                SongEmbedding(
-                    file_path=file_path,
-                    model_name=EmbeddingModel.ACOUSTIC_FEATURES,
-                    status=Status.COMPLETED,
-                    milvus_collection_name=acoustic_features.COLLECTION_NAME,
-                    dimension=acoustic_features.EMBEDDING_DIMENSION,
-                )
-                for file_path in target_file_paths
-            ]
+            new_embedding_records: list[SongEmbedding] = []
+            for file_path in file_paths:
+                if file_path in features_by_path:
+                    new_embedding_records.append(
+                        SongEmbedding(
+                            file_path=file_path,
+                            model_name=EmbeddingModel.ACOUSTIC_FEATURES,
+                            status=Status.COMPLETED,
+                            milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                            dimension=acoustic_features.EMBEDDING_DIMENSION,
+                        )
+                    )
+                else:
+                    logger.warning(
+                        _get_log_message(
+                            "Vectorize song features",
+                            task_id,
+                            f"Missing SongFeatures for '{file_path}', marking as FAILED.",
+                        )
+                    )
+                    new_embedding_records.append(
+                        SongEmbedding(
+                            file_path=file_path,
+                            model_name=EmbeddingModel.ACOUSTIC_FEATURES,
+                            status=Status.FAILED,
+                            milvus_collection_name=acoustic_features.COLLECTION_NAME,
+                            dimension=None,
+                        )
+                    )
 
             if vector_store_data:
                 acoustic_features.create_collection_if_not_exists()
@@ -629,15 +668,13 @@ def vectorize_song_features(
             if new_embedding_records:
                 db.exec(
                     delete(SongEmbedding)
-                    .where(col(SongEmbedding.file_path).in_(target_file_paths))
+                    .where(col(SongEmbedding.file_path).in_(file_paths))
                     .where(col(SongEmbedding.model_name) == EmbeddingModel.ACOUSTIC_FEATURES)
                 )
                 db.add_all(new_embedding_records)
                 db.commit()
 
-        record_progress(
-            task_id=task_id, start_time=start_time, processed_count=len(target_file_paths)
-        )
+        record_progress(task_id=task_id, start_time=start_time, processed_count=len(file_paths))
         return True
     except Exception as e:
         _handle_exception("Vectorize song features", task_id, start_time, e)
@@ -671,27 +708,6 @@ def generate_song_embedding(
     full_audio_paths = [Path(config.MUSIC_NAS_ROOT_DIR) / file_path for file_path in file_paths]
     try:
         embeddings_dict = embeddings.get_audio_embeddings_batch(spec, full_audio_paths)
-        vector_store_data.extend(
-            [
-                {
-                    "file_path": file_path,
-                    "embedding": embeddings_dict[str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)],
-                }
-                for file_path in file_paths
-            ]
-        )
-        new_embedding_records.extend(
-            [
-                SongEmbedding(
-                    file_path=file_path,
-                    model_name=model_name_enum,
-                    status=Status.COMPLETED,
-                    milvus_collection_name=spec.collection_name,
-                    dimension=spec.dimension,
-                )
-                for file_path in file_paths
-            ]
-        )
     except Exception as e:
         _handle_exception(
             "Generate song embedding",
@@ -703,9 +719,46 @@ def generate_song_embedding(
         )
         return False
 
+    for file_path in file_paths:
+        full_audio_path_str = str(Path(config.MUSIC_NAS_ROOT_DIR) / file_path)
+        if full_audio_path_str in embeddings_dict:
+            vector_store_data.append(
+                {
+                    "file_path": file_path,
+                    "embedding": embeddings_dict[full_audio_path_str],
+                }
+            )
+            new_embedding_records.append(
+                SongEmbedding(
+                    file_path=file_path,
+                    model_name=model_name_enum,
+                    status=Status.COMPLETED,
+                    milvus_collection_name=spec.collection_name,
+                    dimension=spec.dimension,
+                )
+            )
+        else:
+            logger.warning(
+                _get_log_message(
+                    "Generate song embedding",
+                    task_id,
+                    f"Failed to generate {model_name_enum.value} embedding for '{file_path}' (omitted from batch result).",
+                )
+            )
+            new_embedding_records.append(
+                SongEmbedding(
+                    file_path=file_path,
+                    model_name=model_name_enum,
+                    status=Status.FAILED,
+                    milvus_collection_name=spec.collection_name,
+                    dimension=None,
+                )
+            )
+
     try:
-        embeddings.ensure_vector_collection_ready(spec)
-        vector_store_utils.upsert_vectors(spec.collection_name, vector_store_data)
+        if vector_store_data:
+            embeddings.ensure_vector_collection_ready(spec)
+            vector_store_utils.upsert_vectors(spec.collection_name, vector_store_data)
         with db_session_context() as db:
             db.exec(
                 delete(SongEmbedding)

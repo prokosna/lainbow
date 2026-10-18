@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import librosa
 import numpy as np
@@ -124,7 +124,7 @@ def _get_full_embeddings_batch(
     if not audio_paths:
         return {}
 
-    results: dict[str, npt.NDArray[np.float32]] = {}
+    loaded_audios: list[tuple[Path, npt.NDArray[Any]]] = []
     for audio_path in audio_paths:
         try:
             audio_file = audio.load_audio_for_librosa(audio_path, sr=spec.sample_rate)
@@ -134,7 +134,16 @@ def _get_full_embeddings_batch(
                 mono=True,
                 duration=config.MUQ_FILE_DURATION_SEC,
             )
+            loaded_audios.append((audio_path, audio_data))
+        except Exception as e:
+            logger.error(f"Failed to process {audio_path} for {spec.name.value}, skipping: {e}")
 
+    if not loaded_audios:
+        return {}
+
+    try:
+        results: dict[str, npt.NDArray[np.float32]] = {}
+        for audio_path, audio_data in loaded_audios:
             audio_batch = np.expand_dims(audio_data, axis=0)
             embedding = run_inference(spec.name.value, audio_batch)
 
@@ -144,10 +153,10 @@ def _get_full_embeddings_batch(
             normalized_embedding = final_embedding / norm if norm > 0 else final_embedding
             results[str(audio_path)] = cast(npt.NDArray[np.float32], normalized_embedding)
 
-        except Exception as e:
-            logger.error(f"Failed to process {audio_path} for {spec.name.value}, skipping: {e}")
+        return results
 
-    return results
+    except Exception as e:
+        raise Exception(f"Failed to get {spec.name.value} embeddings for batch: {e}") from e
 
 
 def get_audio_embeddings_batch(
