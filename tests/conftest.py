@@ -63,9 +63,6 @@ def fake_vector_store(
     def fake_create_collection_if_not_exists(
         collection_name: str,
         dimension: int,
-        id_field: str,
-        vector_field: str,
-        index_params: dict[str, Any],
     ) -> None:
         if collection_name not in store:
             store[collection_name] = {}
@@ -90,7 +87,6 @@ def fake_vector_store(
     def fake_delete_vectors(
         collection_name: str,
         ids: list[str],
-        id_field: str,
     ) -> None:
         col = store.get(collection_name)
         if col is not None:
@@ -100,7 +96,6 @@ def fake_vector_store(
     def fake_query_vector(
         collection_name: str,
         vector_id: str,
-        vector_field: str,
     ) -> list[float] | None:
         vec = store.get(collection_name, {}).get(vector_id)
         return list(vec) if vec is not None else None
@@ -108,7 +103,6 @@ def fake_vector_store(
     def fake_search_vectors(
         collection_name: str,
         query_vector: list[float],
-        vector_field: str,
         limit: int,
     ) -> list[dict[str, Any]]:
         col = store.get(collection_name, {})

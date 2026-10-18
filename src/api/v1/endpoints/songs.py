@@ -131,7 +131,6 @@ def find_similar_songs(
     query_vec = vector_store_utils.query_vector(
         collection_name=collection_name,
         vector_id=file_path,
-        vector_field="embedding",
     )
     if not query_vec:
         raise HTTPException(
@@ -142,7 +141,6 @@ def find_similar_songs(
     search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=query_vec,
-        vector_field="embedding",
         limit=limit + 1,
     )
 
@@ -214,7 +212,6 @@ def search_songs_by_natural_language(
     search_results = vector_store_utils.search_vectors(
         collection_name=collection_name,
         query_vector=text_embed.tolist(),
-        vector_field="embedding",
         limit=limit,
     )
 

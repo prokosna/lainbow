@@ -28,9 +28,6 @@ def ensure_vector_collection_ready(spec: ModelSpec) -> None:
         vector_store_utils.create_collection_if_not_exists(
             collection_name=spec.collection_name,
             dimension=spec.dimension,
-            id_field="file_path",
-            vector_field="embedding",
-            index_params={},
         )
         logger.info(f"Vector collection '{spec.collection_name}' is ready.")
         _ready_collections.add(spec.collection_name)
@@ -52,7 +49,6 @@ def delete_vectors(spec: ModelSpec, file_paths: list[str]) -> None:
         vector_store_utils.delete_vectors(
             collection_name=spec.collection_name,
             ids=file_paths,
-            id_field="file_path",
         )
         logger.info(f"Successfully deleted vectors for {len(file_paths)} file paths.")
     except Exception as e:

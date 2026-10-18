@@ -31,27 +31,14 @@ def _qdrant_point_id_from_file_path(file_path: str) -> UUID:
     return uuid5(QDRANT_ID_NAMESPACE, file_path)
 
 
-def disconnect_from_vector_store() -> None:
-    """No-op for compatibility (Qdrant client is stateless)."""
-    return
-
-
 def create_collection_if_not_exists(
     collection_name: str,
     dimension: int,
-    id_field: str,
-    vector_field: str,
-    index_params: dict[str, Any],
 ) -> None:
     """
     Checks if the collection exists, and if not, creates it with the defined schema and index.
     Assumes that the vector store is available.
     """
-    # Deprecated: Used to be used for Milvus.
-    _ = id_field
-    _ = vector_field
-    _ = index_params
-
     client = _get_client()
     if client.collection_exists(collection_name=collection_name):
         logger.debug(f"Collection '{collection_name}' already exists.")
@@ -116,7 +103,6 @@ def upsert_vectors(collection_name: str, data: list[dict[str, Any]]) -> None:
 def delete_vectors(
     collection_name: str,
     ids: list[str],
-    id_field: str,
 ) -> None:
     """
     Deletes vectors from the vector collection based on their IDs.
@@ -124,14 +110,10 @@ def delete_vectors(
     Args:
         collection_name: The name of the collection to delete from.
         ids: A list of string IDs to delete.
-        id_field: The name of the primary key field.
     """
     if not ids:
         logger.info("No vectors to delete.")
         return
-
-    # Deprecated: Used to be used for Milvus.
-    _ = id_field
 
     client = _get_client()
     if not client.collection_exists(collection_name=collection_name):
@@ -151,7 +133,6 @@ def delete_vectors(
 def query_vector(
     collection_name: str,
     vector_id: str,
-    vector_field: str,
 ) -> list[float] | None:
     """
     Queries for a single vector by its ID.
@@ -159,7 +140,6 @@ def query_vector(
     Args:
         collection_name: The name of the collection to query from.
         vector_id: The ID of the vector to retrieve.
-        vector_field: The name of the vector field.
 
     Returns:
         The vector if found, otherwise None.
@@ -181,9 +161,7 @@ def query_vector(
 
     vec_data: Any = records[0].vector
     if isinstance(vec_data, dict):
-        vec_data = (
-            vec_data[vector_field] if vector_field in vec_data else next(iter(vec_data.values()))
-        )
+        vec_data = next(iter(vec_data.values())) if vec_data else None
     if vec_data is None:
         return None
     return [float(x) for x in vec_data]
@@ -192,7 +170,6 @@ def query_vector(
 def search_vectors(
     collection_name: str,
     query_vector: list[float],
-    vector_field: str,
     limit: int,
 ) -> list[dict[str, Any]]:
     """
@@ -201,15 +178,11 @@ def search_vectors(
     Args:
         collection_name: The name of the collection to search in.
         query_vector: The vector to search for.
-        vector_field: The name of the vector field.
         limit: The number of results to return.
 
     Returns:
         A list of search results. ({"file_path": xx, "distance": yy})
     """
-    # Deprecated: Used to be used for Milvus.
-    _ = vector_field
-
     client = _get_client()
     if not client.collection_exists(collection_name=collection_name):
         return []

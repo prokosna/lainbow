@@ -6,17 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: 1f5145a          # WI-M1-02
+last_commit: cad611e          # WI-M1-07
 current_milestone: M2
-current_wi: WI-M2-04
+current_wi: WI-M2-05
 branch: improve/m1-correctness
 ```
 
 ## 次の 3 アクション
 
-1. WI-M2-04: Milvus の残骸を削除する（Work Order 作成済み）
-2. WI-M2-05: Alembic の導入（Critical Module。Supervisor がテストを先に書く）
-3. WI-M2-01（アクセラレータ別の torch）→ WI-M2-02（テキスト埋め込みの移設と pinned モデル）
+1. WI-M2-05: Alembic の導入（Critical Module。Supervisor がテストを先に書く）
+2. WI-M2-01（アクセラレータ別の torch）→ WI-M2-02（テキスト埋め込みの移設と pinned モデル）
 
 M1 はすべて完了（2026-10-18）。
 
@@ -71,6 +70,7 @@ M1 はすべて完了（2026-10-18）。
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M2-04 | PASS | gemini-3.8-flash-high | 1 | -502 行。pymilvus を削除し、移行スクリプトを tools/ へ移動。README の 1 文を Supervisor が言い換え |
 | 2026-10-18 | WI-M1-07 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: 全対象を 1 回の `in_()` に渡していたため、約 6.5 万曲を超えると psycopg のパラメータ上限に達する。1000 件ずつのチャンクで解消。コレクション全体を同じ統計で再 upsert する |
 | 2026-10-18 | WI-M1-02 | PASS | gemini-3.8-flash-high | 2 | REVISE 1 回: full 戦略が推論エラーも曲単位で握りつぶし、推論サーバーが停止すると全曲が FAILED になっていた。読み込みと推論の失敗を分離して解消。`retry_failed` を追加（既定の挙動は変えない） |
 | 2026-10-18 | WI-M2-03 | PASS | gemini-3.8-flash-high | 1 | 10 分超（Bash の上限でバックグラウンドに移行）。-774/+66 行。registry の値はテストで固定。F3 は xfail のまま |

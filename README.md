@@ -106,10 +106,10 @@ docker compose -f docker-compose.database.yaml up -d
 ### Migrating from Milvus to Qdrant (Optional)
 If you already have embeddings stored in Milvus and want to migrate them to Qdrant:
 
-1. Start both Milvus and Qdrant on the database server (uncomment the Milvus services in `docker-compose.database.yaml`).
+1. Start Qdrant and your existing Milvus deployment on the database server. The Milvus services were removed from this repository's compose file; use `docker-compose.database.yaml` from commit `600efa1` or earlier to start them.
 2. Run the migration script:
    ```bash
-   uv run --group batch python migrate_milvus_to_qdrant.py
+   uv run --with pymilvus --with qdrant-client tools/migrate_milvus_to_qdrant.py
    ```
 
 After the migration finishes, you can disable Milvus again and keep using Qdrant.

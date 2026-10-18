@@ -1,3 +1,4 @@
+# Run with: uv run --with pymilvus --with qdrant-client tools/migrate_milvus_to_qdrant.py
 import argparse
 import os
 import sys

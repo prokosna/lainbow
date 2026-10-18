@@ -17,13 +17,6 @@ logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = MODEL_SPECS[EmbeddingModel.ACOUSTIC_FEATURES].collection_name
 EMBEDDING_DIMENSION = MODEL_SPECS[EmbeddingModel.ACOUSTIC_FEATURES].dimension
-ID_FIELD = "file_path"
-VECTOR_FIELD = "feature_vector"
-INDEX_PARAMS = {
-    "metric_type": "COSINE",
-    "index_type": "HNSW",
-    "params": {"M": 16, "efConstruction": 256},
-}
 FEATURE_ORDER = (
     [
         "bpm",
@@ -254,9 +247,6 @@ def create_collection_if_not_exists() -> None:
     vector_store_utils.create_collection_if_not_exists(
         collection_name=COLLECTION_NAME,
         dimension=EMBEDDING_DIMENSION,
-        id_field=ID_FIELD,
-        vector_field=VECTOR_FIELD,
-        index_params=INDEX_PARAMS,
     )
     logger.info(f"Vector collection '{COLLECTION_NAME}' is ready.")
 
@@ -275,7 +265,6 @@ def delete_vectors(file_paths: list[str]) -> None:
         vector_store_utils.delete_vectors(
             collection_name=COLLECTION_NAME,
             ids=file_paths,
-            id_field=ID_FIELD,
         )
         logger.info(f"Successfully deleted vectors for {len(file_paths)} file paths.")
     except Exception as e:
@@ -311,6 +300,6 @@ def create_feature_vector_data(
     normalized_vector = standardized_vector if norm == 0 else standardized_vector / norm
 
     return {
-        ID_FIELD: song_features.file_path,
-        VECTOR_FIELD: normalized_vector.tolist(),
+        "file_path": song_features.file_path,
+        "feature_vector": normalized_vector.tolist(),
     }
