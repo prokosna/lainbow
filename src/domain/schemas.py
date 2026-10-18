@@ -3,6 +3,7 @@ import enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
+from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
 
@@ -211,4 +212,7 @@ class TaskResult(RecordBaseIndexed, table=True):
     elapsed_time: int | None = Field(default=None, description="Elapsed time in seconds.")
     message: str | None = Field(default=None)
     traceback: str | None = Field(default=None)
-    details: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB))
+    details: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSON().with_variant(JSONB(), "postgresql")),
+    )

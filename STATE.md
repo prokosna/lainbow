@@ -6,16 +6,16 @@
 
 ```yaml
 last_updated: 2026-10-18
-last_commit: 2ff32e3          # WI-M0-02
-current_milestone: M0
-current_wi: WI-M0-03
+last_commit: 396188e          # WI-M0-04
+current_milestone: M1
+current_wi: WI-M1-01
 branch: improve/m0-agent-workflow
 ```
 
 ## 次の 3 アクション
 
-1. WI-M0-03: タスクロジックのテスト基盤（Implementer）
-2. M1 の Work Order を順に発行する（M1-01 は Supervisor がテストを先に書く）
+1. WI-M1-01: Supervisor が再現テストを先に書き（tests/worker/test_tasks.py の F2 の xfail を拡張）、Implementer に渡す
+2. M1-03, M1-04, M1-05, M1-06, M1-08 を順に発行する
 3. M2-03（モデルの registry）→ M1-02 / M1-07
 
 ## 決定事項（2026-10-18 にユーザーが回答）
@@ -60,6 +60,7 @@ branch: improve/m0-agent-workflow
 
 - 2026-10-18: 計画書の初版を作成（docs/plan/improvement-plan.md）
 - 2026-10-18: Q1〜Q4 の回答を反映。D-A を承認済みにし、D-F（既定モデル）を追加。M2-02 に pinned モデルを、M3-04 に `LAINBOW_ANALYZE_MODELS` を追加
+- 2026-10-18: WI-M0-03 の設計を変更（テストに SQLite を使い、`TaskResult.details` を JSON / JSONB の variant にする）
 - 2026-10-18: WI-M0-04（mypy を 0 にする）を追加
 - 2026-10-18: Q3 を変更。CPU と GPU でモデルの構成を揃え、既定はどちらも `muq`（類似曲検索）と `muq_mulan`（自然言語検索）とする。Q5 は解消
 
@@ -68,5 +69,6 @@ branch: improve/m0-agent-workflow
 | 日付 | WI | 判定 | モデル | 回数 | メモ |
 |---|---|---|---|---|---|
 | 2026-10-18 | WI-M0-01 | PASS | Supervisor（直接実装） | - | dispatch / scout スクリプトを作成。shellcheck で問題なし、probe で動作確認 |
+| 2026-10-18 | WI-M0-03 | PASS | gemini-3.8-flash-high | 1 | 約 8 分。SQLite のハーネス、21 passed / 2 xfailed（F2, F3）。本番コードの変更は許可した 2 点のみ（JSON variant。Postgres の DDL が JSONB のままであることを確認済み。`UUID(task_id)` での比較） |
 | 2026-10-18 | WI-M0-04 | PASS | gemini-3.8-flash-high | 1 | 約 9 分。型注釈のみ。挙動の差分は 2 点（Qdrant の delete に明示的な PointIdsList を渡す、query_vector が None のベクトルで None を返す）で、どちらも無害 |
 | 2026-10-18 | WI-M0-02 | PASS | Supervisor（直接実装） | - | check.sh、ruff 設定の修正、pre-commit の整理、推論テストの修正。M0-04 を追加 |

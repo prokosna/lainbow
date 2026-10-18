@@ -118,10 +118,15 @@ compose.dev.yaml   … src の bind mount と --reload（開発用）
 - ゲート: `scripts/check.sh` が実行でき、ベースラインが記録されていること。
 
 **WI-M0-03 タスクロジックのテスト基盤**
-- 変更対象: `tests/conftest.py`, `tests/worker/test_tasks_*.py`
-- DoD:
-  - `db_session_context`、`vector_store_utils`、`inference_client.run_inference` を差し替えるフィクスチャを作る。DB には SQLite を使わない（JSONB があるため）。Docker が使える場合だけ Postgres を使うテストは `@pytest.mark.postgres` を付けて既定ではスキップする。
-  - 現在の挙動を固定する特性テストを最低 3 本書く（skip 判定、record_progress、vectorize）。
+- 変更対象: `src/domain/schemas.py`（1 行）, `tests/conftest.py`, `tests/worker/test_tasks.py`
+- 設計（2026-10-18 に変更。当初の「SQLite を使わない」は撤回）:
+  - DB はインメモリの SQLite（StaticPool）を使う。`TaskResult.details` を `JSON().with_variant(JSONB(), "postgresql")` に変える。Postgres の DDL は JSONB のままなので I2 に反しない。
+  - `domain.session_manager.SessionFactory` を monkeypatch で差し替え、`db_session_context` をそのまま使う。
+  - Qdrant は `domain.vector_store_utils` の関数を、メモリ上の偽実装に差し替える。推論は各ワーカーモジュールの `run_inference` を、次元の合った決定的なベクトルを返す偽実装に差し替える。
+  - 音声は tmp_path に生成した短いサイン波の WAV を使い、`domain.config.MUSIC_NAS_ROOT_DIR` を差し替える。
+  - Celery のタスクは関数として同期的に呼ぶ。`chord` などの canvas はモックする。
+  - Postgres が必要なテストは `@pytest.mark.postgres` を付け、既定ではスキップする。
+- DoD: 現在の正しい挙動を固定するテスト（スキップ判定、record_progress の加算と完了、埋め込み生成の成功）と、既知の不具合の再現テスト（F2: 古い RUNNING が新しいタスクをブロックする、F3: 1 曲の失敗でチャンク全体が失敗する）を書く。再現テストは `xfail(strict=True)` にし、M1 の各 WI で xfail を外す。
 - 備考: M1 の各 WI は、このフィクスチャを使って**再現テストを先に書く**。
 
 **WI-M0-04 mypy のエラーを 0 にする**（M0-02 で追加。最初に Implementer へ渡す WI）

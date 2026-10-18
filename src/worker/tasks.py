@@ -787,7 +787,7 @@ def record_progress(task_id: str, start_time: float, processed_count: int) -> No
     """Records the progress of a parent task in a transaction-safe way."""
     with db_session_context() as db:
         task = db.exec(
-            select(TaskResult).where(TaskResult.id == task_id).with_for_update()
+            select(TaskResult).where(TaskResult.id == UUID(task_id)).with_for_update()
         ).one_or_none()
 
         if not task or not task.details:
@@ -825,7 +825,7 @@ def finalize_analysis_task(_results: list[Any], task_id: str, start_time: float)
     """
     with db_session_context() as db:
         task = db.exec(
-            select(TaskResult).where(TaskResult.id == task_id).with_for_update()
+            select(TaskResult).where(TaskResult.id == UUID(task_id)).with_for_update()
         ).one_or_none()
 
         if not task:
