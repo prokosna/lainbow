@@ -5,9 +5,9 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from api.session_manager_wrap import get_db_session
-from domain import task_manager
+from domain import config, task_manager
 from domain.messages import AnalyzeSongTaskPayload, ScanTaskPayload, VacuumTaskPayload
-from domain.schemas import EmbeddingModel, TaskResult
+from domain.schemas import TaskResult
 from worker.celery_app import celery_app
 
 router = APIRouter()
@@ -83,9 +83,7 @@ def run_vacuum(
 
 
 class RunAnalysisRequest(BaseModel):
-    models: list[str] = Field(
-        default_factory=lambda: [EmbeddingModel.MUQ.value, EmbeddingModel.MUQ_MULAN.value]
-    )
+    models: list[str] = Field(default_factory=lambda: list(config.ANALYZE_MODELS))
     retry_failed: bool = False
 
 

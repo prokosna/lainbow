@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .schemas import EmbeddingModel
+from domain import config
 
 
 class PayloadBase(BaseModel):
@@ -31,9 +31,7 @@ class AnalyzeSongTaskPayload(PayloadBase):
     """Payload for the analyze song task."""
 
     NAME: ClassVar[Literal["Analyze Songs"]] = "Analyze Songs"
-    models: list[str] = Field(
-        default_factory=lambda: [EmbeddingModel.MUQ.value, EmbeddingModel.MUQ_MULAN.value]
-    )
+    models: list[str] = Field(default_factory=lambda: list(config.ANALYZE_MODELS))
     retry_failed: bool = False
 
 
