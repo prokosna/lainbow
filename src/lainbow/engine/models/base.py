@@ -25,6 +25,10 @@ class AudioModel(Protocol):
         """Load weights onto the device."""
         ...
 
+    def unload(self) -> None:
+        """Release the weights (and cached device memory); ``load`` can be called again."""
+        ...
+
     def embed(self, clips: Sequence[npt.NDArray[np.float32]]) -> EmbedResult:
         """Embed the clips of one track."""
         ...

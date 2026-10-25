@@ -6,10 +6,12 @@ import signal
 import sys
 import threading
 
+from lainbow.core.models import MODELS, Purpose
 from lainbow.core.settings import EngineSettings, start
 from lainbow.engine import text_api
 from lainbow.engine.client import EngineUnauthorizedError, ServerClient, ServerUnreachableError
 from lainbow.engine.device import select_device
+from lainbow.engine.loading import choose_loading
 from lainbow.engine.models import registry
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.worker import Worker
@@ -42,12 +44,22 @@ def run(settings: EngineSettings) -> int:
     models: dict[str, AudioModel] = {}
     device = select_device(settings.accel) if wanted & usable else "cpu"
     for model_id in sorted(wanted & usable):
-        model = registry.FACTORIES[model_id](settings.models_dir)
-        model.load(device)
-        models[model_id] = model
+        models[model_id] = registry.FACTORIES[model_id](settings.models_dir)
     if not models:
         logger.error("no analysis models are available in this engine build")
         return 1
+
+    # In sequential mode the worker loads and unloads models itself, one at a time.
+    # Text-capable models stay loaded while the text endpoint is on, so queries keep working.
+    pinned = (
+        frozenset(m for m in models if Purpose.TEXT in MODELS[m].purposes)
+        if settings.text_port > 0
+        else frozenset()
+    )
+    loading = choose_loading(settings.model_loading, device, models, pinned)
+    for model_id, model in models.items():
+        if loading == "together" or model_id in pinned:
+            model.load(device)
 
     if settings.text_port > 0:
         text_api.serve_in_thread(text_api.create_app(models), settings.text_port)
@@ -55,7 +67,9 @@ def run(settings: EngineSettings) -> int:
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda _s, _f: stop.set())
-    Worker(client, models, settings, plan).run_forever(stop)
+    Worker(
+        client, models, settings, plan, device=device, loading=loading, pinned=pinned
+    ).run_forever(stop)
     return 0
 
 

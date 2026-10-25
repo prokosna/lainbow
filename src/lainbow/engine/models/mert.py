@@ -42,6 +42,13 @@ class MertModel:
             .eval()
         )
 
+    def unload(self) -> None:
+        """Drop the weights and free cached device memory."""
+        self._model = None
+        self._processor = None
+        if self._device.startswith("cuda"):
+            torch.cuda.empty_cache()
+
     def embed(self, clips: Sequence[npt.NDArray[np.float32]]) -> EmbedResult:
         """Embed each clip and average the rows."""
         if self._model is None:

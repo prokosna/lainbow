@@ -286,7 +286,8 @@ cmd_join() {
 	# 5. Run command.
 	local -a run_args=(docker run -d --name "$name" --restart unless-stopped
 		-v lainbow-models:/models
-		-e "LAINBOW_SERVER_URL=$server" -e "LAINBOW_TOKEN=$token")
+		-e "LAINBOW_SERVER_URL=$server" -e "LAINBOW_TOKEN=$token"
+		-e LAINBOW_TEXT_PORT=0) # remote engines do not serve text search
 	case "$accel" in
 	cuda) run_args+=(--gpus all) ;;
 	rocm)

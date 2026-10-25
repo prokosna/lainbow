@@ -36,16 +36,26 @@ class ClapModel:
 
     def __init__(self, models_dir: Path) -> None:
         self._models_dir = models_dir
+        self._device = "cpu"
         self._model: Any = None
 
     def load(self, device: str) -> None:
         """Download (first start) and load the checkpoint onto the device."""
+        self._device = device
         path = hf_hub_download(
             repo_id=REPO_ID, filename=CHECKPOINT, cache_dir=self._models_dir / "hf"
         )
         model = _clap_module(enable_fusion=False, amodel="HTSAT-base", device=device)
         model.load_ckpt(path)
         self._model = model
+
+    def unload(self) -> None:
+        """Drop the weights and free cached device memory."""
+        self._model = None
+        if self._device.startswith("cuda"):
+            import torch
+
+            torch.cuda.empty_cache()
 
     def embed(self, clips: Sequence[npt.NDArray[np.float32]]) -> EmbedResult:
         """Embed each clip and average the rows."""

@@ -176,6 +176,7 @@ def test_join_cuda(work: Path) -> None:
     assert "--gpus all" in runs[0]
     assert f"LAINBOW_SERVER_URL={JOIN_URL}" in runs[0]
     assert f"LAINBOW_TOKEN={JOIN_TOKEN}" in runs[0]
+    assert "LAINBOW_TEXT_PORT=0" in runs[0]
     assert runs[0].endswith("ghcr.io/prokosna/lainbow-engine:9.9.9-cuda")
     assert "--name lainbow-engine" in runs[0]
     assert "pull ghcr.io/prokosna/lainbow-engine:9.9.9-cuda" in docker_calls(work)

@@ -72,5 +72,6 @@ Used by the engine, for example on a GPU machine. In compose, the bundled engine
 | `LAINBOW_CLAIM_SIZE` | `8` | Tracks to lease at a time. |
 | `LAINBOW_DECODERS` | `0` | Parallel download+decode workers (0 = number of CPU cores, at most 8). |
 | `LAINBOW_TEXT_PORT` | `8001` | Port for the text-embedding endpoint used by the server (0 = off). |
+| `LAINBOW_MODEL_LOADING` | `auto` | Keep all models in memory at once (together), or load one model at a time and finish its work before switching (sequential, for GPUs with little memory). auto decides from free GPU memory. |
 | `LAINBOW_IDLE_SEC` | `30.0` | Seconds to wait before asking again when there is no work. |
 | `LAINBOW_LOG_LEVEL` | `info` | Log level. |

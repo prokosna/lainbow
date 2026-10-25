@@ -50,6 +50,9 @@ class ModelSpec:
     short_name: str
     purposes: frozenset[Purpose]
     default_method: AnalysisMethod
+    # Rough peak device memory for inference, weights included. Conservative estimates, used to
+    # decide whether the engine can keep every model loaded at once.
+    memory_gb: float
 
     def profile(self, method: AnalysisMethod) -> str:
         """Generate a profile label from this model specification and analysis method."""
@@ -68,6 +71,7 @@ MODELS: Mapping[str, ModelSpec] = MappingProxyType(
             short_name="MuQ",
             purposes=frozenset({Purpose.SIMILAR}),
             default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+            memory_gb=5.0,
         ),
         ModelId.MUQ_MULAN: ModelSpec(
             id=ModelId.MUQ_MULAN,
@@ -79,6 +83,7 @@ MODELS: Mapping[str, ModelSpec] = MappingProxyType(
             short_name="MuQ-MuLan",
             purposes=frozenset({Purpose.SIMILAR, Purpose.TEXT}),
             default_method=AnalysisMethod(max_sec=600, drop_tail=False),
+            memory_gb=4.0,
         ),
         ModelId.CLAP: ModelSpec(
             id=ModelId.CLAP,
@@ -90,6 +95,7 @@ MODELS: Mapping[str, ModelSpec] = MappingProxyType(
             short_name="CLAP",
             purposes=frozenset({Purpose.SIMILAR, Purpose.TEXT}),
             default_method=AnalysisMethod(max_sec=600, drop_tail=False),
+            memory_gb=2.0,
         ),
         ModelId.MERT: ModelSpec(
             id=ModelId.MERT,
@@ -101,6 +107,7 @@ MODELS: Mapping[str, ModelSpec] = MappingProxyType(
             short_name="MERT",
             purposes=frozenset({Purpose.SIMILAR}),
             default_method=AnalysisMethod(max_sec=600, drop_tail=False),
+            memory_gb=3.0,
         ),
     }
 )

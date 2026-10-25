@@ -14,6 +14,7 @@ from lainbow.core.method import Span, clip_plan
 from lainbow.core.settings import EngineSettings
 from lainbow.engine import audio
 from lainbow.engine.client import ServerClient, ServerUnreachableError
+from lainbow.engine.loading import Loading
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.protocol import ClaimItem, FailureIn, PlanOut, PlanTask, ResultIn
 
@@ -32,6 +33,19 @@ def _error_text(e: BaseException) -> str:
 
 def _failure(track_id: int, model: str, profile: str, e: BaseException) -> FailureIn:
     return FailureIn(track_id=track_id, model=model, profile=profile, error=_error_text(e))
+
+
+def _is_out_of_memory(e: BaseException) -> bool:
+    """Match torch's ``OutOfMemoryError`` by name, so that CPU-only builds can test it."""
+    return type(e).__name__ == "OutOfMemoryError"
+
+
+class _OutOfMemoryError(Exception):
+    """A model ran out of device memory while embedding; carries the model id."""
+
+    def __init__(self, model: str) -> None:
+        super().__init__(model)
+        self.model = model
 
 
 @dataclass(frozen=True)
@@ -61,11 +75,23 @@ class Worker:
         models: Mapping[str, AudioModel],
         settings: EngineSettings,
         plan: PlanOut | None = None,
+        *,
+        device: str = "cpu",
+        loading: Loading = "together",
+        pinned: frozenset[str] = frozenset(),
     ) -> None:
         self.client = client
         self.models = models
         self.settings = settings
         self._plan = plan
+        self._device = device
+        self._loading: Loading = loading
+        # Models that are never unloaded (they serve the text endpoint).
+        self._pinned = pinned
+        # Models currently loaded (the caller loads all of them, or just the pinned ones).
+        self._loaded: set[str] = set(models) if loading == "together" else set(pinned)
+        # Sequential mode: where in the plan order the next claim starts.
+        self._cursor = 0
         self._decoders = settings.decoders or min(MAX_DECODERS, os.cpu_count() or 1)
 
     def _plan_tasks(self, refresh: bool = False) -> dict[tuple[str, str], PlanTask]:
@@ -135,6 +161,8 @@ class Worker:
                     )
                 )
             except Exception as e:
+                if self._loading == "together" and _is_out_of_memory(e):
+                    raise _OutOfMemoryError(jt.model) from e
                 logger.warning("track %d %s failed: %s", track_id, jt.model, e)
                 failures.append(_failure(track_id, jt.model, jt.profile, e))
         return results, failures
@@ -157,9 +185,50 @@ class Worker:
                 )
         return plan
 
+    def _activate(self, model_id: str) -> None:
+        """Sequential mode: load ``model_id`` and unload the others, except pinned ones."""
+        for other in sorted(self._loaded - self._pinned - {model_id}):
+            self.models[other].unload()
+            self._loaded.discard(other)
+        if model_id not in self._loaded:
+            self.models[model_id].load(self._device)
+            self._loaded.add(model_id)
+
+    def _switch_to_sequential(self, keep: str) -> None:
+        """Unload every model except ``keep`` and the pinned ones; continue one at a time."""
+        logger.warning("out of GPU memory with all models loaded; switching to sequential loading")
+        for model_id in sorted(self._loaded - self._pinned - {keep}):
+            self.models[model_id].unload()
+            self._loaded.discard(model_id)
+        self._loading = "sequential"
+        self._cursor = list(self.models).index(keep)
+
+    def _run_sequential(self) -> int:
+        """Claim for one model at a time, moving on when it has no work.
+
+        Idle (0) only after a full cycle over all models found nothing; the next cycle starts
+        again from the first model.
+        """
+        ids = list(self.models)
+        for k in range(len(ids)):
+            i = (self._cursor + k) % len(ids)
+            self._activate(ids[i])
+            handled = self._process_claim([ids[i]])
+            if handled:
+                self._cursor = i
+                return handled
+        self._cursor = 0
+        return 0
+
     def run_once(self) -> int:
         """Process one claim; return the number of tracks handled (0 = no work)."""
-        claim = self.client.claim(list(self.models), self.settings.claim_size)
+        if self._loading == "sequential":
+            return self._run_sequential()
+        return self._process_claim(list(self.models))
+
+    def _process_claim(self, model_ids: list[str]) -> int:
+        """Claim tracks for ``model_ids`` and process them; return the number handled."""
+        claim = self.client.claim(model_ids, self.settings.claim_size)
         if not claim.items:
             return 0
         started = time.monotonic()
@@ -167,6 +236,7 @@ class Worker:
         jobs = [self._prepare(item, plan) for item in claim.items]
         results: list[ResultIn] = []
         failures: list[FailureIn] = []
+        done = 0
         with (
             tempfile.TemporaryDirectory(prefix="lainbow-engine-") as tmp_name,
             ThreadPoolExecutor(self._decoders) as pool,
@@ -177,16 +247,22 @@ class Worker:
                     decoded: _Decoded | Exception = future.result()
                 except Exception as e:
                     decoded = e
-                r, f = self._analyze(job, decoded)
+                try:
+                    r, f = self._analyze(job, decoded)
+                except _OutOfMemoryError as oom:
+                    # Not a failure: the unfinished tracks' leases expire and they are retried.
+                    self._switch_to_sequential(oom.model)
+                    break
                 results += r
                 failures += f
+                done += 1
 
         self.client.post_results(results, failures)
         elapsed = time.monotonic() - started
-        seconds = sum(job.item.duration_sec for job in jobs)
-        rate = f", {len(jobs) * 60.0 / elapsed:.1f} tracks/min" if elapsed >= 1.0 else ""
-        logger.info("claim done: %d tracks, %.0f s of audio%s", len(jobs), seconds, rate)
-        return len(jobs)
+        seconds = sum(job.item.duration_sec for job in jobs[:done])
+        rate = f", {done * 60.0 / elapsed:.1f} tracks/min" if elapsed >= 1.0 else ""
+        logger.info("claim done: %d tracks, %.0f s of audio%s", done, seconds, rate)
+        return done or 1
 
     def run_forever(self, stop: threading.Event) -> None:
         """Loop on ``run_once`` until ``stop`` is set, then release the leases."""

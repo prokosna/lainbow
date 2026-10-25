@@ -81,6 +81,7 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_CLAIM_SIZE",
         "LAINBOW_DECODERS",
         "LAINBOW_TEXT_PORT",
+        "LAINBOW_MODEL_LOADING",
         "LAINBOW_IDLE_SEC",
         "LAINBOW_LOG_LEVEL",
     ]

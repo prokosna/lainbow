@@ -33,6 +33,7 @@ def test_vector_table_fake_model(monkeypatch: pytest.MonkeyPatch) -> None:
         short_name="Fake",
         purposes=frozenset({Purpose.SIMILAR}),
         default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+        memory_gb=1.0,
     )
     fake_models: dict[str, ModelSpec] = {str(k): v for k, v in MODELS.items()}
     fake_models["fake_model"] = fake_spec
@@ -94,6 +95,7 @@ def test_ensure_vector_store_fake_model_and_cascade(
         short_name="FakeCasc",
         purposes=frozenset({Purpose.SIMILAR}),
         default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+        memory_gb=1.0,
     )
     fake_models: dict[str, ModelSpec] = {str(k): v for k, v in MODELS.items()}
     fake_models["fake_casc"] = fake_spec

@@ -290,6 +290,14 @@ class EngineSettings(_LainbowSettings):
         le=65535,
         description="Port for the text-embedding endpoint used by the server (0 = off).",
     )
+    model_loading: Literal["auto", "together", "sequential"] = Field(
+        default="auto",
+        description=(
+            "Keep all models in memory at once (together), or load one model at a time and "
+            "finish its work before switching (sequential, for GPUs with little memory). "
+            "auto decides from free GPU memory."
+        ),
+    )
     idle_sec: float = Field(
         default=30.0,
         gt=0,

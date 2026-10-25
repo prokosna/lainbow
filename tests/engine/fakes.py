@@ -30,9 +30,19 @@ class FakeModel:
         self.fail = fail
         self.calls: list[list[int]] = []
         self.loaded: str | None = None
+        self.unloads = 0
+        self.log: list[str] | None = None  # optional shared event log
 
     def load(self, device: str) -> None:
         self.loaded = device
+        if self.log is not None:
+            self.log.append(f"load {self.id}")
+
+    def unload(self) -> None:
+        self.loaded = None
+        self.unloads += 1
+        if self.log is not None:
+            self.log.append(f"unload {self.id}")
 
     def embed(self, clips: Sequence[npt.NDArray[np.float32]]) -> EmbedResult:
         self.calls.append([len(c) for c in clips])
@@ -45,6 +55,8 @@ class FakeModel:
         return EmbedResult(embedding=vec / np.linalg.norm(vec), details={"clips": len(clips)})
 
     def embed_text(self, text: str) -> npt.NDArray[np.floating[Any]]:
+        if self.unloads and self.loaded is None:
+            raise RuntimeError("model is not loaded")
         out = np.zeros(DIM)
         out[len(text) % DIM] = 1.0
         return out
@@ -91,11 +103,14 @@ class MockServer:
         self.released = 0
         self.downloads: list[int] = []
         self.unauthorized = False
+        self.claims: list[list[str]] = []
+        self._pending: dict[int, set[str]] = {}
 
     def add_track(self, track_id: int, duration: float = 1.0) -> None:
         path = f"t{track_id}.wav"
         write_wav(self.root / path, duration)
         self.tracks.append({"id": track_id, "path": path, "duration": duration})
+        self._pending[track_id] = {p.model for p in self.plan.tasks}
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if self.unauthorized:
@@ -104,17 +119,28 @@ class MockServer:
         if url.endswith("/plan"):
             return httpx.Response(200, json=self.plan.model_dump(mode="json"))
         if url.endswith("/claim"):
-            tracks, self.tracks = self.tracks, []
-            items = [
-                {
-                    "track_id": t["id"],
-                    "path": t["path"],
-                    "duration_sec": t["duration"],
-                    "lease_until": "2030-01-01T00:00:00+00:00",
-                    "tasks": [{"model": p.model, "profile": p.profile} for p in self.plan.tasks],
-                }
-                for t in tracks
-            ]
+            wanted = set(json.loads(request.content)["models"])
+            self.claims.append(sorted(wanted))
+            items = []
+            for t in self.tracks:
+                models = self._pending[t["id"]] & wanted
+                if not models:
+                    continue
+                self._pending[t["id"]] -= models
+                items.append(
+                    {
+                        "track_id": t["id"],
+                        "path": t["path"],
+                        "duration_sec": t["duration"],
+                        "lease_until": "2030-01-01T00:00:00+00:00",
+                        "tasks": [
+                            {"model": p.model, "profile": p.profile}
+                            for p in self.plan.tasks
+                            if p.model in models
+                        ],
+                    }
+                )
+            self.tracks = [t for t in self.tracks if self._pending[t["id"]]]
             return httpx.Response(200, json={"items": items})
         if url.endswith("/results"):
             body = json.loads(request.content)

@@ -24,6 +24,7 @@ def test_model_extensibility(monkeypatch: pytest.MonkeyPatch) -> None:
         short_name="Fake",
         purposes=frozenset({Purpose.SIMILAR}),
         default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+        memory_gb=1.0,
     )
     fake_models: dict[str, ModelSpec] = {str(k): v for k, v in models.MODELS.items()}
     fake_models["fake"] = fake_spec

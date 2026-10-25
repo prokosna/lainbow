@@ -94,6 +94,7 @@ def test_models_mapping_is_immutable() -> None:
             short_name="MuQ",
             purposes=frozenset({Purpose.SIMILAR}),
             default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+            memory_gb=1.0,
         )
 
 

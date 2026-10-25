@@ -277,6 +277,7 @@ def test_fake_model_extensibility(engine: Engine, monkeypatch: pytest.MonkeyPatc
         short_name="Fake",
         purposes=frozenset({Purpose.SIMILAR}),
         default_method=AnalysisMethod(max_sec=180, drop_tail=False),
+        memory_gb=1.0,
     )
     fake: dict[str, ModelSpec] = {str(k): v for k, v in MODELS.items()}
     fake["fake_work"] = spec

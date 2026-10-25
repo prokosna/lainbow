@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
+      # The engine decodes with ffmpeg; without it the decode and worker tests are skipped
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: uv sync --locked --extra server --extra engine --extra models --extra optional-models --extra cpu
       - run: scripts/check.sh
 

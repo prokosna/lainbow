@@ -32,6 +32,12 @@ class MuQMuLanModel:
             _MuQMuLan.from_pretrained(REPO_ID, cache_dir=self._cache_dir).to(device).eval()
         )
 
+    def unload(self) -> None:
+        """Drop the weights and free cached device memory."""
+        self._model = None
+        if self._device.startswith("cuda"):
+            torch.cuda.empty_cache()
+
     def embed(self, clips: Sequence[npt.NDArray[np.float32]]) -> EmbedResult:
         """Embed the analysis span (the clips are consecutive)."""
         if self._model is None:
