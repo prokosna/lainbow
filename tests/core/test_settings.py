@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from lainbow.core.models import ModelId
 from lainbow.core.settings import (
     EngineSettings,
     ServerSettings,
@@ -39,9 +40,24 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_MUSIC_DIR",
         "LAINBOW_HOST",
         "LAINBOW_PORT",
+        "LAINBOW_MODELS",
+        "LAINBOW_MUQ_MAX_SEC",
+        "LAINBOW_MUQ_DROP_TAIL",
+        "LAINBOW_MUQ_MULAN_MAX_SEC",
+        "LAINBOW_MUQ_MULAN_DROP_TAIL",
+        "LAINBOW_CLAP_MAX_SEC",
+        "LAINBOW_CLAP_DROP_TAIL",
+        "LAINBOW_MERT_MAX_SEC",
+        "LAINBOW_MERT_DROP_TAIL",
+        "LAINBOW_ACOUSTIC_MAX_SEC",
+        "LAINBOW_ACOUSTIC_DROP_TAIL",
         "LAINBOW_LOG_LEVEL",
     ]
     assert env_vars == expected_order
+
+    # List rendering in describe
+    models_row = next(r for r in rows if r.env_var == "LAINBOW_MODELS")
+    assert models_row.value == "muq,muq_mulan"
 
     # Masking
     db_row = next(r for r in rows if r.env_var == "LAINBOW_DATABASE_URL")
@@ -216,3 +232,68 @@ def test_start_valid_settings(
     captured = capsys.readouterr()
     assert "settings:\n" in captured.err
     assert "LAINBOW_DATABASE_URL" in captured.err
+
+
+def test_models_comma_separated_env_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MODELS", "muq,clap")
+
+    settings = load_settings(ServerSettings)
+    assert settings.models == [ModelId.MUQ, ModelId.CLAP]
+
+
+def test_unknown_model_raises_settings_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MODELS", "muq,unknown_model")
+
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(ServerSettings)
+
+    message = str(exc_info.value)
+    assert "LAINBOW_MODELS" in message
+
+
+def test_method_for_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    settings = load_settings(ServerSettings)
+
+    # Defaults: MuQ (180, False) and MuQ-MuLan (600, False)
+    muq_method = settings.method_for(ModelId.MUQ)
+    assert muq_method.max_sec == 180
+    assert not muq_method.drop_tail
+
+    mulan_method = settings.method_for(ModelId.MUQ_MULAN)
+    assert mulan_method.max_sec == 600
+    assert not mulan_method.drop_tail
+
+    clap_method = settings.method_for(ModelId.CLAP)
+    assert clap_method.max_sec == 600
+    assert not clap_method.drop_tail
+
+    mert_method = settings.method_for(ModelId.MERT)
+    assert mert_method.max_sec == 600
+    assert not mert_method.drop_tail
+
+    acoustic_method = settings.method_for(ModelId.ACOUSTIC)
+    assert acoustic_method.max_sec == 600
+    assert not acoustic_method.drop_tail
+
+
+def test_muq_max_sec_zero_maps_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MUQ_MAX_SEC", "0")
+
+    settings = load_settings(ServerSettings)
+    method = settings.method_for(ModelId.MUQ)
+    assert method.max_sec is None
+    assert not method.drop_tail
+
+
+def test_model_max_sec_negative_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MUQ_MAX_SEC", "-1")
+
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(ServerSettings)
+
+    assert "LAINBOW_MUQ_MAX_SEC" in str(exc_info.value)

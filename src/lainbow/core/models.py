@@ -1,0 +1,87 @@
+"""Model definitions and specifications for audio analysis models.
+
+The `revision` field in `ModelSpec` tracks changes that alter the computed vector
+but are not captured by the analysis method configuration (such as max_sec or drop_tail).
+This includes:
+- Model checkpoint / weights
+- Target sample rate
+- Clip length (`clip_sec`)
+- Tail trimming rule
+- Clip extraction, padding, or averaging logic
+
+Any code or model update that affects the resulting vector representation must
+bump the `revision` number so that existing vectors are invalidated and recomputed.
+"""
+
+from collections.abc import Mapping
+from dataclasses import dataclass
+from enum import StrEnum
+from types import MappingProxyType
+
+
+class ModelId(StrEnum):
+    """Identifier for an audio analysis model."""
+
+    MUQ = "muq"
+    MUQ_MULAN = "muq_mulan"
+    CLAP = "clap"
+    MERT = "mert"
+    ACOUSTIC = "acoustic"
+
+
+@dataclass(frozen=True)
+class ModelSpec:
+    """Specification of an audio analysis model."""
+
+    id: ModelId
+    dimension: int
+    sample_rate: int
+    clip_sec: float | None
+    revision: int
+    description: str
+
+
+MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
+    {
+        ModelId.MUQ: ModelSpec(
+            id=ModelId.MUQ,
+            dimension=1024,
+            sample_rate=24000,
+            clip_sec=180.0,
+            revision=1,
+            description="MuQ: similar-song search",
+        ),
+        ModelId.MUQ_MULAN: ModelSpec(
+            id=ModelId.MUQ_MULAN,
+            dimension=512,
+            sample_rate=24000,
+            clip_sec=10.0,
+            revision=1,
+            description="MuQ-MuLan: natural-language search",
+        ),
+        ModelId.CLAP: ModelSpec(
+            id=ModelId.CLAP,
+            dimension=512,
+            sample_rate=48000,
+            clip_sec=10.0,
+            revision=1,
+            description="CLAP: natural-language search (optional)",
+        ),
+        ModelId.MERT: ModelSpec(
+            id=ModelId.MERT,
+            dimension=1024,
+            sample_rate=24000,
+            clip_sec=10.0,
+            revision=1,
+            description="MERT: similar-song search (optional)",
+        ),
+        ModelId.ACOUSTIC: ModelSpec(
+            id=ModelId.ACOUSTIC,
+            dimension=55,
+            sample_rate=44100,
+            clip_sec=None,
+            revision=1,
+            description="Acoustic features: tempo, timbre and harmony statistics",
+        ),
+    }
+)

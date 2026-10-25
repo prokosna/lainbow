@@ -4,10 +4,13 @@ import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, Field, SecretStr, ValidationError
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AnyHttpUrl, Field, SecretStr, ValidationError, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from lainbow.core.method import AnalysisMethod
+from lainbow.core.models import ModelId
 
 ENV_PREFIX = "LAINBOW_"
 
@@ -43,6 +46,85 @@ class ServerSettings(_LainbowSettings):
         le=65535,
         description="Port the HTTP server listens on.",
     )
+    models: Annotated[list[ModelId], NoDecode] = Field(
+        default=[ModelId.MUQ, ModelId.MUQ_MULAN],
+        description="Models to analyze. Optional: clap, mert, acoustic.",
+    )
+    muq_max_sec: int = Field(
+        default=180,
+        ge=0,
+        description="MuQ: seconds from the start of a track to analyze (0 = whole track).",
+    )
+    muq_drop_tail: bool = Field(
+        default=False,
+        description="MuQ: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    )
+    muq_mulan_max_sec: int = Field(
+        default=600,
+        ge=0,
+        description="MuQ-MuLan: seconds from the start of a track to analyze (0 = whole track).",
+    )
+    muq_mulan_drop_tail: bool = Field(
+        default=False,
+        description="MuQ-MuLan: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    )
+    clap_max_sec: int = Field(
+        default=600,
+        ge=0,
+        description="CLAP: seconds from the start of a track to analyze (0 = whole track).",
+    )
+    clap_drop_tail: bool = Field(
+        default=False,
+        description="CLAP: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    )
+    mert_max_sec: int = Field(
+        default=600,
+        ge=0,
+        description="MERT: seconds from the start of a track to analyze (0 = whole track).",
+    )
+    mert_drop_tail: bool = Field(
+        default=False,
+        description="MERT: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    )
+    acoustic_max_sec: int = Field(
+        default=600,
+        ge=0,
+        description="Acoustic: seconds from the start of a track to analyze (0 = whole track).",
+    )
+    acoustic_drop_tail: bool = Field(
+        default=False,
+        description="Acoustic: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    )
+
+    @field_validator("models", mode="before")
+    @classmethod
+    def _parse_models(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    def method_for(self, model: ModelId) -> AnalysisMethod:
+        """Return the analysis method configured for the given model."""
+        match model:
+            case ModelId.MUQ:
+                max_sec = self.muq_max_sec
+                drop_tail = self.muq_drop_tail
+            case ModelId.MUQ_MULAN:
+                max_sec = self.muq_mulan_max_sec
+                drop_tail = self.muq_mulan_drop_tail
+            case ModelId.CLAP:
+                max_sec = self.clap_max_sec
+                drop_tail = self.clap_drop_tail
+            case ModelId.MERT:
+                max_sec = self.mert_max_sec
+                drop_tail = self.mert_drop_tail
+            case ModelId.ACOUSTIC:
+                max_sec = self.acoustic_max_sec
+                drop_tail = self.acoustic_drop_tail
+        return AnalysisMethod(
+            max_sec=None if max_sec == 0 else max_sec,
+            drop_tail=drop_tail,
+        )
 
 
 class EngineSettings(_LainbowSettings):
@@ -83,7 +165,12 @@ def describe(settings: BaseSettings) -> list[SettingRow]:
         field = type(settings).model_fields[field_name]
         env_var = f"{ENV_PREFIX}{field_name}".upper()
         val = getattr(settings, field_name)
-        val_str = "********" if isinstance(val, SecretStr) else str(val)
+        if isinstance(val, SecretStr):
+            val_str = "********"
+        elif isinstance(val, list):
+            val_str = ",".join(str(item) for item in val)
+        else:
+            val_str = str(val)
         is_default = field_name not in settings.model_fields_set
         desc = field.description or ""
         rows.append(
