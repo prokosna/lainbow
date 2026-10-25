@@ -256,6 +256,14 @@ cmd_init() {
 	if ! env_has MUSIC_DIR; then
 		if [ -z "$music_dir" ]; then
 			[ "$yes" -eq 0 ] || die "--music-dir is required with --yes"
+			cat <<'EOT'
+
+Music folder
+  Lainbow names each song by its path inside this folder, e.g. "Artist/Album/01.flac".
+  MPD names songs the same way, relative to its music_directory, and Sola MPD asks
+  Lainbow about a song by that MPD path. So this must be the same folder as MPD's
+  music_directory; otherwise no song matches and Sola MPD shows them as not analyzed.
+EOT
 			printf 'Music folder (same as MPD music_directory): '
 			read -r music_dir || true
 		fi
@@ -303,7 +311,13 @@ cmd_init() {
 
 	if ! env_has MUSIC_DIR; then
 		if [ -z "$mpd" ] && [ "$yes" -eq 0 ]; then
-			ask "MPD address to check paths against (host:port, e.g. localhost:6600; Enter to skip): " "" || true
+			cat <<'EOT'
+
+Path check (optional)
+  Lainbow can ask MPD for a few song paths and look for them in the music folder,
+  to make sure the two folders match. It suggests the right folder if they are off by a level.
+EOT
+			ask "MPD address (host:port, e.g. localhost:6600; Enter to skip): " "" || true
 			mpd=$ASK_ANSWER
 		fi
 		if [ -n "$mpd" ]; then

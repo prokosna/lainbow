@@ -199,7 +199,7 @@ def test_init_defaults_at_every_prompt(work: Path) -> None:
     assert env["PORT"] == "8000"
     assert "Data folder (database and model weights) [./data]: " in result.stdout
     assert "API port (Sola MPD connects here) [8000]: " in result.stdout
-    assert "MPD address to check paths against" in result.stdout
+    assert "MPD address (host:port" in result.stdout
     assert "MPD check:    not checked" in result.stdout
     assert (work / "data").is_dir()
 
