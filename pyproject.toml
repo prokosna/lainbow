@@ -15,6 +15,7 @@ dependencies = [
 server = [
     "alembic>=1.16",
     "fastapi>=0.120",
+    "mutagen>=1.47",
     "pgvector>=0.4",
     "psycopg[binary]>=3.2",
     "sqlalchemy>=2.0",

@@ -1,15 +1,70 @@
 """FastAPI application factory for the Lainbow server."""
 
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from sqlalchemy.orm import Session, sessionmaker
 
 import lainbow
 from lainbow.core.settings import ServerSettings
+from lainbow.db.session import make_engine, make_session_factory
+from lainbow.server.api import batch
+from lainbow.server.runs import RunExecutor
+
+logger = logging.getLogger(__name__)
+
+STARTUP_SCAN_DELAY_SEC = 5.0
 
 
-def create_app(settings: ServerSettings) -> FastAPI:
+async def _periodic_scan(app: FastAPI, interval_min: int) -> None:
+    await asyncio.sleep(STARTUP_SCAN_DELAY_SEC)
+    while True:
+        try:
+            executor: RunExecutor = app.state.executor
+            await asyncio.to_thread(executor.submit, "scan", batch.make_scan_job(app.state))
+        except Exception:
+            logger.exception("could not start the periodic scan")
+        await asyncio.sleep(interval_min * 60)
+
+
+def create_app(
+    settings: ServerSettings, *, session_factory: sessionmaker[Session] | None = None
+) -> FastAPI:
     """Create and configure the FastAPI application for Lainbow server."""
-    app = FastAPI(title="Lainbow Server", version=lainbow.__version__)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        engine = None
+        factory = session_factory
+        if factory is None:
+            engine = make_engine(settings.database_url.get_secret_value())
+            factory = make_session_factory(engine)
+        app.state.session_factory = factory
+        executor = RunExecutor(factory)
+        app.state.executor = executor
+        task: asyncio.Task[None] | None = None
+        if settings.scan_interval_min > 0:
+            task = asyncio.create_task(_periodic_scan(app, settings.scan_interval_min))
+        try:
+            yield
+        finally:
+            if task is not None:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+            await asyncio.to_thread(executor.shutdown)
+            if engine is not None:
+                engine.dispose()
+
+    app = FastAPI(title="Lainbow Server", version=lainbow.__version__, lifespan=lifespan)
     app.state.settings = settings
+    app.include_router(batch.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

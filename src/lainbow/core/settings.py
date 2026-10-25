@@ -135,6 +135,9 @@ class ServerSettings(_LainbowSettings):
         le=65535,
         description="Port the HTTP server listens on.",
     )
+    scan_interval_min: int = Field(
+        default=60, ge=0, description="Minutes between automatic library scans (0 = never)."
+    )
     models: Annotated[list[str], NoDecode] = Field(
         default=["muq", "muq_mulan"],
         description=_models_description(),

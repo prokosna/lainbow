@@ -40,6 +40,7 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_MUSIC_DIR",
         "LAINBOW_HOST",
         "LAINBOW_PORT",
+        "LAINBOW_SCAN_INTERVAL_MIN",
         "LAINBOW_MODELS",
         "LAINBOW_MUQ_MAX_SEC",
         "LAINBOW_MUQ_DROP_TAIL",
