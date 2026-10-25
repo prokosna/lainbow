@@ -79,6 +79,11 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_TOKEN",
         "LAINBOW_ACCEL",
         "LAINBOW_MODELS_DIR",
+        "LAINBOW_MUSIC_DIR",
+        "LAINBOW_CLAIM_SIZE",
+        "LAINBOW_DECODERS",
+        "LAINBOW_TEXT_PORT",
+        "LAINBOW_IDLE_SEC",
         "LAINBOW_LOG_LEVEL",
     ]
     token_row = next(r for r in engine_rows if r.env_var == "LAINBOW_TOKEN")

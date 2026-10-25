@@ -23,7 +23,10 @@ server = [
     "uvicorn[standard]>=0.38",
 ]
 engine = [
+    "fastapi>=0.120",
     "httpx>=0.28",
+    "numpy>=2.0",
+    "uvicorn[standard]>=0.38",
 ]
 
 [project.scripts]

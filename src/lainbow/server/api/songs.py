@@ -14,7 +14,7 @@ from lainbow.core.models import Purpose
 from lainbow.db.schema import Analysis, AnalysisDetail
 from lainbow.db.search import Hit, nearest, track_by_path, vector_of
 from lainbow.db.work import Task
-from lainbow.server.text_embedding import TextEmbedder, TextEmbeddingUnavailable
+from lainbow.server.text_embedding import TextEmbedder, TextEmbeddingUnavailableError
 
 router = APIRouter(prefix="/api/v1/songs")
 
@@ -81,7 +81,7 @@ def search_songs(
     embedder: TextEmbedder = request.app.state.text_embedder
     try:
         vector = embedder.embed(model_name, q)
-    except TextEmbeddingUnavailable as e:
+    except TextEmbeddingUnavailableError as e:
         raise HTTPException(
             status_code=503,
             detail="text search needs the engine next to the server, which is not reachable",

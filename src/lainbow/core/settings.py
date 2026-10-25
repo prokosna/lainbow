@@ -271,6 +271,30 @@ class EngineSettings(_LainbowSettings):
         default=Path("/models"),
         description="Where model weights are downloaded and cached.",
     )
+    music_dir: Path | None = Field(
+        default=None,
+        description=(
+            "Optional local mount of the music library; when a track exists here "
+            "it is read directly instead of downloaded."
+        ),
+    )
+    claim_size: int = Field(default=8, ge=1, le=64, description="Tracks to lease at a time.")
+    decoders: int = Field(
+        default=0,
+        ge=0,
+        description="Parallel download+decode workers (0 = number of CPU cores, at most 8).",
+    )
+    text_port: int = Field(
+        default=8001,
+        ge=0,
+        le=65535,
+        description="Port for the text-embedding endpoint used by the server (0 = off).",
+    )
+    idle_sec: float = Field(
+        default=30.0,
+        gt=0,
+        description="Seconds to wait before asking again when there is no work.",
+    )
 
 
 def describe(settings: _LainbowSettings) -> list[SettingRow]:

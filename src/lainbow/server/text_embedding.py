@@ -7,7 +7,7 @@ import httpx
 TIMEOUT_SEC = 30.0
 
 
-class TextEmbeddingUnavailable(Exception):  # noqa: N818 - public name fixed by the work order
+class TextEmbeddingUnavailableError(Exception):
     """The text engine could not be reached or refused the request."""
 
 
@@ -25,7 +25,7 @@ class TextEmbedder:
             response.raise_for_status()
             embedding = response.json()["embedding"]
         except (httpx.HTTPError, ValueError, KeyError) as e:
-            raise TextEmbeddingUnavailable(str(e)) from e
+            raise TextEmbeddingUnavailableError(str(e)) from e
         return [float(x) for x in embedding]
 
     def close(self) -> None:
@@ -33,4 +33,4 @@ class TextEmbedder:
         self._client.close()
 
 
-__all__ = ["TextEmbedder", "TextEmbeddingUnavailable"]
+__all__ = ["TextEmbedder", "TextEmbeddingUnavailableError"]

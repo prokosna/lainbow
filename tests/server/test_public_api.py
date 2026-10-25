@@ -21,7 +21,7 @@ from lainbow.db.session import make_session_factory
 from lainbow.db.vectors import ensure_vector_store, vector_table
 from lainbow.server.app import create_app
 from lainbow.server.profiles import activate_profiles
-from lainbow.server.text_embedding import TextEmbedder, TextEmbeddingUnavailable
+from lainbow.server.text_embedding import TextEmbedder, TextEmbeddingUnavailableError
 
 pytestmark = pytest.mark.postgres
 
@@ -41,7 +41,7 @@ class FakeEmbedder(TextEmbedder):
     def embed(self, model: str, text: str) -> list[float]:
         self.calls.append((model, text))
         if self.vector is None:
-            raise TextEmbeddingUnavailable("down")
+            raise TextEmbeddingUnavailableError("down")
         return self.vector
 
 

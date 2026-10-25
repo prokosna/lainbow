@@ -32,14 +32,14 @@ def test_engine_main_valid_settings(
     monkeypatch.setenv("LAINBOW_SERVER_URL", "http://127.0.0.1:8000")
     monkeypatch.setenv("LAINBOW_TOKEN", "super_secret_engine_token_123")
 
-    engine_main.main()
+    with pytest.raises(SystemExit) as exc_info:
+        engine_main.main()
 
-    # Settings table logged without raw token
+    assert exc_info.value.code == 1
     captured = capsys.readouterr()
+    assert "no analysis models are available in this engine build" in captured.err
+    # Settings table logged without raw token
     assert "LAINBOW_SERVER_URL" in captured.err
     assert "LAINBOW_TOKEN" in captured.err
     assert "********" in captured.err
     assert "super_secret_engine_token_123" not in captured.err
-
-    # Work loop notice logged
-    assert "engine work loop is not implemented yet" in captured.err
