@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+# Optional helper next to compose.yaml. Everything it does can also be done by hand.
+set -eu
+
+cd "$(dirname "$0")"
+
+die() {
+	echo "lainbow: $*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<'USAGE'
+Usage: ./lainbow <command> [options]
+
+Commands:
+  init [--music-dir DIR] [--data-dir DIR] [--port N] [--accel cpu|cuda|rocm] [--yes]
+                  write .env (never overwrites; only adds missing keys)
+  add-engine NAME [--accel cuda|rocm|cpu] [--host HOST]
+                  register an engine and print the docker run command for another machine
+  status          show containers, analysis progress and engines
+  config          show every effective server setting
+  update          pull newer images and restart
+  help            show this text
+USAGE
+}
+
+need_docker() {
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	docker compose version >/dev/null 2>&1 || die "docker compose v2 is required"
+}
+
+# Print the value of KEY from .env (the last assignment wins); print nothing if unset.
+env_get() {
+	[ -f .env ] || return 0
+	grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- || true
+}
+
+env_has() {
+	[ -f .env ] && grep -qE "^$1=" .env
+}
+
+random_password() {
+	head -c 48 /dev/urandom | base64 -w0 | tr '+/' '-_' | tr -d '=\n' | cut -c1-32
+}
+
+random_token() {
+	local hex secret
+	hex=$(tr -d '-' </proc/sys/kernel/random/uuid | tr 'A-F' 'a-f')
+	secret=$(head -c 32 /dev/urandom | base64 -w0 | tr '+/' '-_' | tr -d '=\n')
+	echo "lbe_${hex}_${secret}"
+}
+
+port_in_use() {
+	(exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+}
+
+cmd_init() {
+	local music_dir="" data_dir="" port="" accel="" yes=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--music-dir) [ $# -ge 2 ] || die "--music-dir needs a value"; music_dir=$2; shift 2 ;;
+		--data-dir) [ $# -ge 2 ] || die "--data-dir needs a value"; data_dir=$2; shift 2 ;;
+		--port) [ $# -ge 2 ] || die "--port needs a value"; port=$2; shift 2 ;;
+		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
+		--yes | -y) yes=1; shift ;;
+		*) die "init: unknown option '$1'" ;;
+		esac
+	done
+	case "$accel" in "" | cpu | cuda | rocm) ;; *) die "--accel must be cpu, cuda or rocm" ;; esac
+	need_docker
+
+	local added=""
+	local answer
+
+	if ! env_has COMPOSE_PROFILES; then
+		if [ -z "$accel" ]; then
+			if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+				accel=cuda
+			elif [ -e /dev/kfd ]; then
+				accel=rocm
+			else
+				accel=cpu
+			fi
+			if [ "$yes" -eq 0 ]; then
+				printf 'Detected accelerator: %s. Use it? [Y/n/cpu/cuda/rocm] ' "$accel"
+				answer=""
+				read -r answer || true
+				case "$answer" in
+				"" | y | Y | yes) ;;
+				cpu | cuda | rocm) accel=$answer ;;
+				*) die "aborted; rerun with --accel cpu|cuda|rocm" ;;
+				esac
+			fi
+		fi
+	else
+		accel=$(env_get COMPOSE_PROFILES)
+	fi
+
+	if ! env_has MUSIC_DIR; then
+		if [ -z "$music_dir" ]; then
+			[ "$yes" -eq 0 ] || die "--music-dir is required with --yes"
+			printf 'Music folder (same as MPD music_directory): '
+			read -r music_dir || true
+		fi
+		[ -n "$music_dir" ] || die "no music folder given"
+		[ -d "$music_dir" ] || die "music folder '$music_dir' does not exist"
+		[ -r "$music_dir" ] || die "music folder '$music_dir' is not readable"
+		music_dir=$(cd "$music_dir" && pwd)
+	fi
+
+	if ! env_has PORT; then
+		port=${port:-8000}
+		if port_in_use "$port"; then
+			echo "lainbow: warning: port $port is already in use on this machine" >&2
+		fi
+	fi
+
+	# Collect the values for missing keys only, then append them in one go.
+	local new=""
+	add_key() {
+		new="${new}$1=$2"$'\n'
+		added="$added $1"
+	}
+	env_has MUSIC_DIR || add_key MUSIC_DIR "$music_dir"
+	env_has DATA_DIR || add_key DATA_DIR "${data_dir:-./data}"
+	env_has PORT || add_key PORT "$port"
+	env_has COMPOSE_PROFILES || add_key COMPOSE_PROFILES "$accel"
+	env_has POSTGRES_PASSWORD || add_key POSTGRES_PASSWORD "$(random_password)"
+	env_has ENGINE_TOKEN || add_key ENGINE_TOKEN "$(random_token)"
+	if [ "$accel" = rocm ] && ! env_has GPU_GID; then
+		[ -e /dev/kfd ] || die "rocm selected but /dev/kfd does not exist"
+		add_key GPU_GID "$(stat -c %g /dev/kfd)"
+	fi
+
+	if [ -n "$new" ]; then
+		# Keep the existing bytes; only make sure the new lines start on a fresh line.
+		if [ -s .env ] && [ -n "$(tail -c 1 .env)" ]; then
+			printf '\n' >>.env
+		fi
+		printf '%s' "$new" >>.env
+		chmod 600 .env
+		echo "Added to .env:$added"
+	else
+		echo ".env is already complete; nothing changed."
+	fi
+
+	if [ "$accel" = rocm ]; then
+		echo "Note: some integrated GPUs need HSA_OVERRIDE_GFX_VERSION; see docs/configuration.md."
+	fi
+
+	local final_port
+	final_port=$(env_get PORT)
+	cat <<NEXT
+
+Next steps:
+  1. docker compose up -d
+  2. open http://<host>:${final_port:-8000}/health
+  3. point Sola MPD at http://<host>:${final_port:-8000}
+NEXT
+}
+
+cmd_add_engine() {
+	local name="" accel=cuda host=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
+		--host) [ $# -ge 2 ] || die "--host needs a value"; host=$2; shift 2 ;;
+		-*) die "add-engine: unknown option '$1'" ;;
+		*)
+			[ -z "$name" ] || die "add-engine: only one NAME is accepted"
+			name=$1
+			shift
+			;;
+		esac
+	done
+	[ -n "$name" ] || die "add-engine: NAME is required"
+	case "$accel" in cpu | cuda | rocm) ;; *) die "--accel must be cpu, cuda or rocm" ;; esac
+	need_docker
+
+	local port version token
+	port=$(env_get PORT)
+	port=${port:-8000}
+	version=$(env_get LAINBOW_VERSION)
+	version=${version:-2}
+	if [ -z "$host" ]; then
+		host=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+		[ -n "$host" ] || die "cannot determine this machine's address; pass --host"
+	fi
+
+	token=$(docker compose exec -T server lainbow-admin add-engine "$name") ||
+		die "could not register engine '$name' (is the server running?)"
+	token=$(printf '%s' "$token" | tail -n 1 | tr -d '[:space:]')
+	[ -n "$token" ] || die "the server returned no token"
+
+	local gpu=""
+	case "$accel" in
+	cuda) gpu="--gpus all " ;;
+	rocm) gpu="--device /dev/kfd --device /dev/dri " ;;
+	esac
+	echo "docker run -d --name lainbow-engine --restart unless-stopped ${gpu}-v lainbow-models:/models -e LAINBOW_SERVER_URL=http://${host}:${port} -e LAINBOW_TOKEN=${token} ghcr.io/prokosna/lainbow-engine:${version}-${accel}"
+	echo "Stop it with: docker rm -f lainbow-engine"
+	echo "Note: the engine only connects out to the server; nothing needs to be opened on this machine."
+}
+
+cmd_status() {
+	need_docker
+	docker compose ps --format 'table {{.Service}}\t{{.State}}\t{{.Health}}'
+	echo
+	docker compose exec -T server lainbow-admin status
+}
+
+cmd_config() {
+	need_docker
+	docker compose exec -T server lainbow-admin config
+}
+
+cmd_update() {
+	need_docker
+	docker compose pull
+	docker compose up -d
+}
+
+command=${1:-help}
+[ $# -eq 0 ] || shift
+case "$command" in
+init) cmd_init "$@" ;;
+add-engine) cmd_add_engine "$@" ;;
+status) cmd_status ;;
+config) cmd_config ;;
+update) cmd_update ;;
+help | -h | --help) usage ;;
+*)
+	usage >&2
+	die "unknown command '$command'"
+	;;
+esac
