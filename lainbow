@@ -551,7 +551,15 @@ cmd_leave() {
 		esac
 	done
 	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
-	docker rm -f "$name"
+	local existing
+	existing=$(docker ps -a --filter "name=^${name}\$" --format '{{.Names}}' 2>/dev/null || true)
+	if [ -z "$existing" ]; then
+		echo "no engine container named '$name' on this machine; nothing to stop"
+		return 0
+	fi
+	echo "stopping $name (it finishes the tracks in hand and returns its leases)..."
+	docker stop -t 120 "$name" >/dev/null || die "docker stop failed for $name"
+	docker rm "$name" >/dev/null || die "docker rm failed for $name"
 	echo "the downloaded models are kept in the lainbow-models volume; remove them with: docker volume rm lainbow-models"
 }
 

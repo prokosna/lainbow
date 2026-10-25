@@ -40,18 +40,20 @@ optional-models = [
 cpu = [
     "torch==2.9.1",
     "torchaudio==2.9.1",
-    "torchvision==0.24.1+cpu",
+    # No local suffix: the CPU index serves "+cpu" wheels for x86_64 and plain ones for aarch64.
+    "torchvision==0.24.1",
 ]
+# cuda and rocm wheels exist for x86_64 only
 cuda = [
-    "torch==2.9.1",
-    "torchaudio==2.9.1",
-    "torchvision==0.24.1+cu128",
+    "torch==2.9.1; platform_machine == 'x86_64'",
+    "torchaudio==2.9.1; platform_machine == 'x86_64'",
+    "torchvision==0.24.1+cu128; platform_machine == 'x86_64'",
 ]
 rocm = [
-    "torch==2.9.1",
-    "torchaudio==2.9.1",
-    "torchvision==0.24.1+rocm6.4",
-    "pytorch-triton-rocm",
+    "torch==2.9.1; platform_machine == 'x86_64'",
+    "torchaudio==2.9.1; platform_machine == 'x86_64'",
+    "torchvision==0.24.1+rocm6.4; platform_machine == 'x86_64'",
+    "pytorch-triton-rocm; platform_machine == 'x86_64'",
 ]
 
 [project.scripts]
@@ -73,7 +75,10 @@ requires = ["uv_build>=0.9,<0.10"]
 build-backend = "uv_build"
 
 [tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
 conflicts = [
     [{ extra = "cpu" }, { extra = "cuda" }, { extra = "rocm" }],
 ]

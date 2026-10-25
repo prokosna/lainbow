@@ -48,6 +48,8 @@ The first full analysis is the slow part. Any machine with an NVIDIA or AMD GPU 
 
 Steady-state analysis continues on the server.
 
+An Apple Silicon Mac can join as a CPU engine (Docker Desktop); it cannot use the Mac's GPU from Docker.
+
 Windows (WSL2):
 
 1. Install the NVIDIA driver for Windows.

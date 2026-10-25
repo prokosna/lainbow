@@ -573,10 +573,46 @@ def test_join_replaces_existing_container(work: Path) -> None:
 
 
 def test_leave(work: Path) -> None:
+    result = run(work, "leave", extra_env={"FAKE_EXISTING": "lainbow-engine"})
+    assert result.returncode == 0, result.stderr
+    calls = docker_calls(work)
+    assert calls.index("stop -t 120 lainbow-engine") < calls.index("rm lainbow-engine")
+    assert not any(c.startswith("rm -f") for c in calls)
+    assert "stopping lainbow-engine" in result.stdout
+    assert "docker volume rm lainbow-models" in result.stdout
+
+
+def test_leave_without_container(work: Path) -> None:
     result = run(work, "leave")
     assert result.returncode == 0, result.stderr
-    assert "rm -f lainbow-engine" in docker_calls(work)
-    assert "docker volume rm lainbow-models" in result.stdout
+    assert "nothing to stop" in result.stdout
+    assert not any(c.startswith(("stop", "rm")) for c in docker_calls(work))
+
+
+def test_script_is_bash3_compatible() -> None:
+    """macOS ships bash 3.2: no bash 4+ constructs in ./lainbow."""
+    text = (ROOT / "lainbow").read_text()
+    banned = [
+        r"declare\s+-[a-zA-Z]*[Aun]\b",
+        r"\bmapfile\b",
+        r"\breadarray\b",
+        r"\$\{[A-Za-z_0-9]+(,,|\^\^|,|\^)[^}]*\}",
+        r"\[\[\s+-v\b",
+        r";&",
+        r"\|&",
+        r"%\([^)]*\)T",
+        r"\$\{[A-Za-z_0-9]+@[UuLlQEPAaK]\}",
+    ]
+    for pattern in banned:
+        found = [ln for ln in text.splitlines() if re.search(pattern, ln)]
+        assert not found, f"bash 4+ construct {pattern!r}: {found}"
+
+
+def test_script_parses_in_posix_mode() -> None:
+    result = subprocess.run(
+        ["bash", "--posix", "-n", str(ROOT / "lainbow")], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_status_and_update_call_compose(work: Path) -> None:
