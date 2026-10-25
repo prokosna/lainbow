@@ -48,9 +48,14 @@ def test_server_main_valid_settings(
     monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://user:secretpw@localhost/test")
 
     mock_run = MagicMock()
+    mock_upgrade = MagicMock(return_value="0001_initial")
     monkeypatch.setattr(uvicorn, "run", mock_run)
+    monkeypatch.setattr(server_main, "upgrade_to_head", mock_upgrade)
 
     server_main.main()
+
+    assert mock_upgrade.called
+    assert mock_upgrade.call_args[0][0] == "postgresql://user:secretpw@localhost/test"
 
     assert mock_run.called
     _args, kwargs = mock_run.call_args
@@ -58,8 +63,9 @@ def test_server_main_valid_settings(
     assert kwargs.get("port") == 8000
     assert kwargs.get("log_level") == "info"
 
-    # Settings table logged without raw secret
+    # Settings table logged without raw secret, and migration revision logged
     captured = capsys.readouterr()
     assert "LAINBOW_DATABASE_URL" in captured.err
     assert "********" in captured.err
     assert "secretpw" not in captured.err
+    assert "database schema is up to date (revision 0001_initial)" in captured.err
