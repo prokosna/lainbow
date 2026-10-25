@@ -218,6 +218,7 @@ server = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "import-linter", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "mypy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -236,6 +237,7 @@ provides-extras = ["server", "engine"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.28" },
     { name = "import-linter", specifier = ">=2.5" },
     { name = "mypy", specifier = ">=1.18" },
     { name = "pytest", specifier = ">=8.4" },
