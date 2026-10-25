@@ -1,6 +1,7 @@
 """Runnable entry point for the Lainbow engine."""
 
 import logging
+import os
 import signal
 import sys
 import threading
@@ -8,15 +9,12 @@ import threading
 from lainbow.core.settings import EngineSettings, start
 from lainbow.engine import text_api
 from lainbow.engine.client import EngineUnauthorizedError, ServerClient, ServerUnreachableError
+from lainbow.engine.device import select_device
 from lainbow.engine.models import registry
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.worker import Worker
 
 logger = logging.getLogger(__name__)
-
-
-def _device(accel: str) -> str:
-    return "cpu" if accel == "auto" else accel
 
 
 def run(settings: EngineSettings) -> int:
@@ -25,6 +23,10 @@ def run(settings: EngineSettings) -> int:
         logger.error("no analysis models are available in this engine build")
         return 1
 
+    # The one place where the engine sets an environment variable: the MuQ-MuLan text encoder
+    # downloads through huggingface_hub, which must cache under models_dir like the other weights.
+    os.environ.setdefault("HF_HOME", str(settings.models_dir / "hf"))
+
     client = ServerClient(str(settings.server_url), settings.token.get_secret_value())
     try:
         plan = client.plan()
@@ -32,15 +34,16 @@ def run(settings: EngineSettings) -> int:
         logger.error("%s", e)
         return 1
 
-    usable = registry.available()
+    usable = registry.available(settings.models_dir)
     wanted = {t.model for t in plan.tasks}
     missing = sorted(wanted - usable)
     if missing:
         logger.warning("the plan wants models this engine cannot run: %s", ", ".join(missing))
     models: dict[str, AudioModel] = {}
+    device = select_device(settings.accel) if wanted & usable else "cpu"
     for model_id in sorted(wanted & usable):
-        model = registry.FACTORIES[model_id]()
-        model.load(_device(settings.accel))
+        model = registry.FACTORIES[model_id](settings.models_dir)
+        model.load(device)
         models[model_id] = model
     if not models:
         logger.error("no analysis models are available in this engine build")

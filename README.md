@@ -9,7 +9,7 @@ primarily for the MPD client [Sola MPD](https://github.com/prokosna/sola_mpd).
 ## Development
 
 ```sh
-uv sync --all-extras
+uv sync --extra server --extra engine --extra models --extra cpu
 scripts/check.sh   # ruff, mypy (strict), import-linter, pytest, shellcheck
 ```
 

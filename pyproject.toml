@@ -28,6 +28,28 @@ engine = [
     "numpy>=2.0",
     "uvicorn[standard]>=0.38",
 ]
+models = [
+    "muq>=0.1",
+    # muq 0.1 breaks on transformers 5 (EasyDict config has no _attn_implementation)
+    "transformers>=4.57,<5",
+    "huggingface-hub>=0.35",
+]
+cpu = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1+cpu",
+]
+cuda = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1+cu128",
+]
+rocm = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    "torchvision==0.24.1+rocm6.4",
+    "pytorch-triton-rocm",
+]
 
 [project.scripts]
 lainbow-server = "lainbow.server.__main__:main"
@@ -49,6 +71,42 @@ build-backend = "uv_build"
 
 [tool.uv]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+conflicts = [
+    [{ extra = "cpu" }, { extra = "cuda" }, { extra = "rocm" }],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+torchaudio = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+pytorch-triton-rocm = [{ index = "pytorch-rocm", extra = "rocm" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
 
 [tool.ruff]
 src = ["src", "tests"]
@@ -62,15 +120,20 @@ quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not postgres'"
+addopts = "-m 'not postgres and not models'"
 markers = [
     "postgres: needs a disposable PostgreSQL with pgvector (set LAINBOW_TEST_DATABASE_URL)",
+    "models: loads the real MuQ weights (set LAINBOW_TEST_MODELS_DIR)",
 ]
 
 [tool.mypy]
 files = ["src", "tests"]
 strict = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["muq.*"]
+ignore_missing_imports = true
 
 [tool.importlinter]
 root_package = "lainbow"

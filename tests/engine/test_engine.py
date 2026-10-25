@@ -183,9 +183,10 @@ def test_text_api() -> None:
 
 
 def test_registry_excludes_import_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken() -> AudioModel:
+    def broken(_dir: Path) -> AudioModel:
         raise ImportError("no torch")
 
-    monkeypatch.setitem(registry.FACTORIES, "ok", lambda: FakeModel("ok"))
+    monkeypatch.setattr(registry, "FACTORIES", {})
+    monkeypatch.setitem(registry.FACTORIES, "ok", lambda _dir: FakeModel("ok"))
     monkeypatch.setitem(registry.FACTORIES, "broken", broken)
-    assert registry.available() == {"ok"}
+    assert registry.available(Path("/nonexistent")) == {"ok"}

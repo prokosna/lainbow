@@ -5,6 +5,7 @@ import os
 import pytest
 
 from lainbow.engine import __main__ as engine_main
+from lainbow.engine.models import registry
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +30,7 @@ def test_engine_main_valid_settings(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    monkeypatch.setattr(registry, "FACTORIES", {})
     monkeypatch.setenv("LAINBOW_SERVER_URL", "http://127.0.0.1:8000")
     monkeypatch.setenv("LAINBOW_TOKEN", "super_secret_engine_token_123")
 
