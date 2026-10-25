@@ -1,20 +1,71 @@
 """Typed settings and environment loading for Lainbow server and engine."""
 
 import logging
+import os
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import AnyHttpUrl, Field, SecretStr, ValidationError, field_validator
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    NoDecode,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
+from lainbow.core import models
 from lainbow.core.method import AnalysisMethod
-from lainbow.core.models import ModelId
 
 ENV_PREFIX = "LAINBOW_"
 
 logger = logging.getLogger(__name__)
+
+
+def _models_description() -> str:
+    """Return the formatted description of available models derived from MODELS."""
+    return f"Models to analyze. Available: {', '.join(models.MODELS.keys())}."
+
+
+def method_env_var(model: str, field: str) -> str:
+    """Return the environment variable name for a per-model analysis method field."""
+    return f"{ENV_PREFIX}{model.upper()}_{field.upper()}"
+
+
+class MethodSettingsSource(PydanticBaseSettingsSource):
+    """Custom settings source that loads per-model analysis methods from environment."""
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        methods_data: dict[str, dict[str, Any]] = {}
+        explicit_vars: set[str] = set()
+        for model_key in models.MODELS:
+            model_dict: dict[str, Any] = {}
+            for field_name in AnalysisMethod.model_fields:
+                env_key = method_env_var(str(model_key), field_name)
+                if env_key in os.environ:
+                    model_dict[field_name] = os.environ[env_key]
+                    explicit_vars.add(env_key)
+            methods_data[str(model_key)] = model_dict
+        return {
+            "methods": methods_data,
+            "explicit_method_vars": frozenset(explicit_vars),
+        }
+
+
+@dataclass(frozen=True)
+class SettingRow:
+    """Represents a single setting line for logging and description."""
+
+    env_var: str
+    value: str
+    is_default: bool
+    description: str
 
 
 class _LainbowSettings(BaseSettings):
@@ -26,6 +77,44 @@ class _LainbowSettings(BaseSettings):
         default="info",
         description="Log level.",
     )
+
+    def _field_row(self, field_name: str, field_info: FieldInfo) -> SettingRow:
+        env_var = f"{ENV_PREFIX}{field_name}".upper()
+        val = getattr(self, field_name)
+        if isinstance(val, SecretStr):
+            val_str = "********"
+        elif isinstance(val, list):
+            val_str = ",".join(str(item) for item in val)
+        else:
+            val_str = str(val)
+        is_default = field_name not in self.model_fields_set
+        return SettingRow(
+            env_var=env_var,
+            value=val_str,
+            is_default=is_default,
+            description=field_info.description or "",
+        )
+
+    def _generic_field_rows(self) -> list[SettingRow]:
+        """Return generic SettingRows for non-base, non-excluded fields."""
+        base_fields = set(_LainbowSettings.model_fields)
+        rows: list[SettingRow] = []
+        for field_name, field_info in type(self).model_fields.items():
+            if field_info.exclude or field_name in base_fields:
+                continue
+            rows.append(self._field_row(field_name, field_info))
+        return rows
+
+    def _base_field_rows(self) -> list[SettingRow]:
+        """Return SettingRows for base settings fields (e.g. log_level)."""
+        return [
+            self._field_row(field_name, type(self).model_fields[field_name])
+            for field_name in _LainbowSettings.model_fields
+        ]
+
+    def setting_rows(self) -> list[SettingRow]:
+        """Return setting rows for this configuration in presentation order."""
+        return self._generic_field_rows() + self._base_field_rows()
 
 
 class ServerSettings(_LainbowSettings):
@@ -46,54 +135,17 @@ class ServerSettings(_LainbowSettings):
         le=65535,
         description="Port the HTTP server listens on.",
     )
-    models: Annotated[list[ModelId], NoDecode] = Field(
-        default=[ModelId.MUQ, ModelId.MUQ_MULAN],
-        description="Models to analyze. Optional: clap, mert, acoustic.",
+    models: Annotated[list[str], NoDecode] = Field(
+        default=["muq", "muq_mulan"],
+        description=_models_description(),
     )
-    muq_max_sec: int = Field(
-        default=180,
-        ge=0,
-        description="MuQ: seconds from the start of a track to analyze (0 = whole track).",
+    methods: Mapping[str, AnalysisMethod] = Field(
+        default_factory=lambda: {str(k): spec.default_method for k, spec in models.MODELS.items()},
+        exclude=True,
     )
-    muq_drop_tail: bool = Field(
-        default=False,
-        description="MuQ: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
-    )
-    muq_mulan_max_sec: int = Field(
-        default=600,
-        ge=0,
-        description="MuQ-MuLan: seconds from the start of a track to analyze (0 = whole track).",
-    )
-    muq_mulan_drop_tail: bool = Field(
-        default=False,
-        description="MuQ-MuLan: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
-    )
-    clap_max_sec: int = Field(
-        default=600,
-        ge=0,
-        description="CLAP: seconds from the start of a track to analyze (0 = whole track).",
-    )
-    clap_drop_tail: bool = Field(
-        default=False,
-        description="CLAP: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
-    )
-    mert_max_sec: int = Field(
-        default=600,
-        ge=0,
-        description="MERT: seconds from the start of a track to analyze (0 = whole track).",
-    )
-    mert_drop_tail: bool = Field(
-        default=False,
-        description="MERT: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
-    )
-    acoustic_max_sec: int = Field(
-        default=600,
-        ge=0,
-        description="Acoustic: seconds from the start of a track to analyze (0 = whole track).",
-    )
-    acoustic_drop_tail: bool = Field(
-        default=False,
-        description="Acoustic: drop the last min(30 s, 15%) of tracks of 60 s or longer.",
+    explicit_method_vars: frozenset[str] = Field(
+        default=frozenset(),
+        exclude=True,
     )
 
     @field_validator("models", mode="before")
@@ -103,28 +155,85 @@ class ServerSettings(_LainbowSettings):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v
 
-    def method_for(self, model: ModelId) -> AnalysisMethod:
-        """Return the analysis method configured for the given model."""
-        match model:
-            case ModelId.MUQ:
-                max_sec = self.muq_max_sec
-                drop_tail = self.muq_drop_tail
-            case ModelId.MUQ_MULAN:
-                max_sec = self.muq_mulan_max_sec
-                drop_tail = self.muq_mulan_drop_tail
-            case ModelId.CLAP:
-                max_sec = self.clap_max_sec
-                drop_tail = self.clap_drop_tail
-            case ModelId.MERT:
-                max_sec = self.mert_max_sec
-                drop_tail = self.mert_drop_tail
-            case ModelId.ACOUSTIC:
-                max_sec = self.acoustic_max_sec
-                drop_tail = self.acoustic_drop_tail
-        return AnalysisMethod(
-            max_sec=None if max_sec == 0 else max_sec,
-            drop_tail=drop_tail,
+    @field_validator("models")
+    @classmethod
+    def _validate_models(cls, v: list[str]) -> list[str]:
+        for name in v:
+            if name not in models.MODELS:
+                raise ValueError(f"unknown model: {name}")
+        return v
+
+    @field_validator("methods", mode="wrap")
+    @classmethod
+    def _validate_methods(
+        cls,
+        v: object,
+        handler: Any,
+        info: Any,
+    ) -> Mapping[str, AnalysisMethod]:
+        if isinstance(v, Mapping):
+            for k in v:
+                if k not in models.MODELS:
+                    raise ValueError(f"unknown model: {k}")
+            validated = handler(v)
+            res: dict[str, AnalysisMethod] = {}
+            for k, spec in models.MODELS.items():
+                if k in validated and isinstance(v[k], Mapping):
+                    res[k] = spec.default_method.model_copy(
+                        update={f: getattr(validated[k], f) for f in v[k]}
+                    )
+                elif k in validated:
+                    res[k] = validated[k]
+                else:
+                    res[k] = spec.default_method
+            return res
+        return handler(v)  # type: ignore[no-any-return]
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            MethodSettingsSource(settings_cls),
         )
+
+    def method_for(self, model: str) -> AnalysisMethod:
+        """Return the analysis method configured for the given model."""
+        return self.methods[model]
+
+    def setting_rows(self) -> list[SettingRow]:
+        """Return setting rows for this configuration in presentation order."""
+        rows: list[SettingRow] = []
+        rows.extend(self._generic_field_rows())
+
+        for model_key, spec in models.MODELS.items():
+            method = self.method_for(str(model_key))
+            for field_name, field_info in AnalysisMethod.model_fields.items():
+                env_var = method_env_var(str(model_key), field_name)
+                val = getattr(method, field_name)
+                val_str = str(val)
+                is_default = env_var not in self.explicit_method_vars
+                short_name = spec.short_name
+                field_desc = field_info.description or ""
+                desc = f"{short_name}: {field_desc}" if field_desc else short_name
+                rows.append(
+                    SettingRow(
+                        env_var=env_var,
+                        value=val_str,
+                        is_default=is_default,
+                        description=desc,
+                    )
+                )
+
+        rows.extend(self._base_field_rows())
+        return rows
 
 
 class EngineSettings(_LainbowSettings):
@@ -146,42 +255,9 @@ class EngineSettings(_LainbowSettings):
     )
 
 
-@dataclass(frozen=True)
-class SettingRow:
-    """Represents a single setting line for logging and description."""
-
-    env_var: str
-    value: str
-    is_default: bool
-    description: str
-
-
-def describe(settings: BaseSettings) -> list[SettingRow]:
+def describe(settings: _LainbowSettings) -> list[SettingRow]:
     """Describe all settings in declaration order with secrets masked."""
-    rows: list[SettingRow] = []
-    base_fields = set(_LainbowSettings.model_fields)
-    field_names = sorted(type(settings).model_fields, key=lambda f: f in base_fields)
-    for field_name in field_names:
-        field = type(settings).model_fields[field_name]
-        env_var = f"{ENV_PREFIX}{field_name}".upper()
-        val = getattr(settings, field_name)
-        if isinstance(val, SecretStr):
-            val_str = "********"
-        elif isinstance(val, list):
-            val_str = ",".join(str(item) for item in val)
-        else:
-            val_str = str(val)
-        is_default = field_name not in settings.model_fields_set
-        desc = field.description or ""
-        rows.append(
-            SettingRow(
-                env_var=env_var,
-                value=val_str,
-                is_default=is_default,
-                description=desc,
-            )
-        )
-    return rows
+    return settings.setting_rows()
 
 
 class SettingsError(Exception):
@@ -195,15 +271,33 @@ def load_settings[S: BaseSettings](cls: type[S]) -> S:
     except ValidationError as e:
         lines: list[str] = []
         for err in e.errors():
-            loc_name = str(err["loc"][0]) if err["loc"] else ""
-            field = cls.model_fields.get(loc_name)
-            env_var = f"{ENV_PREFIX}{loc_name}".upper()
+            loc = err["loc"]
             msg = "missing" if err["type"] == "missing" else err["msg"]
-            desc = field.description if field and field.description else ""
-            if desc:
+            if len(loc) >= 3 and loc[0] == "methods":
+                model_name = str(loc[1])
+                field_name = str(loc[2])
+                env_var = method_env_var(model_name, field_name)
+                spec = models.MODELS.get(model_name)
+                method_field = AnalysisMethod.model_fields.get(field_name)
+                short_name = (
+                    spec.short_name
+                    if spec and getattr(spec, "short_name", None)
+                    else model_name.capitalize()
+                )
+                field_desc = (
+                    method_field.description if method_field and method_field.description else ""
+                )
+                desc = f"{short_name}: {field_desc}" if field_desc else short_name
                 lines.append(f"{env_var}: {msg} ({desc})")
             else:
-                lines.append(f"{env_var}: {msg}")
+                loc_name = str(loc[0]) if loc else ""
+                field = cls.model_fields.get(loc_name)
+                env_var = f"{ENV_PREFIX}{loc_name}".upper()
+                desc = field.description if field and field.description else ""
+                if desc:
+                    lines.append(f"{env_var}: {msg} ({desc})")
+                else:
+                    lines.append(f"{env_var}: {msg}")
         raise SettingsError("\n".join(lines)) from None
 
 

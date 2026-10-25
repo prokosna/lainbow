@@ -1,11 +1,19 @@
-"""Tests for ModelId, ModelSpec, and MODELS definitions."""
+"""Tests for ModelId, Purpose, ModelSpec, and MODELS definitions."""
 
 import re
 from types import MappingProxyType
 
 import pytest
 
-from lainbow.core.models import MODELS, ModelId, ModelSpec
+from lainbow.core.method import AnalysisMethod
+from lainbow.core.models import MODELS, ModelId, ModelSpec, Purpose
+
+
+def test_purpose_members() -> None:
+    assert Purpose.SIMILAR.value == "similar"
+    assert Purpose.TEXT.value == "text"
+    assert Purpose("similar") is Purpose.SIMILAR
+    assert len(Purpose) == 2
 
 
 def test_model_id_members() -> None:
@@ -36,6 +44,10 @@ def test_models_spec_properties() -> None:
     assert muq.clip_sec == 180.0
     assert muq.revision == 1
     assert muq.description == "MuQ: similar-song search"
+    assert muq.short_name == "MuQ"
+    assert muq.purposes == frozenset({Purpose.SIMILAR})
+    assert muq.default_method == AnalysisMethod(max_sec=180, drop_tail=False)
+    assert muq.profile(muq.default_method) == "r1-max180-keeptail"
 
     muq_mulan = MODELS[ModelId.MUQ_MULAN]
     assert muq_mulan.id == ModelId.MUQ_MULAN
@@ -44,6 +56,10 @@ def test_models_spec_properties() -> None:
     assert muq_mulan.clip_sec == 10.0
     assert muq_mulan.revision == 1
     assert muq_mulan.description == "MuQ-MuLan: natural-language search"
+    assert muq_mulan.short_name == "MuQ-MuLan"
+    assert muq_mulan.purposes == frozenset({Purpose.SIMILAR, Purpose.TEXT})
+    assert muq_mulan.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
+    assert muq_mulan.profile(muq_mulan.default_method) == "r1-max600-keeptail"
 
     clap = MODELS[ModelId.CLAP]
     assert clap.id == ModelId.CLAP
@@ -52,6 +68,9 @@ def test_models_spec_properties() -> None:
     assert clap.clip_sec == 10.0
     assert clap.revision == 1
     assert clap.description == "CLAP: natural-language search (optional)"
+    assert clap.short_name == "CLAP"
+    assert clap.purposes == frozenset({Purpose.SIMILAR, Purpose.TEXT})
+    assert clap.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
 
     mert = MODELS[ModelId.MERT]
     assert mert.id == ModelId.MERT
@@ -60,6 +79,9 @@ def test_models_spec_properties() -> None:
     assert mert.clip_sec == 10.0
     assert mert.revision == 1
     assert mert.description == "MERT: similar-song search (optional)"
+    assert mert.short_name == "MERT"
+    assert mert.purposes == frozenset({Purpose.SIMILAR})
+    assert mert.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
 
     acoustic = MODELS[ModelId.ACOUSTIC]
     assert acoustic.id == ModelId.ACOUSTIC
@@ -68,6 +90,9 @@ def test_models_spec_properties() -> None:
     assert acoustic.clip_sec is None
     assert acoustic.revision == 1
     assert acoustic.description == "Acoustic features: tempo, timbre and harmony statistics"
+    assert acoustic.short_name == "Acoustic"
+    assert acoustic.purposes == frozenset({Purpose.SIMILAR})
+    assert acoustic.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
 
 
 def test_models_mapping_is_immutable() -> None:
@@ -79,6 +104,9 @@ def test_models_mapping_is_immutable() -> None:
             clip_sec=180.0,
             revision=2,
             description="Modified",
+            short_name="MuQ",
+            purposes=frozenset({Purpose.SIMILAR}),
+            default_method=AnalysisMethod(max_sec=180, drop_tail=False),
         )
 
 

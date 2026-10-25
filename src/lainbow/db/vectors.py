@@ -42,7 +42,7 @@ def vector_index_name(model: str, profile: str) -> str:
 
 def vector_table(model: str) -> Table:
     """Return the cached or newly built vector table for the given model."""
-    spec = models.MODELS[model]  # type: ignore[index]  # ModelId is a StrEnum; lookup by str
+    spec = models.MODELS[model]
 
     cached = _VECTOR_TABLE_CACHE.get((model, spec.dimension))
     if cached is not None:

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
-
 import pytest
 from alembic import command
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import create_engine, inspect, text
 
-from lainbow.core.models import MODELS, ModelId, ModelSpec
+from lainbow.core.method import AnalysisMethod
+from lainbow.core.models import MODELS, ModelId, ModelSpec, Purpose
 from lainbow.db.migrate import get_alembic_config, upgrade_to_head
 from lainbow.db.vectors import (
     ensure_vector_store,
@@ -25,12 +24,15 @@ from lainbow.db.vectors import (
 def test_vector_table_fake_model(monkeypatch: pytest.MonkeyPatch) -> None:
     """vector_table for a fake model monkeypatched into MODELS (8 dim) has embedding dim 8."""
     fake_spec = ModelSpec(
-        id=cast(Any, "fake_model"),
+        id="fake_model",
         dimension=8,
         sample_rate=16000,
         clip_sec=10.0,
         revision=1,
         description="Fake 8-dim model for testing",
+        short_name="Fake",
+        purposes=frozenset({Purpose.SIMILAR}),
+        default_method=AnalysisMethod(max_sec=180, drop_tail=False),
     )
     fake_models: dict[str, ModelSpec] = {str(k): v for k, v in MODELS.items()}
     fake_models["fake_model"] = fake_spec
@@ -83,12 +85,15 @@ def test_ensure_vector_store_fake_model_and_cascade(
 ) -> None:
     """ensure_vector_store creates table/index, is idempotent, and cascades on track delete."""
     fake_spec = ModelSpec(
-        id=cast(Any, "fake_casc"),
+        id="fake_casc",
         dimension=8,
         sample_rate=16000,
         clip_sec=10.0,
         revision=1,
         description="Fake cascade test model",
+        short_name="FakeCasc",
+        purposes=frozenset({Purpose.SIMILAR}),
+        default_method=AnalysisMethod(max_sec=180, drop_tail=False),
     )
     fake_models: dict[str, ModelSpec] = {str(k): v for k, v in MODELS.items()}
     fake_models["fake_casc"] = fake_spec

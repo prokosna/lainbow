@@ -279,14 +279,23 @@ def test_method_for_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not acoustic_method.drop_tail
 
 
-def test_muq_max_sec_zero_maps_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_muq_max_sec_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
     monkeypatch.setenv("LAINBOW_MUQ_MAX_SEC", "0")
 
     settings = load_settings(ServerSettings)
     method = settings.method_for(ModelId.MUQ)
-    assert method.max_sec is None
+    assert method.max_sec == 0
     assert not method.drop_tail
+
+
+def test_muq_mulan_drop_tail_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MUQ_MULAN_DROP_TAIL", "true")
+
+    settings = load_settings(ServerSettings)
+    method = settings.method_for(ModelId.MUQ_MULAN)
+    assert method.drop_tail
 
 
 def test_model_max_sec_negative_validation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -296,4 +305,32 @@ def test_model_max_sec_negative_validation(monkeypatch: pytest.MonkeyPatch) -> N
     with pytest.raises(SettingsError) as exc_info:
         load_settings(ServerSettings)
 
-    assert "LAINBOW_MUQ_MAX_SEC" in str(exc_info.value)
+    message = str(exc_info.value)
+    assert len(message.strip().splitlines()) == 1
+    assert "LAINBOW_MUQ_MAX_SEC" in message
+    assert "Input should be greater than or equal to 0" in message
+    assert "MuQ: seconds from the start of a track to analyze" in message
+
+
+def test_unknown_model_method_env_var_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_UNKNOWNMODEL_MAX_SEC", "100")
+
+    settings = load_settings(ServerSettings)
+    assert "unknownmodel" not in settings.methods
+
+
+def test_describe_method_is_default_uses_explicit_vars_not_environ(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_MUQ_MAX_SEC", "120")
+
+    settings = load_settings(ServerSettings)
+    # Remove the env var to prove describe uses explicit_method_vars, not os.environ
+    monkeypatch.delenv("LAINBOW_MUQ_MAX_SEC")
+
+    rows_by_name = {r.env_var: r for r in describe(settings)}
+    assert not rows_by_name["LAINBOW_MUQ_MAX_SEC"].is_default
+    assert rows_by_name["LAINBOW_MUQ_MAX_SEC"].value == "120"
+    assert rows_by_name["LAINBOW_MUQ_DROP_TAIL"].is_default

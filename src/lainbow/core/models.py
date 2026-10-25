@@ -18,6 +18,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
+from lainbow.core.method import AnalysisMethod, label_tokens
+
+
+class Purpose(StrEnum):
+    """Purpose or search capability provided by a model."""
+
+    SIMILAR = "similar"
+    TEXT = "text"
+
 
 class ModelId(StrEnum):
     """Identifier for an audio analysis model."""
@@ -33,15 +42,22 @@ class ModelId(StrEnum):
 class ModelSpec:
     """Specification of an audio analysis model."""
 
-    id: ModelId
+    id: str
     dimension: int
     sample_rate: int
     clip_sec: float | None
     revision: int
     description: str
+    short_name: str
+    purposes: frozenset[Purpose]
+    default_method: AnalysisMethod
+
+    def profile(self, method: AnalysisMethod) -> str:
+        """Generate a profile label from this model specification and analysis method."""
+        return "-".join([f"r{self.revision}", *label_tokens(method)])
 
 
-MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
+MODELS: Mapping[str, ModelSpec] = MappingProxyType(
     {
         ModelId.MUQ: ModelSpec(
             id=ModelId.MUQ,
@@ -50,6 +66,9 @@ MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
             clip_sec=180.0,
             revision=1,
             description="MuQ: similar-song search",
+            short_name="MuQ",
+            purposes=frozenset({Purpose.SIMILAR}),
+            default_method=AnalysisMethod(max_sec=180, drop_tail=False),
         ),
         ModelId.MUQ_MULAN: ModelSpec(
             id=ModelId.MUQ_MULAN,
@@ -58,6 +77,9 @@ MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
             clip_sec=10.0,
             revision=1,
             description="MuQ-MuLan: natural-language search",
+            short_name="MuQ-MuLan",
+            purposes=frozenset({Purpose.SIMILAR, Purpose.TEXT}),
+            default_method=AnalysisMethod(max_sec=600, drop_tail=False),
         ),
         ModelId.CLAP: ModelSpec(
             id=ModelId.CLAP,
@@ -66,6 +88,9 @@ MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
             clip_sec=10.0,
             revision=1,
             description="CLAP: natural-language search (optional)",
+            short_name="CLAP",
+            purposes=frozenset({Purpose.SIMILAR, Purpose.TEXT}),
+            default_method=AnalysisMethod(max_sec=600, drop_tail=False),
         ),
         ModelId.MERT: ModelSpec(
             id=ModelId.MERT,
@@ -74,6 +99,9 @@ MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
             clip_sec=10.0,
             revision=1,
             description="MERT: similar-song search (optional)",
+            short_name="MERT",
+            purposes=frozenset({Purpose.SIMILAR}),
+            default_method=AnalysisMethod(max_sec=600, drop_tail=False),
         ),
         ModelId.ACOUSTIC: ModelSpec(
             id=ModelId.ACOUSTIC,
@@ -82,6 +110,9 @@ MODELS: Mapping[ModelId, ModelSpec] = MappingProxyType(
             clip_sec=None,
             revision=1,
             description="Acoustic features: tempo, timbre and harmony statistics",
+            short_name="Acoustic",
+            purposes=frozenset({Purpose.SIMILAR}),
+            default_method=AnalysisMethod(max_sec=600, drop_tail=False),
         ),
     }
 )
