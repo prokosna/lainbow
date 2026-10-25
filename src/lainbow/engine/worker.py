@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lainbow.core.method import Span, clip_plan
+from lainbow.core.models import MODELS
 from lainbow.core.settings import EngineSettings
 from lainbow.engine import audio
 from lainbow.engine.client import ServerClient, ServerUnreachableError
@@ -38,6 +39,10 @@ def _failure(track_id: int, model: str, profile: str, e: BaseException) -> Failu
 def _is_out_of_memory(e: BaseException) -> bool:
     """Match torch's ``OutOfMemoryError`` by name, so that CPU-only builds can test it."""
     return type(e).__name__ == "OutOfMemoryError"
+
+
+class InsufficientGpuMemoryError(RuntimeError):
+    """The GPU cannot hold even one model; sequential loading cannot help."""
 
 
 class _OutOfMemoryError(Exception):
@@ -161,7 +166,7 @@ class Worker:
                     )
                 )
             except Exception as e:
-                if self._loading == "together" and _is_out_of_memory(e):
+                if _is_out_of_memory(e):
                     raise _OutOfMemoryError(jt.model) from e
                 logger.warning("track %d %s failed: %s", track_id, jt.model, e)
                 failures.append(_failure(track_id, jt.model, jt.profile, e))
@@ -226,6 +231,18 @@ class Worker:
             return self._run_sequential()
         return self._process_claim(list(self.models))
 
+    def _give_up_on_memory(self, model_id: str) -> None:
+        """One model alone does not fit: hand the leases back and stop instead of looping."""
+        try:
+            self.client.release()
+        except Exception as e:
+            logger.warning("could not release leases: %s", e)
+        info = MODELS.get(model_id)
+        need = f" (~{info.memory_gb:g} GB needed)" if info is not None else ""
+        raise InsufficientGpuMemoryError(
+            f"GPU memory is too small for {model_id}{need}; join with --accel cpu"
+        )
+
     def _process_claim(self, model_ids: list[str]) -> int:
         """Claim tracks for ``model_ids`` and process them; return the number handled."""
         claim = self.client.claim(model_ids, self.settings.claim_size)
@@ -237,6 +254,7 @@ class Worker:
         results: list[ResultIn] = []
         failures: list[FailureIn] = []
         done = 0
+        fatal: _OutOfMemoryError | None = None
         with (
             tempfile.TemporaryDirectory(prefix="lainbow-engine-") as tmp_name,
             ThreadPoolExecutor(self._decoders) as pool,
@@ -251,13 +269,18 @@ class Worker:
                     r, f = self._analyze(job, decoded)
                 except _OutOfMemoryError as oom:
                     # Not a failure: the unfinished tracks' leases expire and they are retried.
-                    self._switch_to_sequential(oom.model)
+                    if self._loading == "sequential":
+                        fatal = oom
+                    else:
+                        self._switch_to_sequential(oom.model)
                     break
                 results += r
                 failures += f
                 done += 1
 
         self.client.post_results(results, failures)
+        if fatal is not None:
+            self._give_up_on_memory(fatal.model)
         elapsed = time.monotonic() - started
         seconds = sum(job.item.duration_sec for job in jobs[:done])
         rate = f", {done * 60.0 / elapsed:.1f} tracks/min" if elapsed >= 1.0 else ""

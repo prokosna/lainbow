@@ -13,7 +13,7 @@ from lainbow.engine import audio, loading
 from lainbow.engine.loading import available_memory_gb, choose_loading
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.text_api import create_app
-from lainbow.engine.worker import Worker
+from lainbow.engine.worker import InsufficientGpuMemoryError, Worker
 
 
 @pytest.fixture(autouse=True)
@@ -215,3 +215,24 @@ def test_oom_fallback_keeps_pinned(tmp_path: Path) -> None:
     worker = Worker(server.client(), models, make_settings(), server.plan, pinned=frozenset({"b"}))
     worker.run_once()
     assert (a.unloads, b.unloads, c.unloads) == (1, 0, 0)
+
+
+class OomAfterOneModel(FakeModel):
+    def embed(self, clips: Any) -> Any:
+        if self.calls:
+            raise OutOfMemoryError("CUDA out of memory")
+        return super().embed(clips)
+
+
+def test_sequential_oom_with_one_model_is_fatal(tmp_path: Path) -> None:
+    server = MockServer(tmp_path, make_plan("a", clip_sec=0.5))
+    server.add_track(1)
+    server.add_track(2)
+    models: dict[str, AudioModel] = {"a": OomAfterOneModel("a")}
+    worker = Worker(server.client(), models, make_settings(), server.plan, loading="sequential")
+
+    with pytest.raises(InsufficientGpuMemoryError, match="GPU memory is too small for a"):
+        worker.run_once()
+    assert server.released == 1
+    assert [r["track_id"] for body in server.posted for r in body["results"]] == [1]
+    assert all(body["failures"] == [] for body in server.posted)

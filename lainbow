@@ -55,6 +55,10 @@ random_token() {
 	echo "lbe_${hex}_${secret}"
 }
 
+# Minimums for an NVIDIA GPU; they follow the torch CUDA build (cu128) of the engine image.
+MIN_NVIDIA_DRIVER_MAJOR=570 # CUDA 12.8 needs driver 570 or newer
+MIN_NVIDIA_COMPUTE_MAJOR=7  # cu128 wheels ship no kernels below compute capability 7.0
+
 # Set ACCEL_DETECTED and ACCEL_REASON from the hardware of this machine.
 KFD_DEVICE=${LAINBOW_KFD_DEVICE:-/dev/kfd}
 detect_accel() {
@@ -68,6 +72,41 @@ detect_accel() {
 		ACCEL_DETECTED=cpu
 		ACCEL_REASON="no GPU found"
 	fi
+}
+
+# Stop early when the first NVIDIA GPU is too old for the engine image (driver or architecture).
+check_nvidia_gpu() {
+	local line name driver cap="" rest
+	if line=$(nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader 2>/dev/null); then
+		:
+	else
+		# An old nvidia-smi does not know compute_cap; check the driver only.
+		line=$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null) || return 0
+	fi
+	line=$(printf '%s\n' "$line" | head -n 1)
+	name=${line%%,*}
+	rest=${line#*,}
+	driver=${rest%%,*}
+	case "$rest" in *,*) cap=${rest#*,} ;; esac
+	name=$(echo "$name" | sed 's/^ *//;s/ *$//')
+	driver=$(echo "$driver" | sed 's/^ *//;s/ *$//')
+	cap=$(echo "$cap" | sed 's/^ *//;s/ *$//')
+	case "${driver%%.*}" in
+	'' | *[!0-9]*) return 0 ;;
+	esac
+	if [ "${driver%%.*}" -lt "$MIN_NVIDIA_DRIVER_MAJOR" ]; then
+		die "NVIDIA driver $driver is too old for this engine (needs $MIN_NVIDIA_DRIVER_MAJOR or newer for CUDA 12.8). Update it (Windows: from nvidia.com or the NVIDIA app) and run join again."
+	fi
+	case "${cap%%.*}" in
+	'' | *[!0-9]*)
+		echo "GPU: $name, driver $driver"
+		return 0
+		;;
+	esac
+	if [ "${cap%%.*}" -lt "$MIN_NVIDIA_COMPUTE_MAJOR" ]; then
+		die "$name (compute capability $cap) is not supported by this engine build; join with --accel cpu."
+	fi
+	echo "GPU: $name, driver $driver, compute capability $cap"
 }
 
 port_in_use() {
@@ -450,6 +489,7 @@ cmd_join() {
 		echo "accelerator: $accel (from --accel)"
 	fi
 	if [ "$accel" = cuda ]; then
+		check_nvidia_gpu
 		local runtimes os_name
 		runtimes=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
 		os_name=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null || true)

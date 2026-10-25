@@ -10,13 +10,21 @@ from lainbow.core.models import MODELS, Purpose
 from lainbow.core.settings import EngineSettings, start
 from lainbow.engine import text_api
 from lainbow.engine.client import EngineUnauthorizedError, ServerClient, ServerUnreachableError
-from lainbow.engine.device import select_device
+from lainbow.engine.device import (
+    DriverTooOldError,
+    UnsupportedGpuError,
+    preflight,
+    select_device,
+)
 from lainbow.engine.loading import choose_loading
 from lainbow.engine.models import registry
 from lainbow.engine.models.base import AudioModel
-from lainbow.engine.worker import Worker
+from lainbow.engine.worker import InsufficientGpuMemoryError, Worker
 
 logger = logging.getLogger(__name__)
+
+# The GPU cannot run this engine (old driver, unsupported architecture or too little memory).
+EXIT_UNSUPPORTED_GPU = 3
 
 
 def run(settings: EngineSettings) -> int:
@@ -46,7 +54,12 @@ def run(settings: EngineSettings) -> int:
     if missing:
         logger.warning("the plan wants models this engine cannot run: %s", ", ".join(missing))
     models: dict[str, AudioModel] = {}
-    device = select_device(settings.accel) if wanted & usable else "cpu"
+    try:
+        device = select_device(settings.accel) if wanted & usable else "cpu"
+        preflight(device)
+    except (DriverTooOldError, UnsupportedGpuError) as e:
+        logger.error("%s", e)
+        return EXIT_UNSUPPORTED_GPU
     for model_id in sorted(wanted & usable):
         models[model_id] = registry.FACTORIES[model_id](settings.models_dir)
     if not models:
@@ -71,9 +84,12 @@ def run(settings: EngineSettings) -> int:
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda _s, _f: stop.set())
-    Worker(
-        client, models, settings, plan, device=device, loading=loading, pinned=pinned
-    ).run_forever(stop)
+    worker = Worker(client, models, settings, plan, device=device, loading=loading, pinned=pinned)
+    try:
+        worker.run_forever(stop)
+    except InsufficientGpuMemoryError as e:
+        logger.error("%s", e)
+        return EXIT_UNSUPPORTED_GPU
     return 0
 
 

@@ -8,7 +8,9 @@ import pytest
 from fakes import FakeModel, MockServer, make_plan, make_settings
 
 from lainbow.engine import __main__ as engine_main
+from lainbow.engine.device import DriverTooOldError, UnsupportedGpuError
 from lainbow.engine.models import registry
+from lainbow.engine.worker import InsufficientGpuMemoryError
 
 
 @pytest.fixture(autouse=True)
@@ -81,3 +83,60 @@ def test_engine_returns_stale_leases_before_claiming(
         assert engine_main.run(settings) == 0
     assert calls == ["plan", "release", "claim"]
     assert "returned 3 tracks this engine held before it last stopped" in caplog.text
+
+
+@pytest.mark.parametrize("failing", ["select_device", "preflight"])
+def test_unsupported_gpu_exits_3_without_claiming(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    failing: str,
+) -> None:
+    server = MockServer(tmp_path, make_plan("muq"))
+    claims: list[str] = []
+
+    class StubWorker:
+        def __init__(self, *_a: Any, **_k: Any) -> None:
+            claims.append("worker")
+
+    def unsupported(*_a: Any) -> Any:
+        raise UnsupportedGpuError("GTX 1060 (compute capability 6.1) is not supported")
+
+    def old_driver(*_a: Any) -> Any:
+        raise DriverTooOldError("the NVIDIA driver supports CUDA 12.2")
+
+    if failing == "select_device":
+        monkeypatch.setattr(engine_main, "select_device", old_driver)
+    else:
+        monkeypatch.setattr(engine_main, "select_device", lambda _a: "cuda")
+        monkeypatch.setattr(engine_main, "preflight", unsupported)
+    monkeypatch.setattr(engine_main, "ServerClient", lambda *_a: server.client())
+    monkeypatch.setattr(engine_main, "Worker", StubWorker)
+    monkeypatch.setattr(registry, "FACTORIES", {"muq": lambda _d: FakeModel("muq")})
+    settings = make_settings(accel="auto", models_dir=tmp_path)
+    with caplog.at_level("ERROR"):
+        assert engine_main.run(settings) == 3
+    assert claims == []
+    assert server.claims == []
+    assert "GTX 1060" in caplog.text or "driver supports" in caplog.text
+
+
+def test_insufficient_gpu_memory_exits_3(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    server = MockServer(tmp_path, make_plan("muq"))
+
+    class StubWorker:
+        def __init__(self, *_a: Any, **_k: Any) -> None:
+            pass
+
+        def run_forever(self, _stop: Any) -> None:
+            raise InsufficientGpuMemoryError("GPU memory is too small for muq")
+
+    monkeypatch.setattr(engine_main, "ServerClient", lambda *_a: server.client())
+    monkeypatch.setattr(engine_main, "Worker", StubWorker)
+    monkeypatch.setattr(registry, "FACTORIES", {"muq": lambda _d: FakeModel("muq")})
+    settings = make_settings(accel="cpu", models_dir=tmp_path, model_loading="together")
+    with caplog.at_level("ERROR"):
+        assert engine_main.run(settings) == 3
+    assert "GPU memory is too small" in caplog.text

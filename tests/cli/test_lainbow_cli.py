@@ -640,3 +640,57 @@ def test_help_and_unknown(work: Path) -> None:
     assert "join" in out
     assert "leave" in out
     assert run(work, "bogus").returncode != 0
+
+
+def fake_smi(line: str, *, knows_compute_cap: bool = True) -> str:
+    """A fake nvidia-smi that answers the preflight query with ``line``."""
+    reject = "" if knows_compute_cap else 'case "$*" in *compute_cap*) exit 2 ;; esac\n'
+    return f"#!/bin/sh\n{reject}case \"$*\" in *--query-gpu*) echo '{line}' ;; esac\nexit 0\n"
+
+
+def test_join_old_driver_stops_before_build(work: Path) -> None:
+    install_fake(work, "nvidia-smi", fake_smi("NVIDIA GeForce RTX 3060, 535.104.05, 8.6"))
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN)
+    assert result.returncode != 0
+    assert "NVIDIA driver 535.104.05 is too old" in result.stderr
+    assert "needs 570 or newer for CUDA 12.8" in result.stderr
+    assert not any(c.startswith(("build ", "run ")) for c in docker_calls(work))
+
+
+def test_join_old_driver_stops_in_print_mode(work: Path) -> None:
+    install_fake(work, "nvidia-smi", fake_smi("NVIDIA GeForce RTX 3060, 535.104.05, 8.6"))
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN, "--print")
+    assert result.returncode != 0
+    assert "too old" in result.stderr
+
+
+def test_join_unsupported_compute_capability(work: Path) -> None:
+    install_fake(work, "nvidia-smi", fake_smi("NVIDIA GeForce GTX 1060, 570.86.10, 6.1"))
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN)
+    assert result.returncode != 0
+    assert (
+        "NVIDIA GeForce GTX 1060 (compute capability 6.1) is not supported by this engine build; "
+        "join with --accel cpu." in result.stderr
+    )
+    assert not any(c.startswith(("build ", "run ")) for c in docker_calls(work))
+
+
+def test_join_old_nvidia_smi_checks_driver_only(work: Path) -> None:
+    smi = fake_smi("NVIDIA GeForce GTX 1060, 570.86.10", knows_compute_cap=False)
+    install_fake(work, "nvidia-smi", smi)
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN)
+    assert result.returncode == 0, result.stderr
+    assert "GPU: NVIDIA GeForce GTX 1060, driver 570.86.10" in result.stdout
+    assert "compute capability" not in result.stdout
+
+    install_fake(
+        work, "nvidia-smi", fake_smi("NVIDIA GeForce GTX 1060, 535.1", knows_compute_cap=False)
+    )
+    assert "too old" in run(work, "join", JOIN_URL, JOIN_TOKEN).stderr
+
+
+def test_join_prints_gpu_line(work: Path) -> None:
+    install_fake(work, "nvidia-smi", fake_smi("NVIDIA GeForce RTX 4090, 572.16, 8.9"))
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN)
+    assert result.returncode == 0, result.stderr
+    assert "GPU: NVIDIA GeForce RTX 4090, driver 572.16, compute capability 8.9" in result.stdout
