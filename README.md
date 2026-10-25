@@ -17,6 +17,7 @@ The only state is the database.
    ```
 
    The first build takes several minutes.
+   `./lainbow init` asks for the music folder, the data folder and the port, and can check the music folder against MPD.
 
 2. Check that the server is up: `curl http://localhost:8000/health`.
 3. In Sola MPD, set the Lainbow address to `http://<host>:8000`.

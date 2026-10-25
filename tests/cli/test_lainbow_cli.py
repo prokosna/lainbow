@@ -5,8 +5,12 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import socketserver
 import stat
 import subprocess
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -53,6 +57,17 @@ esac
 exit 0
 """
 
+# Reports a listener only for the ports named in FAKE_PORTS_BUSY (real ss prints a header).
+FAKE_SS = """#!/bin/sh
+echo "State Recv-Q Send-Q Local Address:Port Peer Address:Port"
+for p in $FAKE_PORTS_BUSY; do
+    case "$*" in
+    *":$p") echo "LISTEN 0 4096 0.0.0.0:$p 0.0.0.0:*" ;;
+    esac
+done
+exit 0
+"""
+
 FAKE_NVIDIA_SMI = "#!/bin/sh\nexit 0\n"
 
 JOIN_URL = "http://10.0.0.5:8000"
@@ -83,12 +98,13 @@ def work(tmp_path: Path) -> Path:
     docker.write_text(FAKE_DOCKER)
     docker.chmod(docker.stat().st_mode | stat.S_IEXEC)
     install_fake(project, "curl", FAKE_CURL)
+    install_fake(project, "ss", FAKE_SS)
     (tmp_path / "music").mkdir()
     return project
 
 
 def run(
-    work: Path, *args: str, extra_env: dict[str, str] | None = None
+    work: Path, *args: str, extra_env: dict[str, str] | None = None, stdin: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
@@ -102,6 +118,7 @@ def run(
         "FAKE_IMAGE_EXISTS": "",
         "LAINBOW_KFD_DEVICE": str(work.parent / "no-kfd"),
         "HSA_OVERRIDE_GFX_VERSION": "",
+        "FAKE_PORTS_BUSY": "",
         **(extra_env or {}),
     }
     return subprocess.run(
@@ -109,7 +126,8 @@ def run(
         capture_output=True,
         text=True,
         env=env,
-        stdin=subprocess.DEVNULL,
+        input=stdin,
+        stdin=None if stdin is not None else subprocess.DEVNULL,
         check=False,
     )
 
@@ -132,6 +150,200 @@ def test_init_writes_every_key(work: Path) -> None:
     assert re.fullmatch(r"lbe_[0-9a-f]{32}_[A-Za-z0-9_-]{43}", env["ENGINE_TOKEN"])
     parse_token(env["ENGINE_TOKEN"])
     assert "docker compose up -d" in result.stdout
+
+
+def make_songs(root: Path, *uris: str) -> None:
+    for uri in uris:
+        path = root / uri
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x")
+
+
+@contextmanager
+def fake_mpd(uris: list[str], *, find_works: bool = True) -> Iterator[int]:
+    """A tiny MPD that greets, answers find/listall and closes; yields its port."""
+
+    class Handler(socketserver.StreamRequestHandler):
+        def handle(self) -> None:
+            self.wfile.write(b"OK MPD 0.23.5\n")
+            for raw in self.rfile:
+                cmd = raw.decode().strip()
+                if cmd == "close":
+                    return
+                if cmd.startswith("find") and find_works:
+                    body = "".join(f"file: {u}\n" for u in uris)
+                    self.wfile.write(body.encode() + b"OK\n")
+                elif cmd.startswith("find"):
+                    self.wfile.write(b"ACK [5@0] {find} unknown filter\n")
+                elif cmd == "listall":
+                    body = "".join(f"directory: d\nfile: {u}\n" for u in uris)
+                    self.wfile.write(body.encode() + b"OK\n")
+
+    with socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler) as server:
+        server.daemon_threads = True
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield server.server_address[1]
+        finally:
+            server.shutdown()
+
+
+def test_init_defaults_at_every_prompt(work: Path) -> None:
+    music = work.parent / "music"
+    result = run(work, "init", "--accel", "cpu", stdin=f"{music}\n\n\n\n")
+    assert result.returncode == 0, result.stderr
+    env = read_env(work)
+    assert env["MUSIC_DIR"] == str(music)
+    assert env["DATA_DIR"] == "./data"
+    assert env["PORT"] == "8000"
+    assert "Data folder (database and model weights) [./data]: " in result.stdout
+    assert "API port (Sola MPD connects here) [8000]: " in result.stdout
+    assert "MPD address to check paths against" in result.stdout
+    assert "MPD check:    not checked" in result.stdout
+    assert (work / "data").is_dir()
+
+
+def test_init_custom_data_folder_is_created(work: Path) -> None:
+    music = work.parent / "music"
+    target = work.parent / "disk" / "lainbow"
+    result = run(work, "init", "--accel", "cpu", stdin=f"{music}\n{target}\ny\n9100\n\n")
+    assert result.returncode == 0, result.stderr
+    assert f"Create {target}? [Y/n]" in result.stdout
+    assert target.is_dir()
+    env = read_env(work)
+    assert env["DATA_DIR"] == str(target)
+    assert env["PORT"] == "9100"
+
+
+def test_init_data_folder_cannot_be_created(work: Path) -> None:
+    blocker = work.parent / "file"
+    blocker.write_text("")
+    result = run(
+        work, "init", "--yes", "--music-dir", str(work.parent / "music"), "--accel", "cpu",
+        "--data-dir", str(blocker / "sub"),
+    )  # fmt: skip
+    assert result.returncode != 0
+    assert "sudo mkdir" in result.stderr
+    assert "sudo chown" in result.stderr
+    assert not (work / ".env").exists()
+
+
+def test_init_port_in_use_asks_again(work: Path) -> None:
+    music = work.parent / "music"
+    result = run(
+        work,
+        "init",
+        "--accel",
+        "cpu",
+        extra_env={"FAKE_PORTS_BUSY": "8000"},
+        stdin=f"{music}\n\n\n\n9200\n\n",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Port 8000 is already in use" in result.stdout
+    assert read_env(work)["PORT"] == "9200"
+
+
+def test_init_yes_port_in_use_fails(work: Path) -> None:
+    result = run(
+        work, "init", "--yes", "--music-dir", str(work.parent / "music"), "--accel", "cpu",
+        extra_env={"FAKE_PORTS_BUSY": "8000"},
+    )  # fmt: skip
+    assert result.returncode != 0
+    assert "port 8000 is already in use" in result.stderr
+    assert not (work / ".env").exists()
+
+
+def test_init_mpd_paths_match(work: Path) -> None:
+    music = work.parent / "music"
+    uris = ["Artist/a.mp3", "Artist/b.mp3", "Other/c.flac"]
+    make_songs(music, *uris)
+    with fake_mpd(uris) as port:
+        result = run(
+            work, "init", "--yes", "--music-dir", str(music), "--accel", "cpu",
+            "--mpd", f"127.0.0.1:{port}",
+        )  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    assert "paths match MPD (3/3 sample songs found)" in result.stdout
+
+
+def test_init_mpd_listall_fallback(work: Path) -> None:
+    music = work.parent / "music"
+    uris = ["Artist/a.mp3", "Other/c.flac"]
+    make_songs(music, *uris)
+    with fake_mpd(uris, find_works=False) as port:
+        result = run(
+            work, "init", "--yes", "--music-dir", str(music), "--accel", "cpu",
+            "--mpd", f"127.0.0.1:{port}",
+        )  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    assert "paths match MPD (2/2 sample songs found)" in result.stdout
+
+
+def test_init_mpd_folder_too_high(work: Path) -> None:
+    music = work.parent / "music"
+    uris = ["Artist/a.mp3", "Artist/b.mp3"]
+    make_songs(music / "library", *uris)
+    with fake_mpd(uris) as port:
+        result = run(work, "init", "--accel", "cpu", stdin=f"{music}\n\n\n\n127.0.0.1:{port}\ny\n")
+    assert result.returncode == 0, result.stderr
+    assert "Use the suggested folder? [Y/n]" in result.stdout
+    assert read_env(work)["MUSIC_DIR"] == str(music / "library")
+
+
+def test_init_mpd_folder_too_high_with_yes_fails(work: Path) -> None:
+    music = work.parent / "music"
+    uris = ["Artist/a.mp3"]
+    make_songs(music / "library", *uris)
+    with fake_mpd(uris) as port:
+        result = run(
+            work, "init", "--yes", "--music-dir", str(music), "--accel", "cpu",
+            "--mpd", f"127.0.0.1:{port}",
+        )  # fmt: skip
+    assert result.returncode != 0
+    assert str(music / "library") in result.stderr
+    assert not (work / ".env").exists()
+
+
+def test_init_mpd_folder_too_deep(work: Path) -> None:
+    library = work.parent / "music" / "library"
+    uris = ["Artist/a.mp3", "Artist/b.mp3"]
+    make_songs(library, *uris)
+    deep = library / "Artist"
+    with fake_mpd(uris) as port:
+        result = run(work, "init", "--accel", "cpu", stdin=f"{deep}\n\n\n\n127.0.0.1:{port}\ny\n")
+    assert result.returncode == 0, result.stderr
+    assert f"{library}" in result.stderr
+    assert read_env(work)["MUSIC_DIR"] == str(library)
+
+
+def test_init_mpd_unrelated_folder_shows_examples(work: Path) -> None:
+    music = work.parent / "music"
+    with fake_mpd(["Artist/a.mp3"]) as port:
+        result = run(work, "init", "--accel", "cpu", stdin=f"{music}\n\n\n\n127.0.0.1:{port}\n")
+    assert result.returncode == 0, result.stderr
+    assert "Artist/a.mp3" in result.stderr
+    assert "music_directory" in result.stderr
+    assert read_env(work)["MUSIC_DIR"] == str(music)
+
+
+def test_init_mpd_unreachable_warns(work: Path) -> None:
+    with socketserver.TCPServer(("127.0.0.1", 0), socketserver.BaseRequestHandler) as free:
+        port = free.server_address[1]
+    result = run(
+        work, "init", "--yes", "--music-dir", str(work.parent / "music"), "--accel", "cpu",
+        "--mpd", f"127.0.0.1:{port}",
+    )  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    assert "warning: cannot read from MPD" in result.stderr
+    assert (work / ".env").exists()
+
+
+def test_init_yes_without_mpd_flag_does_not_connect(work: Path) -> None:
+    result = run(work, "init", "--yes", "--music-dir", str(work.parent / "music"), "--accel", "cpu")
+    assert result.returncode == 0, result.stderr
+    assert "MPD address" not in result.stdout
+    assert "MPD check:    not checked" in result.stdout
 
 
 def test_init_twice_keeps_everything(work: Path) -> None:
