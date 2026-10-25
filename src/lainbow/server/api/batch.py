@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
+from lainbow.db import work
 from lainbow.db.schema import Run
 from lainbow.server.library import scan
 from lainbow.server.runs import RunExecutor, RunKind, RunState, get_run
@@ -70,6 +71,27 @@ def run_scan(request: Request) -> RunOut:
 def run_vacuum(request: Request) -> RunOut:
     """Start a library scan (in v2 a scan also removes deleted tracks)."""
     return _submit(request, "vacuum")
+
+
+@router.post("/analyze/run")
+def run_analyze(request: Request) -> RunOut:
+    """Give failed tracks another chance (analysis itself runs continuously)."""
+    state = request.app.state
+    session_factory = state.session_factory
+    tasks = tuple(state.active_tasks)
+
+    def job() -> dict[str, Any]:
+        retried: dict[str, Any] = {}
+        with session_factory() as session:
+            for task in tasks:
+                retried[task.model] = work.retry_failed(
+                    session, model=task.model, profile=task.profile
+                )
+            session.commit()
+        return retried
+
+    run_id = state.executor.submit("analyze", job)
+    return _load(request, run_id)
 
 
 @router.get("/tasks/{run_id}")

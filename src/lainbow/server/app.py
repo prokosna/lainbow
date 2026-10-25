@@ -15,10 +15,11 @@ import lainbow
 from lainbow.core.settings import ServerSettings
 from lainbow.db.session import make_engine, make_session_factory
 from lainbow.server import engines
-from lainbow.server.api import batch
+from lainbow.server.api import batch, songs, stats
 from lainbow.server.api import engine as engine_api
 from lainbow.server.profiles import activate_profiles
 from lainbow.server.runs import RunExecutor
+from lainbow.server.text_embedding import TextEmbedder
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,10 @@ async def _periodic_scan(app: FastAPI, interval_min: int) -> None:
 
 
 def create_app(
-    settings: ServerSettings, *, session_factory: sessionmaker[Session] | None = None
+    settings: ServerSettings,
+    *,
+    session_factory: sessionmaker[Session] | None = None,
+    text_embedder: TextEmbedder | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application for Lainbow server."""
 
@@ -55,6 +59,8 @@ def create_app(
                 engines.ensure_local_engine(session, token)
                 session.commit()
         app.state.active_tasks = await asyncio.to_thread(activate_profiles, factory, settings)
+        embedder = text_embedder or TextEmbedder(str(settings.text_engine_url))
+        app.state.text_embedder = embedder
         executor = RunExecutor(factory)
         app.state.executor = executor
         task: asyncio.Task[None] | None = None
@@ -68,6 +74,8 @@ def create_app(
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
             await asyncio.to_thread(executor.shutdown)
+            if text_embedder is None:
+                embedder.close()
             if engine is not None:
                 engine.dispose()
 
@@ -75,6 +83,8 @@ def create_app(
     app.state.settings = settings
     app.include_router(batch.router)
     app.include_router(engine_api.router)
+    app.include_router(songs.router)
+    app.include_router(stats.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

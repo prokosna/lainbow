@@ -147,6 +147,12 @@ class ServerSettings(_LainbowSettings):
         ge=60,
         description="Seconds an engine may hold a track before another engine may take it.",
     )
+    text_engine_url: AnyHttpUrl = Field(
+        default=AnyHttpUrl("http://engine:8001"),
+        description=(
+            "URL of the engine that turns search text into vectors (the engine next to the server)."
+        ),
+    )
     models: Annotated[list[str], NoDecode] = Field(
         default=["muq", "muq_mulan"],
         description=_models_description(),

@@ -43,6 +43,7 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_SCAN_INTERVAL_MIN",
         "LAINBOW_LOCAL_ENGINE_TOKEN",
         "LAINBOW_LEASE_SEC",
+        "LAINBOW_TEXT_ENGINE_URL",
         "LAINBOW_MODELS",
         "LAINBOW_MUQ_MAX_SEC",
         "LAINBOW_MUQ_DROP_TAIL",
