@@ -1,5 +1,6 @@
 """MuQ and MuQ-MuLan wrappers with fake torch modules (no weights)."""
 
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -60,3 +61,17 @@ def test_muq_mulan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     assert fake.calls[0]["wavs"].shape == (1, 14)
     assert model.embed_text("calm piano") == pytest.approx([0.6, 0.8])
     assert fake.calls[1]["texts"] == ["calm piano"]
+
+
+def test_muq_input_tensor_is_writable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A read-only clip must not reach torch.from_numpy (it warns about non-writable arrays)."""
+    monkeypatch.setattr(
+        muq, "_MuQ", SimpleNamespace(from_pretrained=lambda _r, cache_dir: FakeMuQ())
+    )
+    model = muq.MuQModel(tmp_path)
+    model.load("cpu")
+    clip = np.zeros(180, dtype=np.float32)
+    clip.flags.writeable = False
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        model.embed([clip])

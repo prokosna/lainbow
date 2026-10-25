@@ -9,8 +9,8 @@ import torch
 from fakes import FakeModel, MockServer, make_plan, make_settings
 from fastapi.testclient import TestClient
 
-from lainbow.engine import audio
-from lainbow.engine.loading import choose_loading
+from lainbow.engine import audio, loading
+from lainbow.engine.loading import available_memory_gb, choose_loading
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.text_api import create_app
 from lainbow.engine.worker import Worker
@@ -40,8 +40,69 @@ def test_auto_cuda_little_memory(monkeypatch: pytest.MonkeyPatch) -> None:
     assert choose_loading("auto", "cuda", MODELS) == "sequential"
 
 
-def test_auto_cpu_is_together() -> None:
+def _cpu_memory(monkeypatch: pytest.MonkeyPatch, gb: float | None) -> None:
+    monkeypatch.setattr(loading, "available_memory_gb", lambda: gb)
+
+
+def test_auto_cpu_enough_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    _cpu_memory(monkeypatch, 32)
     assert choose_loading("auto", "cpu", MODELS) == "together"
+
+
+def test_auto_cpu_little_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    _cpu_memory(monkeypatch, 6)
+    assert choose_loading("auto", "cpu", MODELS) == "sequential"
+
+
+def test_auto_cpu_unknown_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    _cpu_memory(monkeypatch, None)
+    assert choose_loading("auto", "cpu", MODELS) == "together"
+
+
+def test_auto_cpu_warns_with_docker_hint(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _cpu_memory(monkeypatch, 3)  # the largest model (5 GB) does not fit in 2.7 GB
+    with caplog.at_level("WARNING"):
+        assert choose_loading("auto", "cpu", MODELS) == "sequential"
+    assert "Docker Desktop: Settings > Resources > Memory" in caplog.text
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+
+
+def test_available_memory_cgroup_v2(tmp_path: Path) -> None:
+    _write(tmp_path / "cg" / "memory.max", f"{8 * GB}\n")
+    _write(tmp_path / "cg" / "memory.current", f"{3 * GB}\n")
+    _write(tmp_path / "meminfo", f"MemAvailable: {64 * 1024 * 1024} kB\n")
+    assert available_memory_gb(tmp_path / "cg", tmp_path / "meminfo") == pytest.approx(5)
+
+
+def test_available_memory_cgroup_v1(tmp_path: Path) -> None:
+    _write(tmp_path / "cg" / "memory" / "memory.limit_in_bytes", str(4 * GB))
+    _write(tmp_path / "cg" / "memory" / "memory.usage_in_bytes", str(GB))
+    _write(tmp_path / "meminfo", f"MemAvailable: {64 * 1024 * 1024} kB\n")
+    assert available_memory_gb(tmp_path / "cg", tmp_path / "meminfo") == pytest.approx(3)
+
+
+def test_available_memory_unlimited_uses_meminfo(tmp_path: Path) -> None:
+    _write(tmp_path / "cg" / "memory.max", "max\n")
+    _write(tmp_path / "meminfo", f"MemTotal: 1 kB\nMemAvailable: {2 * 1024 * 1024} kB\n")
+    assert available_memory_gb(tmp_path / "cg", tmp_path / "meminfo") == pytest.approx(2)
+    _write(tmp_path / "cg1" / "memory" / "memory.limit_in_bytes", str(2**63))
+    assert available_memory_gb(tmp_path / "cg1", tmp_path / "meminfo") == pytest.approx(2)
+
+
+def test_available_memory_meminfo_smaller_than_cgroup(tmp_path: Path) -> None:
+    _write(tmp_path / "cg" / "memory.max", str(8 * GB))
+    _write(tmp_path / "meminfo", f"MemAvailable: {1024 * 1024} kB\n")
+    assert available_memory_gb(tmp_path / "cg", tmp_path / "meminfo") == pytest.approx(1)
+
+
+def test_available_memory_unreadable(tmp_path: Path) -> None:
+    assert available_memory_gb(tmp_path / "none", tmp_path / "none") is None
 
 
 def test_auto_pinned_models_fit_sequentially(monkeypatch: pytest.MonkeyPatch) -> None:

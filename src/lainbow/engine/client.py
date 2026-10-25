@@ -80,9 +80,11 @@ class ServerClient:
         r = self._request("POST", "/engine/v1/results", json=body.model_dump(mode="json"))
         return ResultsOut.model_validate(r.json())
 
-    def release(self) -> ReleaseOut:
-        """Release every lease held by this engine."""
-        return ReleaseOut.model_validate(self._request("POST", "/engine/v1/release").json())
+    def release(self) -> int:
+        """Release every lease held by this engine; return how many there were."""
+        return ReleaseOut.model_validate(
+            self._request("POST", "/engine/v1/release").json()
+        ).released
 
     def download(self, track_id: int, dest: Path) -> None:
         """Stream a track's audio file to ``dest``."""

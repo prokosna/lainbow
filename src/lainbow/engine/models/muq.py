@@ -43,7 +43,11 @@ class MuQModel:
         vectors: list[npt.NDArray[np.floating[Any]]] = []
         with torch.inference_mode():
             for clip in clips:
-                wav = torch.from_numpy(np.ascontiguousarray(clip)).unsqueeze(0).to(self._device)
+                wav = (
+                    torch.from_numpy(np.array(clip, dtype=np.float32, copy=True))
+                    .unsqueeze(0)
+                    .to(self._device)
+                )
                 out = self._model(wav, output_hidden_states=True)
                 vec = out.last_hidden_state.mean(dim=1).squeeze(0)
                 vectors.append(vec.float().cpu().numpy())

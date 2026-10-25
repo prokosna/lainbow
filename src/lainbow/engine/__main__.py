@@ -32,9 +32,13 @@ def run(settings: EngineSettings) -> int:
     client = ServerClient(str(settings.server_url), settings.token.get_secret_value())
     try:
         plan = client.plan()
+        # A restarted engine keeps its id, so leases from before it stopped would only expire later.
+        returned = client.release()
     except (EngineUnauthorizedError, ServerUnreachableError) as e:
         logger.error("%s", e)
         return 1
+    if returned:
+        logger.info("returned %d tracks this engine held before it last stopped", returned)
 
     usable = registry.available(settings.models_dir)
     wanted = {t.model for t in plan.tasks}

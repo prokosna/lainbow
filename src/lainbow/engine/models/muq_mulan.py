@@ -42,7 +42,7 @@ class MuQMuLanModel:
         """Embed the analysis span (the clips are consecutive)."""
         if self._model is None:
             raise RuntimeError("model is not loaded")
-        audio = np.ascontiguousarray(np.concatenate(clips))
+        audio = np.array(np.concatenate(clips), dtype=np.float32, copy=True)
         with torch.inference_mode():
             wav = torch.from_numpy(audio).unsqueeze(0).to(self._device)
             vec = self._model(wavs=wav).flatten().float().cpu().numpy()
