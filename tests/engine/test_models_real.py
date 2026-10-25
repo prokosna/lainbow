@@ -20,7 +20,9 @@ def _tone() -> np.ndarray:
 
 
 @pytest.mark.skipif(not _DIR or not Path(_DIR).is_dir(), reason="LAINBOW_TEST_MODELS_DIR not set")
-@pytest.mark.parametrize(("model_id", "dim"), [("muq", 1024), ("muq_mulan", 512)])
+@pytest.mark.parametrize(
+    ("model_id", "dim"), [("muq", 1024), ("muq_mulan", 512), ("clap", 512), ("mert", 1024)]
+)
 def test_real_model(model_id: str, dim: int) -> None:
     from lainbow.engine.models import registry
 

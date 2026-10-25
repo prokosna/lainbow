@@ -40,7 +40,7 @@ class MuQMuLanModel:
         with torch.inference_mode():
             wav = torch.from_numpy(audio).unsqueeze(0).to(self._device)
             vec = self._model(wavs=wav).flatten().float().cpu().numpy()
-        return EmbedResult(embedding=l2_normalize(vec), details={"clips": len(clips)})
+        return EmbedResult(embedding=l2_normalize(vec))
 
     def embed_text(self, text: str) -> npt.NDArray[np.floating[Any]]:
         """Embed a text query into the audio space."""

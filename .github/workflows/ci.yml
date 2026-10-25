@@ -11,5 +11,5 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
-      - run: uv sync --locked --extra server --extra engine --extra models --extra cpu
+      - run: uv sync --locked --extra server --extra engine --extra models --extra optional-models --extra cpu
       - run: scripts/check.sh

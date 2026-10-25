@@ -1,13 +1,13 @@
 #!/bin/sh
 # Runs every gate regardless of earlier failures, so one failure never hides another.
-# Needs the dev environment: uv sync --extra server --extra engine --extra models --extra cpu
+# Needs the dev environment: uv sync --extra server --extra engine --extra models --extra optional-models --extra cpu
 set -u
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT_DIR" || exit 1
 
 if [ ! -d .venv ]; then
-	echo "no .venv: run 'uv sync --extra server --extra engine --extra models --extra cpu'" >&2
+	echo "no .venv: run 'uv sync --extra server --extra engine --extra models --extra optional-models --extra cpu'" >&2
 	exit 1
 fi
 

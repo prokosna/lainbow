@@ -112,6 +112,15 @@ wheels = [
 ]
 
 [[package]]
+name = "braceexpand"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/93/badd4f5ccf25209f3fef2573073da9fe4a45a3da99fca2f800f942130c0f/braceexpand-0.1.7.tar.gz", hash = "sha256:e6e539bd20eaea53547472ff94f4fb5c3d3bf9d0a89388c4b56663aba765f705", size = 7777, upload-time = "2021-05-07T13:49:07.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/93/e8c04e80e82391a6e51f218ca49720f64236bc824e92152a2633b74cf7ab/braceexpand-0.1.7-py2.py3-none-any.whl", hash = "sha256:91332d53de7828103dcae5773fb43bc34950b0c8160e35e0f44c4427a3b85014", size = 5923, upload-time = "2021-05-07T13:49:05.146Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
@@ -274,12 +283,38 @@ nvtx = [
 ]
 
 [[package]]
+name = "cwevals"
+version = "0.0.1b1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "distro", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "httpx", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "sniffio", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/82/d176b1832e6632c5ebdabbbb943655902f3ff867a18262a0b6cb0e9bf560/cwevals-0.0.1b1.tar.gz", hash = "sha256:2ae997369ff44941925e4db1bd07eb4e13c05de412e615636fd12881d63f8a13", size = 258563, upload-time = "2026-09-28T18:21:23.442Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/96/b3b348954f88915e60e2f1fbe6d09250584e53a20d949e55786f31dbaeb0/cwevals-0.0.1b1-py3-none-any.whl", hash = "sha256:6936baf0ccdc5d9092abd5c2ab628cedcdae9bb72edfdf730f7aaac19118855a", size = 176544, upload-time = "2026-09-28T18:21:21.957Z" },
+]
+
+[[package]]
 name = "decorator"
 version = "5.3.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/60/8b/32f9823da46cde7df2087faa08cd98d01b908f8dcab982cdba9c84e85355/decorator-5.3.1.tar.gz", hash = "sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82", size = 58084, upload-time = "2026-05-18T06:03:28.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl", hash = "sha256:f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c", size = 10365, upload-time = "2026-05-18T06:03:26.517Z" },
+]
+
+[[package]]
+name = "distro"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722, upload-time = "2023-12-24T09:54:32.31Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277, upload-time = "2023-12-24T09:54:30.421Z" },
 ]
 
 [[package]]
@@ -348,6 +383,18 @@ wheels = [
 ]
 
 [[package]]
+name = "googleapis-common-protos"
+version = "1.76.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "protobuf", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/b6/bc095b23a3e0d978e75c8c18cabe4c11f791837410670e4486f0d539bfba/googleapis_common_protos-1.76.0.tar.gz", hash = "sha256:71db0e44a1d4c2dd024ebad44ca67129cc1e2892e4861df466764749d5ef8642", size = 156250, upload-time = "2026-10-22T23:43:36.263Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/6d/78dc67a9e779e594b49bf62604034d3a6aa428a55afc729cafda4b7333e1/googleapis_common_protos-1.76.0-py3-none-any.whl", hash = "sha256:59e13344a9f3651aa201a03e2bee815a3bf43a4baf1f9ff8a9b62a840ce25fac", size = 307707, upload-time = "2026-10-22T23:43:10.445Z" },
+]
+
+[[package]]
 name = "grimp"
 version = "3.17"
 source = { registry = "https://pypi.org/simple" }
@@ -377,6 +424,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1", size = 101250, upload-time = "2025-04-24T03:35:25.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
+]
+
+[[package]]
+name = "h5py"
+version = "3.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/33/acd0ce6863b6c0d7735007df01815403f5589a21ff8c2e1ee2587a38f548/h5py-3.16.0.tar.gz", hash = "sha256:a0dbaad796840ccaa67a4c144a0d0c8080073c34c76d5a6941d6818678ef2738", size = 446526, upload-time = "2026-03-06T13:49:08.07Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/c0/5d4119dba94093bbafede500d3defd2f5eab7897732998c04b54021e530b/h5py-3.16.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:c5313566f4643121a78503a473f0fb1e6dcc541d5115c44f05e037609c565c4d", size = 3685604, upload-time = "2026-03-06T13:48:04.198Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/42/c84efcc1d4caebafb1ecd8be4643f39c85c47a80fe254d92b8b43b1eadaf/h5py-3.16.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:42b012933a83e1a558c673176676a10ce2fd3759976a0fedee1e672d1e04fc9d", size = 3061940, upload-time = "2026-03-06T13:48:05.783Z" },
+    { url = "https://files.pythonhosted.org/packages/89/84/06281c82d4d1686fde1ac6b0f307c50918f1c0151062445ab3b6fa5a921d/h5py-3.16.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:ff24039e2573297787c3063df64b60aab0591980ac898329a08b0320e0cf2527", size = 5198852, upload-time = "2026-03-06T13:48:07.482Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/e9/1a19e42cd43cc1365e127db6aae85e1c671da1d9a5d746f4d34a50edb577/h5py-3.16.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:dfc21898ff025f1e8e67e194965a95a8d4754f452f83454538f98f8a3fcb207e", size = 5405250, upload-time = "2026-03-06T13:48:09.628Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/8e/9790c1655eabeb85b92b1ecab7d7e62a2069e53baefd58c98f0909c7a948/h5py-3.16.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:698dd69291272642ffda44a0ecd6cd3bda5faf9621452d255f57ce91487b9794", size = 5190108, upload-time = "2026-03-06T13:48:11.26Z" },
+    { url = "https://files.pythonhosted.org/packages/51/d7/ab693274f1bd7e8c5f9fdd6c7003a88d59bedeaf8752716a55f532924fbb/h5py-3.16.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:2b2c02b0a160faed5fb33f1ba8a264a37ee240b22e049ecc827345d0d9043074", size = 5419216, upload-time = "2026-03-06T13:48:13.322Z" },
+    { url = "https://files.pythonhosted.org/packages/03/c1/0976b235cf29ead553e22f2fb6385a8252b533715e00d0ae52ed7b900582/h5py-3.16.0-cp312-cp312-win_amd64.whl", hash = "sha256:96b422019a1c8975c2d5dadcf61d4ba6f01c31f92bbde6e4649607885fe502d6", size = 3182868, upload-time = "2026-03-06T13:48:15.759Z" },
+    { url = "https://files.pythonhosted.org/packages/14/d9/866b7e570b39070f92d47b0ff1800f0f8239b6f9e45f02363d7112336c1f/h5py-3.16.0-cp312-cp312-win_arm64.whl", hash = "sha256:39c2838fb1e8d97bcf1755e60ad1f3dd76a7b2a475928dc321672752678b96db", size = 2653286, upload-time = "2026-03-06T13:48:17.279Z" },
 ]
 
 [[package]]
@@ -551,6 +617,9 @@ models = [
     { name = "muq", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
     { name = "transformers", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
 ]
+optional-models = [
+    { name = "laion-clap", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
 rocm = [
     { name = "pytorch-triton-rocm", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "torch", version = "2.9.1+rocm6.4", source = { registry = "https://download.pytorch.org/whl/rocm6.4" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -585,6 +654,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'engine'", specifier = ">=0.28" },
     { name = "httpx", marker = "extra == 'server'", specifier = ">=0.28" },
     { name = "huggingface-hub", marker = "extra == 'models'", specifier = ">=0.35" },
+    { name = "laion-clap", marker = "extra == 'optional-models'", specifier = ">=1.1" },
     { name = "muq", marker = "extra == 'models'", specifier = ">=0.1" },
     { name = "mutagen", marker = "extra == 'server'", specifier = ">=1.47" },
     { name = "numpy", marker = "extra == 'engine'", specifier = ">=2.0" },
@@ -607,7 +677,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'engine'", specifier = ">=0.38" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.38" },
 ]
-provides-extras = ["server", "engine", "models", "cpu", "cuda", "rocm"]
+provides-extras = ["server", "engine", "models", "optional-models", "cpu", "cuda", "rocm"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -616,6 +686,34 @@ dev = [
     { name = "mypy", specifier = ">=1.18" },
     { name = "pytest", specifier = ">=8.4" },
     { name = "ruff", specifier = ">=0.14" },
+]
+
+[[package]]
+name = "laion-clap"
+version = "1.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "braceexpand", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "ftfy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "h5py", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "librosa", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "llvmlite", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "pandas", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "progressbar", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "regex", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "scikit-learn", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "scipy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "soundfile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "torchlibrosa", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "tqdm", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "transformers", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "wandb", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "webdataset", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "wget", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/a9/5ffb0794d8faefa159505b51654cd2db360582625afc61ded0d5eecbc197/laion_clap-1.1.5.tar.gz", hash = "sha256:ad390c34dd1edc68b2406486630edbe8fb1bf9307fdd0f8308a5f2579db143e7", size = 1478277, upload-time = "2024-07-09T00:55:46.633Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/5e/c26fa4892830eea6b4694afd0c31b0c678cfd058c5e26aea48270cd8fcf4/laion_clap-1.1.5-py3-none-any.whl", hash = "sha256:7f7b277600ff3705bc5f597670b740ba191864284ca3ce9fbbc71c344f985d4b", size = 1498740, upload-time = "2024-07-09T00:55:43.887Z" },
 ]
 
 [[package]]
@@ -1247,12 +1345,133 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-exporter-http-transport"
+version = "0.66b1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/0c/e3ebdb4b507f66afcc905e6885a4946969bd75b45988492643356fbbdc63/opentelemetry_exporter_http_transport-0.66b1.tar.gz", hash = "sha256:443080203bf52586ce0b2ad901e8951c61833eab1aa539ae6f1f16fe9e8e7952", size = 11693, upload-time = "2026-10-06T17:32:59.65Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/69/6af86ff66492b481c6a4c05dcfd68beb47ed8ba046440a26a2aac76b95c7/opentelemetry_exporter_http_transport-0.66b1-py3-none-any.whl", hash = "sha256:2f95404bdee7f9d2d529c7de56c7bd86d014d774d8fbf137810e0167f8a492bf", size = 12155, upload-time = "2026-10-06T17:32:35.454Z" },
+]
+
+[package.optional-dependencies]
+requests = [
+    { name = "requests", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-common"
+version = "0.66b1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-sdk", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/19/41de712173f43057e4532d42ece7d0c6d4210d353e5752433cb14987643f/opentelemetry_exporter_otlp_common-0.66b1.tar.gz", hash = "sha256:6b1403487a2185ac1feb45fd5546fdf8630ce71c36bcefaadf51e2130e9e23f9", size = 14325, upload-time = "2026-10-06T17:33:01.725Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/39/8c23d67665c762aa51840fa06f86e902e8f6f1693bc8d7e3d98cd6e2f753/opentelemetry_exporter_otlp_common-0.66b1-py3-none-any.whl", hash = "sha256:00ff8592c3a7cb729ff3fdc7ffa12372c243bdf2163e80c180994d0c7bd83ee9", size = 12385, upload-time = "2026-10-06T17:32:38.177Z" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-common"
+version = "1.45.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-proto", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c1/8e/65e85e5137991a3c493b11682151d198638a5bc1dd4b4c5f67e013c57d7c/opentelemetry_exporter_otlp_proto_common-1.45.1.tar.gz", hash = "sha256:2e4adcc3a67bcf57804fc49514f0ef64974ca7590aa3491da389852b4a0628f6", size = 18873, upload-time = "2026-10-06T17:33:04.471Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/aa/92f225d353904e7f70b8b3e3c1b02db0cf56f744c2e83c581dc372e78873/opentelemetry_exporter_otlp_proto_common-1.45.1-py3-none-any.whl", hash = "sha256:2f446183ae7047b036226f1d846c41a834b0e8755ad13b51a51dd38952eb466c", size = 15393, upload-time = "2026-10-06T17:32:41.911Z" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.45.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "googleapis-common-protos", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-api", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-exporter-http-transport", extra = ["requests"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-exporter-otlp-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-exporter-otlp-proto-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-proto", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-sdk", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "requests", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/17/26487707ea4caa97b17e6e4b5fa72133a53512ffa2f5cf7a49ef284b29cb/opentelemetry_exporter_otlp_proto_http-1.45.1.tar.gz", hash = "sha256:45c218405ce3fd879596924b1874bf9a8f6880206d61065c5a912c8e5c297fb7", size = 28839, upload-time = "2026-10-06T17:33:05.713Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/1f/517eaa0187ba106a9da97160ce2add3a371812681dc440930b267f714e42/opentelemetry_exporter_otlp_proto_http-1.45.1-py3-none-any.whl", hash = "sha256:24a97cf3753c7fb52fad44a696e452ff371686339e2acf3309e2eda3d0230700", size = 22180, upload-time = "2026-10-06T17:32:43.946Z" },
+]
+
+[[package]]
+name = "opentelemetry-proto"
+version = "1.45.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "protobuf", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/7f/15f014fb195da6c2dbb6c71399b8e76824878718e94de6454038488eed28/opentelemetry_proto-1.45.1.tar.gz", hash = "sha256:79e0fb95e4616691a469439238aa9224d75779b3e108e895d1aa125ab29ca77c", size = 46488, upload-time = "2026-10-06T17:33:11.49Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/9a/42ec8180a769516ae757e893b69736826efceac7332553915b4528a91c6d/opentelemetry_proto-1.45.1-py3-none-any.whl", hash = "sha256:f38e2a8413053c180cd3d2637fbb279673ec2f6a6e09c995aafa2f452c52b46e", size = 72488, upload-time = "2026-10-06T17:32:53.057Z" },
+]
+
+[[package]]
+name = "opentelemetry-sdk"
+version = "1.45.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-semantic-conventions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/79/7392e21a1c8f0c61d90b223e31c7e48cb9d452e91a6b820ad24cca5f23c4/opentelemetry_sdk-1.45.1.tar.gz", hash = "sha256:63d24a6ca645019a631e6a51999c73e93adcac1196ca640b8ae78a7cc4762bf3", size = 218324, upload-time = "2026-10-06T17:33:13.26Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/3c/87c42b4bd6dd297536f04cd9383d212ac557ecd49f2cbdcd46da1c9ef5c8/opentelemetry_sdk-1.45.1-py3-none-any.whl", hash = "sha256:c604c11dc429810812348989115fa44bd558772a3d7442afc43d024f2c250ca4", size = 140063, upload-time = "2026-10-06T17:32:55.04Z" },
+]
+
+[[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.66b1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/46/e4/dbbfb2a010c4db2224a5114638acede6fe563d33cc20fb1752cebcbe6298/opentelemetry_semantic_conventions-0.66b1.tar.gz", hash = "sha256:497ca63bf383723411e8eaf60c8779e9877633c936bb641080adab59d0eb6ec8", size = 150250, upload-time = "2026-10-06T17:33:14.073Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/14/67f8aa798857f8cf686f515bf93d9bb877ce952ddc8efae0fa25b45ce0d6/opentelemetry_semantic_conventions-0.66b1-py3-none-any.whl", hash = "sha256:d4cddeb4315490b35213f55e2bdc9ac54bb1e4d318927475bed62b35545e581b", size = 206279, upload-time = "2026-10-06T17:32:56.103Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
+]
+
+[[package]]
+name = "pandas"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "python-dateutil", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/b1/a10c0d1a7e3ce44eb42635771004aa503e3b9ddde0bd39c524dda65f7eff/pandas-3.1.0.tar.gz", hash = "sha256:ecb9b2d8a817b1e1ba1fdb90c0abe9eab31b4fdf2562b7a56b86ac66ace17e49", size = 5933421, upload-time = "2026-10-22T11:57:03.087Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/12/b94c28870f351e9650c724e6daedf661455b348a9dca6d717c42c30fa216/pandas-3.1.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:f4772320b7735d96dbbef437129f840dec4175f8a18a2391bd1222ed8943825c", size = 11587014, upload-time = "2026-10-22T11:55:07.208Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/4b/af8ca15261db52ab07f5d0c2d4c1bc28d822ea4c2a79756bc2606c012e7c/pandas-3.1.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:cc5e4e12d287ea77bbf4c4d4bf47ed152d82a990d3a6794dee7c350f887532b5", size = 11167712, upload-time = "2026-10-22T11:55:09.523Z" },
+    { url = "https://files.pythonhosted.org/packages/49/c4/cd5127751e2bef3d10f07e0d856e120916a3df0df6450f759ddb48c78b1c/pandas-3.1.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9b4e696ff70ed06e986feeec09356c491ce878d0df69a36c8e591b6a38afa29b", size = 11476964, upload-time = "2026-10-22T11:55:11.889Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/a6/dc89cdd95e12093bc813e9b814a09f1a056be3e1304edaef9bf9dbee108a/pandas-3.1.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9433b5dc2f26ef9d9b56daaf4d41d078bf4372c5d88c42ed5b397a6eea80de16", size = 12019688, upload-time = "2026-10-22T11:55:14.246Z" },
+    { url = "https://files.pythonhosted.org/packages/36/87/da14aa671da792612f15847451e731d5dc0f06f6747b76b15f197ffcce13/pandas-3.1.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:3cba20fd269808e224d6212273008173978033a1dee0f3f217bfdbd58775a72c", size = 12490149, upload-time = "2026-10-22T11:55:16.675Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/a0/1ce996c7354ad37983955571058ba0dde585663163ab067275197183868f/pandas-3.1.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:743554ed96755ad1963397ccadbe9965d92db8777ca2ae8c1fe58bd9549d7f28", size = 13090624, upload-time = "2026-10-22T11:55:18.854Z" },
+    { url = "https://files.pythonhosted.org/packages/92/72/d235f82b51a22478938a3583b68e8dc05811937543adf410f34bab76004a/pandas-3.1.0-cp312-cp312-pyemscripten_2024_0_wasm32.whl", hash = "sha256:ac2f833557874a79fc0b5fac4c86e402ea6498beba8753dc29ca23d08481689a", size = 8091628, upload-time = "2026-10-22T11:55:21.285Z" },
+    { url = "https://files.pythonhosted.org/packages/10/72/06aefff8fe5efc5e1ca8bfb2695b648a435358f6dc224d4e40159314181a/pandas-3.1.0-cp312-cp312-win_amd64.whl", hash = "sha256:b8c75dbb27c7d170b25c13dd35515da4bb92d40fe8bb3bd2c69a95de2218889b", size = 10748836, upload-time = "2026-10-22T11:55:23.47Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/b6/4c86f659f5b14790d14e17253becc93c4e3d1511b73f0ba2184f06b164f8/pandas-3.1.0-cp312-cp312-win_arm64.whl", hash = "sha256:73b6cea22090b7123c78ee662a5108ff36616b0bec4fe47026f86fb04a49bce7", size = 10128898, upload-time = "2026-10-22T11:55:25.995Z" },
 ]
 
 [[package]]
@@ -1325,6 +1544,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/43/85ef45e8b36c6a48546af7b266592dc32d7f67837a6514d111bced6d7d75/pooch-1.9.0.tar.gz", hash = "sha256:de46729579b9857ffd3e741987a2f6d5e0e03219892c167c6578c0091fb511ed", size = 61788, upload-time = "2026-01-30T19:15:09.649Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl", hash = "sha256:f265597baa9f760d25ceb29d0beb8186c243d6607b0f60b83ecf14078dbc703b", size = 67175, upload-time = "2026-01-30T19:15:08.36Z" },
+]
+
+[[package]]
+name = "progressbar"
+version = "2.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/a6/b8e451f6cff1c99b4747a2f7235aa904d2d49e8e1464e0b798272aa84358/progressbar-2.5.tar.gz", hash = "sha256:5d81cb529da2e223b53962afd6c8ca0f05c6670e40309a7219eacc36af9b6c63", size = 10046, upload-time = "2018-06-29T02:32:00.222Z" }
+
+[[package]]
+name = "protobuf"
+version = "7.36.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/89/5b8517baa72f84a67b8a307ba953c91057af618bf40bf676f3c03551f8f0/protobuf-7.36.2.tar.gz", hash = "sha256:497d0463ff3316681da6c0b9e8d06cb465d61abce00b613ab42226175644d1bb", size = 512737, upload-time = "2026-09-17T20:07:59.326Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/72/98342feb672507c8f3a69e34b4fa8961f608edba5c1a48a6f47156d92cb5/protobuf-7.36.2-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:cbc70b17ee27e28894c7fee8bb04be1abead49e936bc70eb60052531eee2079e", size = 456039, upload-time = "2026-09-17T20:07:51.542Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/ea/91fdf7c2b8bbd49cde056f00a9df6773532987e1c00fe2830b895af95c7e/protobuf-7.36.2-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:e11e1f0180583a2af89db6a2ecd9e8dc40aa6d2988ca175bfd0e6d12ea72d74e", size = 344219, upload-time = "2026-09-17T20:07:52.914Z" },
+    { url = "https://files.pythonhosted.org/packages/17/ab/5fd5f8ece73fad885c5a09aa849b32d70472f954ba3a92d3bb5974ea953b/protobuf-7.36.2-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:f4fee11ec330d238b34a05c9b675f693c20415d1c5bd7d5320cc2f8a798eb9cf", size = 357223, upload-time = "2026-09-17T20:07:53.985Z" },
+    { url = "https://files.pythonhosted.org/packages/db/f3/3996583dd2906297a637af12114deddf7658af6e683fedb83be061983fb5/protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:89f23aa53c24553a2416fd4fd1ec06f74fa42b14b546d8883128813f775bbfd2", size = 343223, upload-time = "2026-09-17T20:07:54.931Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/1b/dcc64f358fcb51811b58ae40b3d28f820725f116d86487cc20bd4b130701/protobuf-7.36.2-cp310-abi3-win32.whl", hash = "sha256:912c1221170e16c08d1f086762f563dd61ff83c18b5fa6652952dfaded66f728", size = 442998, upload-time = "2026-09-17T20:07:55.826Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/55/b77bda4e5e5f5971fb51b07663694690e9afdb9402136c16a522bd621cad/protobuf-7.36.2-cp310-abi3-win_amd64.whl", hash = "sha256:a300819d441e078a5608c0d3c709796bb548136058fda017ae51d425b44fd353", size = 456514, upload-time = "2026-09-17T20:07:57.188Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/04/d52c7016b04b6c5108f26691f9d33ec82a9b65d041f1a9c771137693d618/protobuf-7.36.2-py3-none-any.whl", hash = "sha256:bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e", size = 179806, upload-time = "2026-09-17T20:07:58.211Z" },
 ]
 
 [[package]]
@@ -1453,6 +1693,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
+]
+
+[[package]]
+name = "python-dateutil"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "tzdata", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0e/df/f15f80383f152452d8985b36d95cb8751f901a3e0ff4cd27f7e118f168e2/python_dateutil-3.0.0.tar.gz", hash = "sha256:7ebcb3c29a92f3ceafe79a7a48a5c45677e9e004bbeec5742ac0bbb00560b7a2", size = 271066, upload-time = "2026-10-21T23:41:45.075Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/17/cebee01d1c0c1441174cf0456ddc91b280d79acb65340c05e41d77866ee8/python_dateutil-3.0.0-py2.py3-none-any.whl", hash = "sha256:3c79630202e4152c6add678446984236efe4f57e84d8e892aab0637bab82e9fd", size = 94659, upload-time = "2026-10-21T23:41:43.431Z" },
 ]
 
 [[package]]
@@ -1640,6 +1893,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/70/b3/c19426f783614d625699a4b247faf628ea9ab1db228674491767b417f9e1/setuptools-84.2.1.tar.gz", hash = "sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc", size = 1230289, upload-time = "2026-10-20T19:01:37.742Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ef/55/6dc6d6bb953bdfc52519a0059592c52b6e3b8ad51cf8256dffceb55b0610/setuptools-84.2.1-py3-none-any.whl", hash = "sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2", size = 876263, upload-time = "2026-10-20T19:01:35.678Z" },
+]
+
+[[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "sniffio"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc", size = 20372, upload-time = "2024-02-25T23:20:04.057Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2", size = 10235, upload-time = "2024-02-25T23:20:01.196Z" },
 ]
 
 [[package]]
@@ -1932,6 +2203,19 @@ wheels = [
 ]
 
 [[package]]
+name = "torchlibrosa"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "librosa", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/67/e4c79da3f15777b9bc2b655d47dac553fc31e40360500fef5e66d6877ce8/torchlibrosa-0.1.0.tar.gz", hash = "sha256:62a8beedf9c9b4141a06234df3f10229f7ba86e67678ccee02489ec4ef044028", size = 11719, upload-time = "2023-02-21T09:40:54.968Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3e/af/ccf007edf442c3c0cd3a98be2c82bc99edc957c04436a759b6e1e01077e0/torchlibrosa-0.1.0-py3-none-any.whl", hash = "sha256:89b65fd28b833ceb6bc74a3d0d87e2924ddc5a845d0a246b194952a4e12a38cb", size = 11741, upload-time = "2023-02-21T09:40:52.58Z" },
+]
+
+[[package]]
 name = "torchvision"
 version = "0.24.1+cpu"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
@@ -2076,6 +2360,15 @@ wheels = [
 ]
 
 [[package]]
+name = "tzdata"
+version = "2026.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/68/f1b440335057bfce71b6e50a9d09445aa2ecbd08359a337976627b8409e7/tzdata-2026.5.tar.gz", hash = "sha256:8cc73c0a0bfca7dbfa59235d60b2eff82231dee33f53d206db1acd9173cfc0a7", size = 200404, upload-time = "2026-10-03T09:23:14.143Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/21/1e5995a1c920cce14e4bffae20c665ec10e7ed03ab25e006cd741092b718/tzdata-2026.5-py2.py3-none-any.whl", hash = "sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac", size = 347996, upload-time = "2026-10-03T09:23:12.535Z" },
+]
+
+[[package]]
 name = "urllib3"
 version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2119,6 +2412,37 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/51/27/c1d2f9fa977f8f42ea294604166df10e0027e6dc6cd17f85ede386c9bf36/uvloop-0.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:090865d8ce7a03986755a3ce711b7dd0d4b44eb14ab74368b717f3fad1180208", size = 4532597, upload-time = "2026-10-01T03:15:47.258Z" },
     { url = "https://files.pythonhosted.org/packages/42/dd/2cb6a2c8a30ca55c07a882dd4ae4ceae0fa7d8c15b25b3b7cb9a4b6cf4ca/uvloop-0.23.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:bd6f2f81c7b9da99d301c0b16b82044e76fe887086e42e1590ecf520b94dbdac", size = 4230048, upload-time = "2026-10-01T03:15:49.119Z" },
     { url = "https://files.pythonhosted.org/packages/f4/52/29989cbaa4022dc4ef35c1dd60a4ab989e4c2065f341ed483ae71d2bd950/uvloop-0.23.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:a6ac96da66c35bf789bdcde78a88dc7d56b7907d8379648c54adc1c61594575d", size = 4394152, upload-time = "2026-10-01T03:15:50.829Z" },
+]
+
+[[package]]
+name = "wandb"
+version = "0.31.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "cwevals", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-api", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "opentelemetry-sdk", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "packaging", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "platformdirs", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "protobuf", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "pyyaml", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "requests", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "xxhash", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/07/a5/8fc1c319f2db9be5a707c25a76ecba1b2b9450a44a05b295ff5aa379bbfa/wandb-0.31.0.tar.gz", hash = "sha256:dcdaa635576ff17b18a757b39fc22b0db3d1c6e01d5ce090fe80f6adc776028d", size = 40420416, upload-time = "2026-10-16T18:56:13.817Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/62/ee7f6e5133b68a5b3e389ee9684079b018af56fc2a20200c03b66c1dc226/wandb-0.31.0-py3-none-macosx_13_0_arm64.whl", hash = "sha256:28389f1c932b5d3fc11293fd50c24f308c6a1e1dd952783b96d9703062302bb5", size = 18355517, upload-time = "2026-10-16T18:55:55.879Z" },
+    { url = "https://files.pythonhosted.org/packages/15/3b/8b4f8e09e63e9c67146f35c6da5d78cdce89eb193385ca990e8aaa5681c7/wandb-0.31.0-py3-none-macosx_13_0_x86_64.whl", hash = "sha256:654ef6d854516888091aff582a243714b02cefb09c4a0e1186cc6a7c9f93de50", size = 19882635, upload-time = "2026-10-16T18:55:58.469Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/c8/aa5e7ab3d947928d8a41e676d519e3fd37e7bf467ae72261fcb0823199db/wandb-0.31.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:0cbd8986ca56115897defcfd8ad8def1a871b99d1e8bde4f106633dc9969b7a3", size = 18532675, upload-time = "2026-10-16T18:56:00.827Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/07/5594faeaea9440be2ea01cee692573416b3997879df67f0e940bfbfc2d26/wandb-0.31.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:009bcf370598d5e7a3d3bb66e33510f78c17fcc0505f8aa7ecf51dbc4378f979", size = 20337507, upload-time = "2026-10-16T18:56:02.937Z" },
+    { url = "https://files.pythonhosted.org/packages/58/06/680fce9a6857a1376cab5fecf357409c27ae4a98908e3936a256487eaa39/wandb-0.31.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:cb20ed655fb6e301b27f9974ae639176ec3a0e81aa9135d107491d618206ad5f", size = 18637167, upload-time = "2026-10-16T18:56:05.129Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/0a/278fdc0edd079d01d52f4bb7cf9620ca6ec86c5b80d22fb41a8421d6bc05/wandb-0.31.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:df16a46cd6468e6580783b02560c79991c181f63a4691949020fff1b4ac87072", size = 20520389, upload-time = "2026-10-16T18:56:07.402Z" },
+    { url = "https://files.pythonhosted.org/packages/90/7a/aaee2e55d1aa6f855d01e702263e2e0ef733da45583ecd9836d68ea3d67d/wandb-0.31.0-py3-none-win_amd64.whl", hash = "sha256:488f8ef63cae217ba220e6d8c163ee8c5b98320ee1866ce774c4da0847235f02", size = 19596112, upload-time = "2026-10-16T18:56:09.473Z" },
+    { url = "https://files.pythonhosted.org/packages/75/d8/03efc83dccada300944fce5ac0bac650835855fdfed9654833c9e7c29f81/wandb-0.31.0-py3-none-win_arm64.whl", hash = "sha256:d155662ab444ab0cd12afa87943a147193e9b9301134b0b34e8c97c68a4bbba5", size = 17972736, upload-time = "2026-10-16T18:56:11.488Z" },
 ]
 
 [[package]]
@@ -2167,6 +2491,20 @@ wheels = [
 ]
 
 [[package]]
+name = "webdataset"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "braceexpand", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+    { name = "pyyaml", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (platform_machine != 'x86_64' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-cuda') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cpu' and extra == 'extra-7-lainbow-rocm') or (sys_platform != 'linux' and extra == 'extra-7-lainbow-cuda' and extra == 'extra-7-lainbow-rocm')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5a/3a/68800d92e065cf4750ebecf973b13979c0c929b439e1293012938862038d/webdataset-1.0.2.tar.gz", hash = "sha256:7f0498be827cfa46cc5430a58768a24e2c6a410676a61be1838f53d61afdaab4", size = 80090, upload-time = "2025-06-19T23:26:21.945Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/00/aca6beb3658dab4ed3dbb41a78e6e7f31342e0b41d28088f205525751601/webdataset-1.0.2-py3-none-any.whl", hash = "sha256:3dbfced32b25c0d199c6b9787937b6f85742bc3c84f652c846893075c1c082d9", size = 74956, upload-time = "2025-06-19T23:26:20.354Z" },
+]
+
+[[package]]
 name = "websockets"
 version = "17.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2202,6 +2540,12 @@ wheels = [
 ]
 
 [[package]]
+name = "wget"
+version = "3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/6a/62e288da7bcda82b935ff0c6cfe542970f04e29c756b0e147251b2fb251f/wget-3.2.zip", hash = "sha256:35e630eca2aa50ce998b9b1a127bb26b30dfee573702782aa982f875e3f16061", size = 10857, upload-time = "2015-10-22T15:26:37.51Z" }
+
+[[package]]
 name = "x-clip"
 version = "0.14.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2222,4 +2566,43 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/d7/f056e8e114b85df6f30f7c22fd75fb273182306ea95b36c6f2089c8ff52a/x-clip-0.14.4.tar.gz", hash = "sha256:e2539953f1c81a2ab892843c2bc02c218f4ac410cf10ce37495830f6a0e259c6", size = 1355000, upload-time = "2023-10-16T15:04:08.619Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c6/41/44c4b2336824263ebcbfa16e8fd7fd4ca010183aa7587779a405ee5ab2b5/x_clip-0.14.4-py3-none-any.whl", hash = "sha256:2e9842330bc4539916e54a22c1d4352b60b838507e0736e98e4fb74fd9972f7a", size = 1374025, upload-time = "2023-10-16T15:04:06.814Z" },
+]
+
+[[package]]
+name = "xxhash"
+version = "4.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/39/e6/ed6c428055ffd3f9299db3ec8671fd78b70c24173c040b8faafb6348ebbb/xxhash-4.0.2.tar.gz", hash = "sha256:af3d1b3cfa5280e84d8968e9f30c9eca75781db4915eb6d6acb0dd4fc93e0f47", size = 101549, upload-time = "2026-10-19T06:00:08.459Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/58/32/7f74a5661a3029102178950b24f9b1baa259429f97a5d8ef855935472f58/xxhash-4.0.2-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:cb66d346593cb6851498b9ed554582aede153e32c9835edb76995746e563ac6b", size = 38428, upload-time = "2026-10-19T05:59:15.002Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/79/0ad1d456bbfb30761f6fc174dca610dcd46ef1280a708ce1bdb5de8b5368/xxhash-4.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:aeda53dfb6bcae94adb1f5df4246fe13b9c4202f531dd9d39e0d55b36ba8db0e", size = 36174, upload-time = "2026-10-19T05:58:05.938Z" },
+    { url = "https://files.pythonhosted.org/packages/30/fd/ea481dcc75bdacdb4d4b1039007bc60a0c0d7cd999d28e3e19b61099a6fb/xxhash-4.0.2-cp312-cp312-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:e956b1a4e8fd8ea6fdb823670bf6ee3eade44c5ba3bbca06aa67805e4815a9e6", size = 253093, upload-time = "2026-10-19T06:01:20.933Z" },
+    { url = "https://files.pythonhosted.org/packages/19/9c/39619aa3a1d569ff5fd8b5ea34600451310a63bf23d158f74a4fbc9fdcd3/xxhash-4.0.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1fce8df7958f0828bd78d2ecfd9b11510abff9edc0e28fa7f7ca0ddcee2f0a8b", size = 276506, upload-time = "2026-10-19T05:59:15.76Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/01/d9e445ac597f8b6acd6aefdfa21230919e9aa7f14bee3ee0d634c3f3bcb7/xxhash-4.0.2-cp312-cp312-manylinux2014_armv7l.manylinux_2_17_armv7l.manylinux_2_31_armv7l.whl", hash = "sha256:1ab636ddc4f257bb2713c078d3f6112f194e92d8a32442233ea957fdddb51de6", size = 297700, upload-time = "2026-10-19T05:58:05.221Z" },
+    { url = "https://files.pythonhosted.org/packages/62/14/e7ceb1cdb9a643ebf6ca6d8b3a63b9bb43dbee8b362d0c6f9b3dd8318dec/xxhash-4.0.2-cp312-cp312-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:c9f9c25738cbab7ca51763f724db95bc7f50f3174793389fee7f97e154bd9c83", size = 280234, upload-time = "2026-10-19T05:59:55.319Z" },
+    { url = "https://files.pythonhosted.org/packages/be/16/9c30c6d7caafb654632a5fdfb45dfe4133254749dfaccef88bcdd033efe1/xxhash-4.0.2-cp312-cp312-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:60f30791faec3e96c8ed5921045231f7d3355649af47809e5a75c8a17dba8b6b", size = 511017, upload-time = "2026-10-19T05:58:25.71Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/c6/3a85fc0b821ed2dfcf6fb7cfdf07e0b261ada40374583a50abb3480f2863/xxhash-4.0.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7c7c95dba490be3b4e5a2fa5595b4d4f088fe7b8726e5998b8c1d83b1f9eb3e4", size = 261797, upload-time = "2026-10-19T05:59:17.727Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/75/dce80778193b5d099ba01bc03725bf8095280e5b6ec434fdcc62124f7ecc/xxhash-4.0.2-cp312-cp312-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:f53479d8e13f93e1e3ef0e933a1901cbb4d8745c61c3876ff5b7c544e40f13ed", size = 339860, upload-time = "2026-10-19T05:58:07.481Z" },
+    { url = "https://files.pythonhosted.org/packages/55/8a/5fc8b33217e25a37f8dfad398f602d404781535759f7d9578871349bb476/xxhash-4.0.2-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:d42a7b02f204d5133d38d173766ff47a5da46fcf2c3876718b819f1f5500a55f", size = 272850, upload-time = "2026-10-19T06:01:22.258Z" },
+    { url = "https://files.pythonhosted.org/packages/47/f9/ddf4f2bbc143886edd7c66e73c0adc6be9fb9f138a12c77bea2665be744c/xxhash-4.0.2-cp312-cp312-musllinux_1_2_armv7l.whl", hash = "sha256:6049b09b27d9226dfe0a8b0dee2b867063c8df9a7ef64748bf48110d8fc896c2", size = 301421, upload-time = "2026-10-19T05:59:18.262Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/ad/862e0c20ca8cbbe624e5c168ca0fccd0ab6b1e83d13dd9b4aa8b3e575264/xxhash-4.0.2-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:97903f3df852ca5840a26cc27beef15f9f93b0071e2aa550a03d8ee5c65e7765", size = 260139, upload-time = "2026-10-19T05:58:06.923Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/19/4c5a3b6698504159b7908662dc61b1f3ebed25135235a023a088a5483e85/xxhash-4.0.2-cp312-cp312-musllinux_1_2_ppc64le.whl", hash = "sha256:873ee53a7d8f020ddfcd3bc101707ae46fcd1eb702f809ff29a765d0f88b654f", size = 278211, upload-time = "2026-10-19T05:59:57.7Z" },
+    { url = "https://files.pythonhosted.org/packages/86/92/732f5f9810132d6f9afb19160980a48d1fa51caa724352a4f170bf960a4a/xxhash-4.0.2-cp312-cp312-musllinux_1_2_riscv64.whl", hash = "sha256:e24e9093771e8a27089176f202991199ebedad8f4791a6e2abf88acd5c69bd9d", size = 330247, upload-time = "2026-10-19T05:58:29.31Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/e2/137dbd91bd93281f45bf53e4319874a09692bc07380755913e4dd938db49/xxhash-4.0.2-cp312-cp312-musllinux_1_2_s390x.whl", hash = "sha256:c06c5fd89304f2c274d5129bd3a555b78f7a8af5ea16edd5b1360010f3359bd4", size = 478537, upload-time = "2026-10-19T05:59:20.059Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/9b/41b99dfc87602358fc4dbfa1517b7f72b5a9232bce1aa32d4208acaeb160/xxhash-4.0.2-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:c37fcacb7f5b8590c822bbf3bc41690e40a7581d8c4bcea7b15148f0743e716d", size = 258155, upload-time = "2026-10-19T05:58:09.407Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/b3/2bfc3c9121a522f6a5abb8f57800345c23a159822b64c7ea69debdf4846d/xxhash-4.0.2-cp312-cp312-pyemscripten_2024_0_wasm32.whl", hash = "sha256:79cfd336c2ecaceef1061e7a7b3da079eab5920ba1352a28be690e857f67f2ea", size = 20749, upload-time = "2026-10-19T06:01:23.513Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/25/85d482d35d3f778d25719fc704146e8c984955d44735cfbdf955db240c23/xxhash-4.0.2-cp312-cp312-win32.whl", hash = "sha256:515a5f4405a29bc447bcee2ee13455dfc67ce41bf8f1da5258bc75bbdfb6dee6", size = 34657, upload-time = "2026-10-19T05:59:20.564Z" },
+    { url = "https://files.pythonhosted.org/packages/11/63/1beef4ee02cad4b8f97d707c6632e80f35e935c6b880960985e038f42aba/xxhash-4.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:043dcb74ba30a068a2821c136b61262db67f1e1d174ff4dbe83a3e24996861e7", size = 37059, upload-time = "2026-10-19T05:58:08.545Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/4d/075f92b562ac13469edd51acb676ac4dbfa3d85a03f842e4a026e29a5ae1/xxhash-4.0.2-cp312-cp312-win_arm64.whl", hash = "sha256:202c18875cf93d652c506d0e7c8a50847713f963a8aa9c06ce5117bdd14ba771", size = 33219, upload-time = "2026-10-19T06:00:00.128Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/ab/f5e56048d06c1a42834978a4c17a004a202b092e2f72a632e68868fb9f52/xxhash-4.0.2-graalpy312-graalpy250_312_native-macosx_10_13_x86_64.whl", hash = "sha256:fe5a0d96cb339d383d3f720ffe94d8a7a51ccc8abf4d348a3ee058b5625f948e", size = 31816, upload-time = "2026-10-19T06:00:30.318Z" },
+    { url = "https://files.pythonhosted.org/packages/17/b1/2351ddc0b45f983f5ea1d8b91024c932ce939a271b08d7f3bc8a54b3a81b/xxhash-4.0.2-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:86fdc2ae36f5d11446896c4456883b3740be2ec3ff56f700a7dc7aeb635e236f", size = 34431, upload-time = "2026-10-19T05:59:16.424Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/9f/dc3d43fa9ae82435a5fae9647925e40ca2e6198f279a044f6119542cbf33/xxhash-4.0.2-graalpy312-graalpy250_312_native-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:792e7c12ac0d300908a99f644e583f4091c3a5a0035ab7b1b76aadc908480381", size = 38470, upload-time = "2026-10-19T06:00:01.225Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/52/45d2a2ac310da915e1ef06cc3a823d904d49c7049fdd830c46b8f5c038bc/xxhash-4.0.2-graalpy312-graalpy250_312_native-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e359ff2f38be3c856a129c1c5c4cbd70e219188456c1bf266fd4f94e2baae278", size = 38187, upload-time = "2026-10-19T05:58:54.013Z" },
+    { url = "https://files.pythonhosted.org/packages/84/77/a8779629eac4fd450dfd0f5a507941419dddb1a2b088288b790c497102bf/xxhash-4.0.2-graalpy312-graalpy250_312_native-win_amd64.whl", hash = "sha256:6e736b549811153e3b54779708725c68e105a6e6860f9f30fcba896a5f28ef0c", size = 37109, upload-time = "2026-10-19T06:01:51.414Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/80/6608694dd7817963db9d9c611143d94888c3e7420d8901c962acd7fdfc1c/xxhash-4.0.2-pp312-pypy312_pp80-macosx_10_15_x86_64.whl", hash = "sha256:c9f3129e086297db6b24b83db59a0dbfdd8f325ffc7dcc184fc573473b13293f", size = 36460, upload-time = "2026-10-19T06:00:34.489Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/d7/a1acbd775c01f720bbe6368af480e26e3b40525a7eaf17810c0ce5e9e13f/xxhash-4.0.2-pp312-pypy312_pp80-macosx_11_0_arm64.whl", hash = "sha256:2acdb1cabc41140e97d4adba7422dbeb7fabef9caace27d56f8de662d505fdfa", size = 33690, upload-time = "2026-10-19T05:59:23.349Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/13/15190b981f474117adefe78cd30acceb24e6f83352069402d3d9c24cd53b/xxhash-4.0.2-pp312-pypy312_pp80-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:2076eee9f06fcb611754f98b9c272046e4a8a3fcfde353575dd8e6e2f33e80ed", size = 47950, upload-time = "2026-10-19T06:00:07.951Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/ff/28666972b4a78dca99a537cbd42abe50dfdeca4d6388984c841cfe1f933f/xxhash-4.0.2-pp312-pypy312_pp80-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7b244e3e1d6eadb5061ce777632a822ed75c2fb6174c65882f5829f31b46e8c1", size = 42584, upload-time = "2026-10-19T05:59:00.064Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/30/0b46bb908376d75733ca70cd4124f74abeea0f50732749dafa848f42f385/xxhash-4.0.2-pp312-pypy312_pp80-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:63522739ce94e4e73c1605aa60a52b3863e77e835f6292cc8a5e7e7b626ff00c", size = 39472, upload-time = "2026-10-19T06:01:55.015Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/23/6c0aa47774513c1237f7ea198daf36f2d2609f1e233249a9ea97d5b55c38/xxhash-4.0.2-pp312-pypy312_pp80-win_amd64.whl", hash = "sha256:0b96b2694c97084c5e2bff8a6a3dc3c2fb3b9a07178286e8d69869efe76eeb50", size = 84214, upload-time = "2026-10-19T06:00:06.386Z" },
 ]

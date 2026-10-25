@@ -42,4 +42,4 @@ class MuQModel:
                 vec = out.last_hidden_state.mean(dim=1).squeeze(0)
                 vectors.append(vec.float().cpu().numpy())
         mean = weighted_mean(vectors, [float(len(c)) for c in clips])
-        return EmbedResult(embedding=l2_normalize(mean), details={"clips": len(clips)})
+        return EmbedResult(embedding=l2_normalize(mean))

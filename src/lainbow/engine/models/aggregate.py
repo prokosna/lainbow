@@ -30,3 +30,16 @@ def l2_normalize(v: Vector) -> Vector:
         return arr
     result: Vector = arr / norm
     return result
+
+
+def pad_by_wrapping(clip: Vector, length: int, source: Vector) -> Vector:
+    """Return ``clip`` extended to ``length`` samples by repeating ``source`` from its start."""
+    if len(clip) >= length:
+        return clip[:length]
+    if len(source) == 0:
+        raise ValueError("source must not be empty")
+    missing = length - len(clip)
+    reps = -(-missing // len(source))
+    filler = np.tile(source, reps)[:missing]
+    result: Vector = np.concatenate([clip, filler]).astype(clip.dtype, copy=False)
+    return result

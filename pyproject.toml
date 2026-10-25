@@ -34,6 +34,9 @@ models = [
     "transformers>=4.57,<5",
     "huggingface-hub>=0.35",
 ]
+optional-models = [
+    "laion-clap>=1.1",
+]
 cpu = [
     "torch==2.9.1",
     "torchaudio==2.9.1",
@@ -132,7 +135,7 @@ strict = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["muq.*"]
+module = ["muq.*", "laion_clap.*"]
 ignore_missing_imports = true
 
 [tool.importlinter]
