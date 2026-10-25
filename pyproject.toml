@@ -28,6 +28,7 @@ engine = [
 [project.scripts]
 lainbow-server = "lainbow.server.__main__:main"
 lainbow-engine = "lainbow.engine.__main__:main"
+lainbow-admin = "lainbow.server.admin:main"
 
 [dependency-groups]
 dev = [

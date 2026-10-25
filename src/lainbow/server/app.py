@@ -14,7 +14,10 @@ from sqlalchemy.orm import Session, sessionmaker
 import lainbow
 from lainbow.core.settings import ServerSettings
 from lainbow.db.session import make_engine, make_session_factory
+from lainbow.server import engines
 from lainbow.server.api import batch
+from lainbow.server.api import engine as engine_api
+from lainbow.server.profiles import activate_profiles
 from lainbow.server.runs import RunExecutor
 
 logger = logging.getLogger(__name__)
@@ -46,6 +49,12 @@ def create_app(
             engine = make_engine(settings.database_url.get_secret_value())
             factory = make_session_factory(engine)
         app.state.session_factory = factory
+        if settings.local_engine_token is not None:
+            token = settings.local_engine_token.get_secret_value()
+            with factory() as session:
+                engines.ensure_local_engine(session, token)
+                session.commit()
+        app.state.active_tasks = await asyncio.to_thread(activate_profiles, factory, settings)
         executor = RunExecutor(factory)
         app.state.executor = executor
         task: asyncio.Task[None] | None = None
@@ -65,6 +74,7 @@ def create_app(
     app = FastAPI(title="Lainbow Server", version=lainbow.__version__, lifespan=lifespan)
     app.state.settings = settings
     app.include_router(batch.router)
+    app.include_router(engine_api.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

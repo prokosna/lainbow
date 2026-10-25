@@ -138,6 +138,15 @@ class ServerSettings(_LainbowSettings):
     scan_interval_min: int = Field(
         default=60, ge=0, description="Minutes between automatic library scans (0 = never)."
     )
+    local_engine_token: SecretStr | None = Field(
+        default=None,
+        description="Token of the engine that runs next to the server (written by `lainbow init`).",
+    )
+    lease_sec: int = Field(
+        default=900,
+        ge=60,
+        description="Seconds an engine may hold a track before another engine may take it.",
+    )
     models: Annotated[list[str], NoDecode] = Field(
         default=["muq", "muq_mulan"],
         description=_models_description(),
