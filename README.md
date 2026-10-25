@@ -83,13 +83,13 @@ The settings most people touch:
 
 FastAPI's `/docs` has the full schema.
 
-## Upgrading from Lainbow 1
+## Upgrading from v1.x
 
-Lainbow 2 is not compatible with Lainbow 1.
+v2 is not compatible with v1.x.
 
 - Start with a new data directory.
 - Every track is analyzed again.
-- Lainbow 1 stays available at [v1.0.0](https://github.com/prokosna/lainbow/releases/tag/v1.0.0).
+- v1 stays available at [v1.0.0](https://github.com/prokosna/lainbow/releases/tag/v1.0.0).
 
 ## Development
 

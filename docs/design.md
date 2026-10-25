@@ -1,6 +1,6 @@
 # Design
 
-Lainbow 2 analyzes a music library with audio models, stores one vector per track and model, and answers
+Lainbow analyzes a music library with audio models, stores one vector per track and model, and answers
 nearest-neighbour queries. This page describes how it is put together and why.
 
 ## Services
@@ -81,4 +81,4 @@ The rules are checked by import-linter as part of `scripts/check.sh`.
 ## Compatibility
 
 The API used by Sola MPD (`/health`, `/api/v1/stats`, the song endpoints and the batch endpoints) keeps its
-paths and response fields. Lainbow 2 does not read Lainbow 1 data.
+paths and response fields. It does not read data from v1.x.

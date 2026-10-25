@@ -1,4 +1,4 @@
-# Lainbow 2. Run it from a checkout of a release tag; settings come from the .env next to this file.
+# Lainbow. Run it from a checkout of a release tag; settings come from the .env next to this file.
 # Images are built locally. The first start is `docker compose up -d --build`; after that `up -d` and `down` are enough.
 name: ${LAINBOW_PROJECT_NAME:-lainbow}
 
