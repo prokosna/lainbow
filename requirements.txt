@@ -1,9 +1,0 @@
-pre-commit
-alembic
-sqlmodel
-psycopg[binary]
-pytest
-soundfile
-httpx
-huggingface-hub
-muq

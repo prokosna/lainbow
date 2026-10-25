@@ -1,110 +1,85 @@
 [project]
 name = "lainbow"
-version = "0.1.0"
-description = "Add your description here"
+version = "2.0.0.dev0"
+description = "Music analysis engine: similar-song and natural-language search for a local music library"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.12",
+    "pydantic-settings>=2.11",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.120",
+    "uvicorn[standard]>=0.38",
+]
+engine = [
+    "httpx>=0.28",
+]
 
 [dependency-groups]
 dev = [
-    "mypy",
-    "pre-commit",
-    "pytest",
-    "ruff",
+    "import-linter>=2.5",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "ruff>=0.14",
 ]
 
-api = [
-    "celery[zstd]",
-    "fastapi",
-    "httpx",
-    "laion-clap",
-    "librosa",
-    "mutagen",
-    "numpy",
-    "pika",
-    "psycopg[binary]",
-    "psycopg2-binary",
-    "pydantic",
-    "pymilvus",
-    "SQLAlchemy",
-    "sqlmodel",
-    "tenacity",
-    "torch",
-    "torchaudio",
-    "torchvision",
-    "uvicorn[standard]",
-    "muq>=0.1.0",
-    "qdrant-client>=1.16.2",
-]
-
-batch = [
-    "celery[zstd]",
-    "celery-stubs",
-    "flower",
-    "httpx",
-    "librosa",
-    "mutagen",
-    "numpy",
-    "pika",
-    "psycopg[binary]",
-    "psycopg2-binary",
-    "pydantic",
-    "pymilvus",
-    "SQLAlchemy",
-    "sqlmodel",
-    "tenacity",
-    "qdrant-client>=1.16.2",
-]
-
-inference = [
-    "celery[zstd]",
-    "celery-stubs",
-    "fastapi",
-    "laion-clap",
-    "librosa",
-    "muq",
-    "nnAudio",
-    "numpy",
-    "pydantic",
-    "python-multipart",
-    "transformers",
-    "uvicorn[standard]",
-]
+[build-system]
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
 
 [tool.uv]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchaudio = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }
 
 [tool.ruff]
-include = ["src", "tests"]
-exclude = [
-    "alembic",
-    ".venv",
-]
+src = ["src", "tests"]
 line-length = 100
-lint.select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
-lint.ignore = ["E501"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.format]
 quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+addopts = "-m 'not postgres'"
+markers = [
+    "postgres: needs a disposable PostgreSQL with pgvector (set LAINBOW_TEST_DATABASE_URL)",
+]
 
 [tool.mypy]
-mypy_path = "src"
-ignore_missing_imports = true
+files = ["src", "tests"]
 strict = true
 warn_unreachable = true
+
+[tool.importlinter]
+root_package = "lainbow"
+
+[[tool.importlinter.contracts]]
+name = "core depends on no other lainbow package"
+type = "forbidden"
+source_modules = ["lainbow.core"]
+forbidden_modules = ["lainbow.server", "lainbow.db", "lainbow.engine"]
+
+[[tool.importlinter.contracts]]
+name = "server and db never import the engine"
+type = "forbidden"
+source_modules = ["lainbow.server", "lainbow.db"]
+forbidden_modules = ["lainbow.engine"]
+
+[[tool.importlinter.contracts]]
+name = "engine talks to the server over HTTP only"
+type = "forbidden"
+source_modules = ["lainbow.engine"]
+forbidden_modules = ["lainbow.server", "lainbow.db"]
+
+[[tool.importlinter.contracts]]
+name = "db does not depend on the server"
+type = "forbidden"
+source_modules = ["lainbow.db"]
+forbidden_modules = ["lainbow.server"]
