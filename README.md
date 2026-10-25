@@ -37,19 +37,19 @@ New music is found by the hourly scan or by the scan button in Sola MPD, and is 
 
 The first full analysis is the slow part. Any machine with an NVIDIA or AMD GPU can help.
 
-1. On the server, run `./lainbow add-engine desktop` (add `--accel rocm` for AMD, `--host <address>` if the guessed address is wrong).
-2. Paste the printed `docker run ...` line on the GPU machine.
+1. On the server, run `./lainbow add-engine desktop` (add `--host <address>` if the guessed address is wrong). It prints a `./lainbow join ...` line.
+2. On the GPU machine, clone the same Lainbow release and run that line. `join` detects NVIDIA, AMD or CPU, checks that the server version matches, and starts the engine.
 3. The engine only connects out to the server. Nothing needs to be opened or forwarded on that machine.
-4. When the analysis is done, stop it with `docker rm -f lainbow-engine`.
+4. When the analysis is done, stop it with `./lainbow leave`.
 
 Steady-state analysis continues on the server.
 
 Windows (WSL2):
 
 1. Install the NVIDIA driver for Windows.
-2. Run `wsl --install`.
-3. Install Docker Desktop with the WSL2 backend.
-4. Paste the line into PowerShell.
+2. Run `wsl --install` and open an Ubuntu terminal.
+3. Install Docker Desktop with the WSL2 backend and enable its WSL integration for Ubuntu.
+4. Clone Lainbow inside WSL and run the `./lainbow join ...` line there.
 
 ## Hardware and time
 

@@ -16,8 +16,12 @@ Usage: ./lainbow <command> [options]
 Commands:
   init [--music-dir DIR] [--data-dir DIR] [--port N] [--accel cpu|cuda|rocm] [--yes]
                   write .env (never overwrites; only adds missing keys)
-  add-engine NAME [--accel cuda|rocm|cpu] [--host HOST]
-                  register an engine and print the docker run command for another machine
+  add-engine NAME [--host HOST]
+                  register an engine and print the 'join' command to run on another machine
+  join SERVER_URL TOKEN [--accel auto|cuda|rocm|cpu] [--name NAME] [--build] [--print] [--yes]
+                  run an engine on this machine that works for a remote server
+  leave [--name NAME]
+                  stop and remove the engine started by 'join'
   status          show containers, analysis progress and engines
   config          show every effective server setting
   update          pull newer images and restart
@@ -51,6 +55,21 @@ random_token() {
 	echo "lbe_${hex}_${secret}"
 }
 
+# Set ACCEL_DETECTED and ACCEL_REASON from the hardware of this machine.
+KFD_DEVICE=${LAINBOW_KFD_DEVICE:-/dev/kfd}
+detect_accel() {
+	if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+		ACCEL_DETECTED=cuda
+		ACCEL_REASON="nvidia-smi found"
+	elif [ -e "$KFD_DEVICE" ]; then
+		ACCEL_DETECTED=rocm
+		ACCEL_REASON="$KFD_DEVICE found"
+	else
+		ACCEL_DETECTED=cpu
+		ACCEL_REASON="no GPU found"
+	fi
+}
+
 port_in_use() {
 	(exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
 }
@@ -75,13 +94,8 @@ cmd_init() {
 
 	if ! env_has COMPOSE_PROFILES; then
 		if [ -z "$accel" ]; then
-			if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
-				accel=cuda
-			elif [ -e /dev/kfd ]; then
-				accel=rocm
-			else
-				accel=cpu
-			fi
+			detect_accel
+			accel=$ACCEL_DETECTED
 			if [ "$yes" -eq 0 ]; then
 				printf 'Detected accelerator: %s. Use it? [Y/n/cpu/cuda/rocm] ' "$accel"
 				answer=""
@@ -161,10 +175,9 @@ NEXT
 }
 
 cmd_add_engine() {
-	local name="" accel=cuda host=""
+	local name="" host=""
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
 		--host) [ $# -ge 2 ] || die "--host needs a value"; host=$2; shift 2 ;;
 		-*) die "add-engine: unknown option '$1'" ;;
 		*)
@@ -175,14 +188,11 @@ cmd_add_engine() {
 		esac
 	done
 	[ -n "$name" ] || die "add-engine: NAME is required"
-	case "$accel" in cpu | cuda | rocm) ;; *) die "--accel must be cpu, cuda or rocm" ;; esac
 	need_docker
 
-	local port version token
+	local port token
 	port=$(env_get PORT)
 	port=${port:-8000}
-	version=$(env_get LAINBOW_VERSION)
-	version=${version:-2}
 	if [ -z "$host" ]; then
 		host=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
 		[ -n "$host" ] || die "cannot determine this machine's address; pass --host"
@@ -193,14 +203,145 @@ cmd_add_engine() {
 	token=$(printf '%s' "$token" | tail -n 1 | tr -d '[:space:]')
 	[ -n "$token" ] || die "the server returned no token"
 
-	local gpu=""
-	case "$accel" in
-	cuda) gpu="--gpus all " ;;
-	rocm) gpu="--device /dev/kfd --device /dev/dri " ;;
+	echo "On the engine machine, in a clone of the same Lainbow release, run:"
+	echo "  ./lainbow join http://${host}:${port} ${token}"
+	echo "Windows: run it in a WSL terminal (Ubuntu) with Docker Desktop's WSL integration enabled."
+	echo "Note: the engine only connects out to the server; nothing needs to be opened on the engine machine."
+}
+
+cmd_join() {
+	local server="" token="" accel=auto name=lainbow-engine build=0 print_only=0 yes=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
+		--name) [ $# -ge 2 ] || die "--name needs a value"; name=$2; shift 2 ;;
+		--build) build=1; shift ;;
+		--print) print_only=1; shift ;;
+		--yes | -y) yes=1; shift ;;
+		-*) die "join: unknown option '$1'" ;;
+		*)
+			if [ -z "$server" ]; then
+				server=$1
+			elif [ -z "$token" ]; then
+				token=$1
+			else
+				die "join: too many arguments"
+			fi
+			shift
+			;;
+		esac
+	done
+	[ -n "$server" ] && [ -n "$token" ] || die "join: usage: ./lainbow join SERVER_URL TOKEN [options]"
+	case "$accel" in auto | cpu | cuda | rocm) ;; *) die "--accel must be auto, cuda, rocm or cpu" ;; esac
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	command -v curl >/dev/null 2>&1 || die "curl is required"
+	server=${server%/}
+
+	# 1. Accelerator.
+	if [ "$accel" = auto ]; then
+		detect_accel
+		accel=$ACCEL_DETECTED
+		echo "accelerator: $accel ($ACCEL_REASON)"
+	else
+		echo "accelerator: $accel (from --accel)"
+	fi
+	if [ "$accel" = cuda ]; then
+		local runtimes os_name
+		runtimes=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
+		os_name=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null || true)
+		case "$runtimes$os_name" in
+		*nvidia* | *"Docker Desktop"*) ;;
+		*) echo "lainbow: warning: docker does not list the nvidia runtime; the NVIDIA Container Toolkit may be missing" >&2 ;;
+		esac
+	fi
+	local gid=""
+	if [ "$accel" = rocm ]; then
+		[ -e "$KFD_DEVICE" ] || die "rocm selected but $KFD_DEVICE does not exist"
+		gid=$(stat -c %g "$KFD_DEVICE")
+	fi
+
+	# 2. Server and version.
+	local health server_version local_version
+	health=$(curl -fsS "$server/health" 2>/dev/null) ||
+		die "cannot reach the server at $server; is it running and is the port open?"
+	case "$health" in
+	*'"status"'*'"ok"'*) ;;
+	*) die "cannot reach the server at $server; is it running and is the port open?" ;;
 	esac
-	echo "docker run -d --name lainbow-engine --restart unless-stopped ${gpu}-v lainbow-models:/models -e LAINBOW_SERVER_URL=http://${host}:${port} -e LAINBOW_TOKEN=${token} ghcr.io/prokosna/lainbow-engine:${version}-${accel}"
-	echo "Stop it with: docker rm -f lainbow-engine"
-	echo "Note: the engine only connects out to the server; nothing needs to be opened on this machine."
+	server_version=$(printf '%s' "$health" | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')
+	local_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml | head -n 1)
+	[ -n "$server_version" ] || die "the server did not report its version"
+	[ -n "$local_version" ] || die "cannot read the version from pyproject.toml"
+	if [ "$server_version" != "$local_version" ]; then
+		die "server is $server_version but this checkout is $local_version; check out the same release (git checkout v$server_version)"
+	fi
+
+	# 3. Token.
+	curl -fsS -H "Authorization: Bearer $token" "$server/engine/v1/plan" >/dev/null 2>&1 ||
+		die "the server rejected the token; run ./lainbow add-engine NAME on the server again"
+
+	# 4. Image tag.
+	local tag="ghcr.io/prokosna/lainbow-engine:${server_version}-${accel}"
+
+	# 5. Run command.
+	local -a run_args=(docker run -d --name "$name" --restart unless-stopped
+		-v lainbow-models:/models
+		-e "LAINBOW_SERVER_URL=$server" -e "LAINBOW_TOKEN=$token")
+	case "$accel" in
+	cuda) run_args+=(--gpus all) ;;
+	rocm)
+		run_args+=(--device /dev/kfd --device /dev/dri --group-add "${gid:-video}")
+		if [ -n "${HSA_OVERRIDE_GFX_VERSION:-}" ]; then
+			run_args+=(-e "HSA_OVERRIDE_GFX_VERSION=$HSA_OVERRIDE_GFX_VERSION")
+		fi
+		run_args+=(-e MIOPEN_FIND_MODE=FAST -e MIOPEN_USER_DB_PATH=/models/miopen)
+		;;
+	esac
+	run_args+=("$tag")
+
+	if [ "$print_only" -eq 1 ]; then
+		echo "image: $tag"
+		echo "${run_args[*]}"
+		return 0
+	fi
+
+	if [ "$build" -eq 0 ] && docker pull "$tag"; then
+		echo "image: pulled $tag"
+	else
+		[ "$build" -eq 1 ] || echo "image: pull failed; building from this checkout"
+		[ "$build" -eq 0 ] || echo "image: building from this checkout"
+		docker build -f docker/engine.Dockerfile --build-arg "ACCEL=$accel" -t "$tag" "$(pwd)" ||
+			die "docker build failed"
+	fi
+
+	local existing
+	existing=$(docker ps -a --filter "name=^${name}\$" --format '{{.Names}}' 2>/dev/null || true)
+	if [ -n "$existing" ]; then
+		if [ "$yes" -eq 0 ]; then
+			local answer=""
+			printf "A container named '%s' already exists. Replace it? [y/N] " "$name"
+			read -r answer || true
+			case "$answer" in y | Y | yes) ;; *) die "aborted; use --name or --yes" ;; esac
+		fi
+		docker rm -f "$name" >/dev/null
+	fi
+
+	"${run_args[@]}" >/dev/null || die "docker run failed"
+	echo "engine started; follow it with: docker logs -f $name"
+	echo "stop it with: ./lainbow leave"
+}
+
+cmd_leave() {
+	local name=lainbow-engine
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--name) [ $# -ge 2 ] || die "--name needs a value"; name=$2; shift 2 ;;
+		*) die "leave: unknown option '$1'" ;;
+		esac
+	done
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	docker rm -f "$name"
+	echo "the downloaded models are kept in the lainbow-models volume; remove them with: docker volume rm lainbow-models"
 }
 
 cmd_status() {
@@ -226,6 +367,8 @@ command=${1:-help}
 case "$command" in
 init) cmd_init "$@" ;;
 add-engine) cmd_add_engine "$@" ;;
+join) cmd_join "$@" ;;
+leave) cmd_leave "$@" ;;
 status) cmd_status ;;
 config) cmd_config ;;
 update) cmd_update ;;
