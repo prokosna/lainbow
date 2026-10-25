@@ -24,7 +24,7 @@ from lainbow.server.library import Tags, scan
 pytestmark = pytest.mark.postgres
 
 MUQ = "r1-max180-keeptail"
-ACOUSTIC = "r1-max600-keeptail"
+MERT_PROFILE = "r1-max600-keeptail"
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def client(tmp_path: Path, factory: sessionmaker[Session]) -> Iterator[TestClien
         database_url=SecretStr("postgresql://unused/x"),
         music_dir=tmp_path,
         scan_interval_min=0,
-        models=["muq", "acoustic"],
+        models=["muq", "mert"],
     )
     with TestClient(create_app(settings, session_factory=factory)) as c:
         yield c
@@ -86,7 +86,7 @@ def test_requires_token(client: TestClient) -> None:
 
 def test_plan(client: TestClient, auth: dict[str, str]) -> None:
     body = client.get("/engine/v1/plan", headers=auth).json()
-    assert [t["model"] for t in body["tasks"]] == ["muq", "acoustic"]
+    assert [t["model"] for t in body["tasks"]] == ["muq", "mert"]
     muq = body["tasks"][0]
     assert muq["profile"] == MUQ
     assert muq["method"] == {"max_sec": 180, "drop_tail": False}
@@ -97,7 +97,7 @@ def test_full_loop(
     client: TestClient, auth: dict[str, str], factory: sessionmaker[Session]
 ) -> None:
     resp = client.post(
-        "/engine/v1/claim", json={"models": ["muq", "acoustic"], "limit": 10}, headers=auth
+        "/engine/v1/claim", json={"models": ["muq", "mert"], "limit": 10}, headers=auth
     )
     assert resp.status_code == 200
     items = resp.json()["items"]
@@ -105,7 +105,7 @@ def test_full_loop(
     for i in items:
         assert {(t["model"], t["profile"]) for t in i["tasks"]} == {
             ("muq", MUQ),
-            ("acoustic", ACOUSTIC),
+            ("mert", MERT_PROFILE),
         }
 
     audio = client.get(f"/engine/v1/tracks/{items[0]['track_id']}/audio", headers=auth)
@@ -123,9 +123,9 @@ def test_full_loop(
     ] + [
         {
             "track_id": i["track_id"],
-            "model": "acoustic",
-            "profile": ACOUSTIC,
-            "embedding": [0.2] * 55,
+            "model": "mert",
+            "profile": MERT_PROFILE,
+            "embedding": [0.2] * 1024,
             "details": {"bpm": 120},
         }
         for i in items
@@ -136,7 +136,7 @@ def test_full_loop(
     assert resp.json() == {"accepted": 4, "rejected": 0, "failed": 0}
 
     again = client.post(
-        "/engine/v1/claim", json={"models": ["muq", "acoustic"], "limit": 10}, headers=auth
+        "/engine/v1/claim", json={"models": ["muq", "mert"], "limit": 10}, headers=auth
     )
     assert again.json() == {"items": []}
 

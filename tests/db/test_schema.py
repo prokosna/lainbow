@@ -79,14 +79,14 @@ def test_delete_track_cascades(clean_db: str) -> None:
         conn.execute(
             text(
                 "INSERT INTO analyses (track_id, model, profile, state) "
-                "VALUES (:t_id, 'acoustic', 'profile-1', 'done')"
+                "VALUES (:t_id, 'mert', 'profile-1', 'done')"
             ),
             {"t_id": track_id},
         )
         conn.execute(
             text(
                 "INSERT INTO analysis_details (track_id, model, profile, details) "
-                "VALUES (:t_id, 'acoustic', 'profile-1', '{\"bpm\": 120}'::jsonb)"
+                "VALUES (:t_id, 'mert', 'profile-1', '{\"bpm\": 120}'::jsonb)"
             ),
             {"t_id": track_id},
         )

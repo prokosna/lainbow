@@ -42,9 +42,7 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def make_settings() -> ServerSettings:
-    return ServerSettings(
-        database_url=SecretStr("postgresql://unused/x"), models=["muq", "acoustic"]
-    )
+    return ServerSettings(database_url=SecretStr("postgresql://unused/x"), models=["muq", "mert"])
 
 
 def test_activation_and_change(
@@ -56,7 +54,7 @@ def test_activation_and_change(
     tasks = activate_profiles(factory, make_settings())
     assert tasks == (
         Task("muq", "r1-max180-keeptail"),
-        Task("acoustic", "r1-max600-keeptail"),
+        Task("mert", "r1-max600-keeptail"),
     )
     with factory() as s:
         assert len(s.scalars(select(ActiveProfile)).all()) == 2

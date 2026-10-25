@@ -35,7 +35,6 @@ class ModelId(StrEnum):
     MUQ_MULAN = "muq_mulan"
     CLAP = "clap"
     MERT = "mert"
-    ACOUSTIC = "acoustic"
 
 
 @dataclass(frozen=True)
@@ -100,17 +99,6 @@ MODELS: Mapping[str, ModelSpec] = MappingProxyType(
             revision=1,
             description="MERT: similar-song search (optional)",
             short_name="MERT",
-            purposes=frozenset({Purpose.SIMILAR}),
-            default_method=AnalysisMethod(max_sec=600, drop_tail=False),
-        ),
-        ModelId.ACOUSTIC: ModelSpec(
-            id=ModelId.ACOUSTIC,
-            dimension=55,
-            sample_rate=44100,
-            clip_sec=None,
-            revision=1,
-            description="Acoustic features: tempo, timbre and harmony statistics",
-            short_name="Acoustic",
             purposes=frozenset({Purpose.SIMILAR}),
             default_method=AnalysisMethod(max_sec=600, drop_tail=False),
         ),

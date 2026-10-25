@@ -53,8 +53,6 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_CLAP_DROP_TAIL",
         "LAINBOW_MERT_MAX_SEC",
         "LAINBOW_MERT_DROP_TAIL",
-        "LAINBOW_ACOUSTIC_MAX_SEC",
-        "LAINBOW_ACOUSTIC_DROP_TAIL",
         "LAINBOW_LOG_LEVEL",
     ]
     assert env_vars == expected_order
@@ -282,10 +280,6 @@ def test_method_for_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     mert_method = settings.method_for(ModelId.MERT)
     assert mert_method.max_sec == 600
     assert not mert_method.drop_tail
-
-    acoustic_method = settings.method_for(ModelId.ACOUSTIC)
-    assert acoustic_method.max_sec == 600
-    assert not acoustic_method.drop_tail
 
 
 def test_muq_max_sec_zero(monkeypatch: pytest.MonkeyPatch) -> None:

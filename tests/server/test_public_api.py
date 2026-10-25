@@ -25,7 +25,7 @@ from lainbow.server.text_embedding import TextEmbedder, TextEmbeddingUnavailable
 
 pytestmark = pytest.mark.postgres
 
-ACOUSTIC = models.MODELS["acoustic"]
+MERT = models.MODELS["mert"]
 MULAN = models.MODELS["muq_mulan"]
 OTHER_PROFILE = "r0-old"
 
@@ -95,40 +95,40 @@ def add_analysis(
 
 
 def test_similar_order_exclusion_and_encoding(factory: sessionmaker[Session]) -> None:
-    settings = make_settings("acoustic")
-    profile = profile_of("acoustic", factory, settings)
-    d = ACOUSTIC.dimension
+    settings = make_settings("mert")
+    profile = profile_of("mert", factory, settings)
+    d = MERT.dimension
     paths = ["Artist/Al bum/01 a b.flac", "x/near.flac", "x/mid.flac", "x/far.flac"]
     vectors = [vec(d, 1, 0), vec(d, 1, 0.1), vec(d, 1, 1), vec(d, 0, 1)]
     with factory() as session:
         activate_profiles(factory, settings)
         for path, v in zip(paths, vectors, strict=True):
             tid = add_track(session, path, title=path)
-            add_vector(session, "acoustic", profile, tid, v)
+            add_vector(session, "mert", profile, tid, v)
         session.commit()
     with TestClient(create_app(settings, session_factory=factory)) as client:
         url = f"/api/v1/songs/{quote(paths[0], safe='')}/similar"
-        resp = client.get(url, params={"model_name": "acoustic", "limit": 10})
+        resp = client.get(url, params={"model_name": "mert", "limit": 10})
         assert resp.status_code == 200
         songs = resp.json()["songs"]
         assert [s["file_path"] for s in songs] == paths[1:]
         assert songs[0]["score"] > songs[1]["score"] > songs[2]["score"]
         assert songs[0]["title"] == "x/near.flac"
-        limited = client.get(url, params={"model_name": "acoustic", "limit": 1}).json()
+        limited = client.get(url, params={"model_name": "mert", "limit": 1}).json()
         assert len(limited["songs"]) == 1
 
 
 def test_similar_errors(factory: sessionmaker[Session]) -> None:
-    settings = make_settings("acoustic", "muq_mulan")
-    profile = profile_of("acoustic", factory, settings)
+    settings = make_settings("mert", "muq_mulan")
+    profile = profile_of("mert", factory, settings)
     with factory() as session:
         activate_profiles(factory, settings)
-        ensure_vector_store(session.connection(), "acoustic", OTHER_PROFILE)
+        ensure_vector_store(session.connection(), "mert", OTHER_PROFILE)
         no_vec = add_track(session, "a/none.flac")
         other = add_track(session, "a/other.flac")
-        add_vector(session, "acoustic", OTHER_PROFILE, other, vec(ACOUSTIC.dimension, 1))
+        add_vector(session, "mert", OTHER_PROFILE, other, vec(MERT.dimension, 1))
         ok = add_track(session, "a/ok.flac")
-        add_vector(session, "acoustic", profile, ok, vec(ACOUSTIC.dimension, 1))
+        add_vector(session, "mert", profile, ok, vec(MERT.dimension, 1))
         assert no_vec != other
         session.commit()
     with TestClient(create_app(settings, session_factory=factory)) as client:
@@ -137,24 +137,24 @@ def test_similar_errors(factory: sessionmaker[Session]) -> None:
             r = client.get(f"/api/v1/songs/{quote(path, safe='')}/similar?model_name={model}")
             return r.status_code, str(r.json().get("detail"))
 
-        assert similar("a/none.flac", "acoustic") == (
+        assert similar("a/none.flac", "mert") == (
             404,
-            "a/none.flac has not been analyzed with acoustic yet",
+            "a/none.flac has not been analyzed with mert yet",
         )
-        assert similar("a/other.flac", "acoustic")[0] == 404
-        assert similar("a/missing.flac", "acoustic")[0] == 404
-        assert similar("a/ok.flac", "mert")[0] == 422  # inactive
+        assert similar("a/other.flac", "mert")[0] == 404
+        assert similar("a/missing.flac", "mert")[0] == 404
+        assert similar("a/ok.flac", "clap")[0] == 422  # inactive
         assert similar("a/ok.flac", "nonexistent")[0] == 422
 
 
 def test_similar_requires_similar_purpose(
     factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    settings = make_settings("acoustic")
-    textonly = {**models.MODELS, "acoustic": _replace_purposes(ACOUSTIC, {models.Purpose.TEXT})}
+    settings = make_settings("mert")
+    textonly = {**models.MODELS, "mert": _replace_purposes(MERT, {models.Purpose.TEXT})}
     monkeypatch.setattr("lainbow.core.models.MODELS", textonly)
     with TestClient(create_app(settings, session_factory=factory)) as client:
-        resp = client.get("/api/v1/songs/a.flac/similar?model_name=acoustic")
+        resp = client.get("/api/v1/songs/a.flac/similar?model_name=mert")
         assert resp.status_code == 422
 
 
@@ -203,16 +203,16 @@ def test_search_embedder_unavailable(factory: sessionmaker[Session]) -> None:
 
 
 def test_analysis(factory: sessionmaker[Session]) -> None:
-    settings = make_settings("muq", "acoustic")
+    settings = make_settings("muq", "mert")
     muq = profile_of("muq", factory, settings)
-    aco = profile_of("acoustic", factory, settings)
+    aco = profile_of("mert", factory, settings)
     with factory() as session:
         activate_profiles(factory, settings)
         tid = add_track(session, "p/q.flac", title="T", artist="A", genre="G")
         add_analysis(session, tid, "muq", muq, "done")
         session.add(AnalysisDetail(track_id=tid, model="muq", profile=muq, details={"k": 1}))
         add_analysis(
-            session, tid, "acoustic", aco, "leased", lease_until=datetime.now(UTC) + timedelta(1)
+            session, tid, "mert", aco, "leased", lease_until=datetime.now(UTC) + timedelta(1)
         )
         add_track(session, "p/pending.flac")
         session.commit()
@@ -222,30 +222,30 @@ def test_analysis(factory: sessionmaker[Session]) -> None:
         assert body["title"] == "T"
         assert body["duration_sec"] == 100.0
         assert body["analyses"]["muq"] == {"profile": muq, "state": "done", "details": {"k": 1}}
-        assert body["analyses"]["acoustic"] == {"profile": aco, "state": "leased", "details": None}
+        assert body["analyses"]["mert"] == {"profile": aco, "state": "leased", "details": None}
         pend = c.get("/api/v1/songs/p%2Fpending.flac/analysis").json()
         assert pend["analyses"]["muq"]["state"] == "pending"
         assert c.get("/api/v1/songs/nope.flac/analysis").status_code == 404
 
 
 def test_stats(factory: sessionmaker[Session]) -> None:
-    settings = make_settings("muq", "acoustic")
+    settings = make_settings("muq", "mert")
     muq = profile_of("muq", factory, settings)
-    aco = profile_of("acoustic", factory, settings)
+    aco = profile_of("mert", factory, settings)
     with factory() as session:
         activate_profiles(factory, settings)
         ids = [add_track(session, f"t/{i}.flac") for i in range(4)]
         add_analysis(session, ids[0], "muq", muq, "done")
         add_analysis(session, ids[1], "muq", muq, "done")
         add_analysis(session, ids[2], "muq", muq, "failed")
-        add_analysis(session, ids[0], "acoustic", aco, "done")
+        add_analysis(session, ids[0], "mert", aco, "done")
         add_analysis(session, ids[0], "muq", "r0-old", "done")  # another profile: not counted
         session.commit()
     with TestClient(create_app(settings, session_factory=factory)) as c:
         body = c.get("/api/v1/stats").json()
         assert body["total_songs"] == 4
         assert body["songs_with_muq"] == 2
-        assert body["songs_with_acoustic"] == 1
+        assert body["songs_with_mert"] == 1
         assert body["songs_with_clap"] == 0
         for model in models.MODELS:
             assert f"songs_with_{model}" in body
@@ -258,11 +258,11 @@ def test_stats(factory: sessionmaker[Session]) -> None:
             "leased": 0,
             "pending": 1,
         }
-        assert set(body["analysis"]) == {"muq", "acoustic"}
+        assert set(body["analysis"]) == {"muq", "mert"}
 
 
 def test_analyze_run_retries_failed(factory: sessionmaker[Session]) -> None:
-    settings = make_settings("muq", "acoustic")
+    settings = make_settings("muq", "mert")
     muq = profile_of("muq", factory, settings)
     with factory() as session:
         activate_profiles(factory, settings)
@@ -280,7 +280,7 @@ def test_analyze_run_retries_failed(factory: sessionmaker[Session]) -> None:
                 break
             time.sleep(0.05)
         assert got["state"] == "succeeded", got
-        assert got["detail"] == {"muq": 1, "acoustic": 0}
+        assert got["detail"] == {"muq": 1, "mert": 0}
         stats = c.get("/api/v1/stats").json()
         assert stats["analysis"]["muq"]["failed"] == 0
         assert stats["analysis"]["muq"]["pending"] == 1

@@ -21,10 +21,9 @@ def test_model_id_members() -> None:
     assert ModelId.MUQ_MULAN.value == "muq_mulan"
     assert ModelId.CLAP.value == "clap"
     assert ModelId.MERT.value == "mert"
-    assert ModelId.ACOUSTIC.value == "acoustic"
     assert ModelId("muq") is ModelId.MUQ
     assert isinstance(ModelId.MUQ, str)
-    assert len(ModelId) == 5
+    assert len(ModelId) == 4
 
 
 def test_models_spec_properties() -> None:
@@ -34,7 +33,6 @@ def test_models_spec_properties() -> None:
         ModelId.MUQ_MULAN,
         ModelId.CLAP,
         ModelId.MERT,
-        ModelId.ACOUSTIC,
     }
 
     muq = MODELS[ModelId.MUQ]
@@ -82,17 +80,6 @@ def test_models_spec_properties() -> None:
     assert mert.short_name == "MERT"
     assert mert.purposes == frozenset({Purpose.SIMILAR})
     assert mert.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
-
-    acoustic = MODELS[ModelId.ACOUSTIC]
-    assert acoustic.id == ModelId.ACOUSTIC
-    assert acoustic.dimension == 55
-    assert acoustic.sample_rate == 44100
-    assert acoustic.clip_sec is None
-    assert acoustic.revision == 1
-    assert acoustic.description == "Acoustic features: tempo, timbre and harmony statistics"
-    assert acoustic.short_name == "Acoustic"
-    assert acoustic.purposes == frozenset({Purpose.SIMILAR})
-    assert acoustic.default_method == AnalysisMethod(max_sec=600, drop_tail=False)
 
 
 def test_models_mapping_is_immutable() -> None:
