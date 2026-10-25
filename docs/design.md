@@ -13,6 +13,7 @@ Sola MPD --HTTP--> server --SQL--> postgres (pgvector)
 
 - **Three services: server, engine, Postgres with pgvector.** Postgres is the only state, so a backup of one
   folder is a backup of Lainbow, and the server and engines can be replaced at will.
+- **Images are built locally from the release checkout; nothing is published to a registry.**
 - **The server** serves the API, scans the library (at start, hourly, or on request) and coordinates engines.
 - **The engine** decodes audio, runs the models and posts vectors back. It also embeds search text for the server.
 - **One image per accelerator** (`cpu`, `cuda`, `rocm`). `compose.yaml` runs exactly one, chosen by

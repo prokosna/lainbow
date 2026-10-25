@@ -8,17 +8,18 @@ The only state is the database.
 
 ## Quick start (one machine)
 
-1. Download `compose.yaml`, `.env.example` and `lainbow` from the release (or the repository) into one folder.
-2. Create the settings and start:
+1. Clone the release (Lainbow publishes no images; every machine builds its own):
 
    ```sh
-   chmod +x lainbow
+   git clone --branch v2.0.0 https://github.com/prokosna/lainbow.git && cd lainbow
    ./lainbow init
-   docker compose up -d
+   docker compose up -d --build
    ```
 
-3. Check that the server is up: `curl http://localhost:8000/health`.
-4. In Sola MPD, set the Lainbow address to `http://<host>:8000`.
+   The first build takes several minutes.
+
+2. Check that the server is up: `curl http://localhost:8000/health`.
+3. In Sola MPD, set the Lainbow address to `http://<host>:8000`.
 
 **Lainbow's music folder must be the same folder as MPD's `music_directory`.** Paths are relative to it.
 
@@ -27,9 +28,11 @@ The only state is the database.
 ```sh
 docker compose up -d     # start
 docker compose down      # stop
-./lainbow update         # docker compose pull && docker compose up -d
+./lainbow update         # git fetch --tags, then rebuild this checkout and restart
 ./lainbow status         # containers, analysis progress and engines
 ```
+
+To move to a newer release: `git checkout <tag> && ./lainbow update`.
 
 New music is found by the hourly scan or by the scan button in Sola MPD, and is analyzed automatically.
 
@@ -38,7 +41,7 @@ New music is found by the hourly scan or by the scan button in Sola MPD, and is 
 The first full analysis is the slow part. Any machine with an NVIDIA or AMD GPU can help.
 
 1. On the server, run `./lainbow add-engine desktop` (add `--host <address>` if the guessed address is wrong). It prints a `./lainbow join ...` line.
-2. On the GPU machine, clone the same Lainbow release and run that line. `join` detects NVIDIA, AMD or CPU, checks that the server version matches, and starts the engine.
+2. On the GPU machine, clone the same tag and run that line. The first `join` builds the engine image, which takes a while. `join` detects NVIDIA, AMD or CPU, checks that the server version matches, and starts the engine.
 3. The engine only connects out to the server. Nothing needs to be opened or forwarded on that machine.
 4. When the analysis is done, stop it with `./lainbow leave`.
 

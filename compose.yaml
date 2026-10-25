@@ -1,4 +1,5 @@
-# Lainbow 2. Start with `docker compose up -d`; settings come from the .env next to this file.
+# Lainbow 2. Run it from a checkout of a release tag; settings come from the .env next to this file.
+# Images are built locally. The first start is `docker compose up -d --build`; after that `up -d` and `down` are enough.
 name: ${LAINBOW_PROJECT_NAME:-lainbow}
 
 # Settings shared by the three engine variants; exactly one runs, chosen by COMPOSE_PROFILES.
@@ -40,7 +41,7 @@ services:
       retries: 20
 
   server:
-    image: ghcr.io/prokosna/lainbow-server:${LAINBOW_VERSION:-2}
+    image: lainbow-server:${LAINBOW_VERSION:-local}
     build:
       context: .
       dockerfile: docker/server.Dockerfile
@@ -73,7 +74,7 @@ services:
   engine-cpu:
     <<: *engine
     profiles: [cpu]
-    image: ghcr.io/prokosna/lainbow-engine:${LAINBOW_VERSION:-2}-cpu
+    image: lainbow-engine:${LAINBOW_VERSION:-local}-cpu
     build:
       context: .
       dockerfile: docker/engine.Dockerfile
@@ -86,7 +87,7 @@ services:
   engine-cuda:
     <<: *engine
     profiles: [cuda]
-    image: ghcr.io/prokosna/lainbow-engine:${LAINBOW_VERSION:-2}-cuda
+    image: lainbow-engine:${LAINBOW_VERSION:-local}-cuda
     build:
       context: .
       dockerfile: docker/engine.Dockerfile
@@ -107,7 +108,7 @@ services:
   engine-rocm:
     <<: *engine
     profiles: [rocm]
-    image: ghcr.io/prokosna/lainbow-engine:${LAINBOW_VERSION:-2}-rocm
+    image: lainbow-engine:${LAINBOW_VERSION:-local}-rocm
     build:
       context: .
       dockerfile: docker/engine.Dockerfile

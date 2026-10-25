@@ -9,8 +9,7 @@ ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 PROJECT=lainbow-v2-e2e
 PORT=18000
 TOKEN=lbe_00000000000000000000000000000001_e2e-secret
-SERVER_IMAGE=lainbow-v2-dev/server:e2e
-ENGINE_IMAGE=lainbow-v2-dev/engine:e2e-cpu
+ENGINE_IMAGE=lainbow-engine:e2e-cpu
 
 WORK_DIR=$(mktemp -d)
 COMPOSE_STARTED=""
@@ -50,16 +49,15 @@ PORT=$PORT
 COMPOSE_PROFILES=cpu
 POSTGRES_PASSWORD=e2e-password
 ENGINE_TOKEN=$TOKEN
+LAINBOW_VERSION=e2e
 EOT
-# Builds from the checkout (the copied compose.yaml lives elsewhere) and keeps the images out of the ghcr names.
+# Builds from the checkout (the copied compose.yaml lives elsewhere) and tags the images lainbow-*:e2e.
 cat >"$WORK_DIR/override.yaml" <<EOT
 services:
   server:
-    image: $SERVER_IMAGE
     build:
       context: $ROOT_DIR
   engine-cpu:
-    image: $ENGINE_IMAGE
     build:
       context: $ROOT_DIR
 EOT
@@ -117,6 +115,6 @@ docker run --rm --entrypoint python "$ENGINE_IMAGE" \
 	fail "the engine image cannot import torch and muq"
 
 echo "e2e: image sizes"
-docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' "lainbow-v2-dev/*"
+docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' "lainbow-*:e2e*"
 
 echo "e2e: PASS"

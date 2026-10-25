@@ -24,7 +24,7 @@ Commands:
                   stop and remove the engine started by 'join'
   status          show containers, analysis progress and engines
   config          show every effective server setting
-  update          pull newer images and restart
+  update          fetch tags, then rebuild the images of this checkout and restart
   help            show this text
 USAGE
 }
@@ -168,7 +168,7 @@ cmd_init() {
 	cat <<NEXT
 
 Next steps:
-  1. docker compose up -d
+  1. docker compose up -d --build   (the first build takes several minutes; the engine image is the large one)
   2. open http://<host>:${final_port:-8000}/health
   3. point Sola MPD at http://<host>:${final_port:-8000}
 NEXT
@@ -281,7 +281,12 @@ cmd_join() {
 		die "the server rejected the token; run ./lainbow add-engine NAME on the server again"
 
 	# 4. Image tag.
-	local tag="ghcr.io/prokosna/lainbow-engine:${server_version}-${accel}"
+	local tag="lainbow-engine:${server_version}-${accel}"
+	local have_image=0
+	if docker image inspect "$tag" >/dev/null 2>&1; then
+		have_image=1
+	fi
+	local -a build_args=(docker build -f docker/engine.Dockerfile --build-arg "ACCEL=$accel" -t "$tag" "$(pwd)")
 
 	# 5. Run command.
 	local -a run_args=(docker run -d --name "$name" --restart unless-stopped
@@ -302,17 +307,18 @@ cmd_join() {
 
 	if [ "$print_only" -eq 1 ]; then
 		echo "image: $tag"
+		if [ "$have_image" -eq 0 ] || [ "$build" -eq 1 ]; then
+			echo "${build_args[*]}"
+		fi
 		echo "${run_args[*]}"
 		return 0
 	fi
 
-	if [ "$build" -eq 0 ] && docker pull "$tag"; then
-		echo "image: pulled $tag"
+	if [ "$build" -eq 0 ] && [ "$have_image" -eq 1 ]; then
+		echo "image: using local $tag (--build rebuilds it)"
 	else
-		[ "$build" -eq 1 ] || echo "image: pull failed; building from this checkout"
-		[ "$build" -eq 0 ] || echo "image: building from this checkout"
-		docker build -f docker/engine.Dockerfile --build-arg "ACCEL=$accel" -t "$tag" "$(pwd)" ||
-			die "docker build failed"
+		echo "image: building $tag from this checkout (the first build takes a while)"
+		"${build_args[@]}" || die "docker build failed"
 	fi
 
 	local existing
@@ -359,8 +365,15 @@ cmd_config() {
 
 cmd_update() {
 	need_docker
-	docker compose pull
-	docker compose up -d
+	command -v git >/dev/null 2>&1 || die "git is required"
+	git fetch --tags || die "git fetch --tags failed"
+	local current latest
+	current=$(git describe --tags --always 2>/dev/null || echo unknown)
+	latest=$(git tag --list 'v2.*' --sort=-v:refname | head -n 1)
+	echo "checked out: $current"
+	echo "newest release: ${latest:-none found}"
+	echo "to move to a newer release: git checkout <tag> && ./lainbow update"
+	docker compose up -d --build
 }
 
 command=${1:-help}

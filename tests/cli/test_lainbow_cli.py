@@ -23,7 +23,7 @@ case "$*" in
 *"lainbow-admin add-engine"*) echo "{FAKE_TOKEN}" ;;
 "info --format {{{{json .Runtimes}}}}") echo '{{"nvidia":{{}},"runc":{{}}}}' ;;
 "ps -a"*) [ -n "$FAKE_EXISTING" ] && echo "$FAKE_EXISTING" ;;
-"pull "*) [ -n "$FAKE_PULL_FAIL" ] && exit 1 ;;
+"image inspect "*) [ -n "$FAKE_IMAGE_EXISTS" ] || exit 1 ;;
 esac
 exit 0
 """
@@ -40,6 +40,15 @@ case "$*" in
     [ "$FAKE_CURL_FAIL" = plan ] && exit 22
     echo "{}"
     ;;
+esac
+exit 0
+"""
+
+FAKE_GIT = """#!/bin/sh
+echo "$@" >> "$FAKE_GIT_LOG"
+case "$1" in
+describe) echo v2.0.0 ;;
+tag) printf 'v2.1.0\\nv2.0.0\\n' ;;
 esac
 exit 0
 """
@@ -85,11 +94,12 @@ def run(
         **os.environ,
         "PATH": f"{work.parent / 'bin'}:{os.environ['PATH']}",
         "FAKE_DOCKER_LOG": str(work.parent / "docker.log"),
+        "FAKE_GIT_LOG": str(work.parent / "git.log"),
         "FAKE_CURL_LOG": str(work.parent / "curl.log"),
         "FAKE_SERVER_VERSION": "9.9.9",
         "FAKE_CURL_FAIL": "",
         "FAKE_EXISTING": "",
-        "FAKE_PULL_FAIL": "",
+        "FAKE_IMAGE_EXISTS": "",
         "LAINBOW_KFD_DEVICE": str(work.parent / "no-kfd"),
         "HSA_OVERRIDE_GFX_VERSION": "",
         **(extra_env or {}),
@@ -177,9 +187,9 @@ def test_join_cuda(work: Path) -> None:
     assert f"LAINBOW_SERVER_URL={JOIN_URL}" in runs[0]
     assert f"LAINBOW_TOKEN={JOIN_TOKEN}" in runs[0]
     assert "LAINBOW_TEXT_PORT=0" in runs[0]
-    assert runs[0].endswith("ghcr.io/prokosna/lainbow-engine:9.9.9-cuda")
+    assert runs[0].endswith("lainbow-engine:9.9.9-cuda")
     assert "--name lainbow-engine" in runs[0]
-    assert "pull ghcr.io/prokosna/lainbow-engine:9.9.9-cuda" in docker_calls(work)
+    assert not any(c.startswith("pull ") for c in docker_calls(work))
     assert "docker logs -f lainbow-engine" in result.stdout
 
 
@@ -251,26 +261,66 @@ def test_join_unreachable(work: Path) -> None:
     )
 
 
-def test_join_builds_when_pull_fails(work: Path) -> None:
-    result = run(
-        work, "join", JOIN_URL, JOIN_TOKEN, "--accel", "cuda", extra_env={"FAKE_PULL_FAIL": "1"}
-    )
+def test_join_builds_when_image_missing(work: Path) -> None:
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN, "--accel", "cuda")
     assert result.returncode == 0, result.stderr
     calls = docker_calls(work)
     build = [c for c in calls if c.startswith("build ")]
     assert len(build) == 1
     assert "--build-arg ACCEL=cuda" in build[0]
-    assert "-t ghcr.io/prokosna/lainbow-engine:9.9.9-cuda" in build[0]
+    assert "-t lainbow-engine:9.9.9-cuda" in build[0]
     assert "-f docker/engine.Dockerfile" in build[0]
+    assert any(c.startswith("run ") for c in calls)
+    assert not any(c.startswith("pull ") for c in calls)
+
+
+def test_join_reuses_existing_image(work: Path) -> None:
+    result = run(
+        work,
+        "join",
+        JOIN_URL,
+        JOIN_TOKEN,
+        "--accel",
+        "cpu",
+        extra_env={"FAKE_IMAGE_EXISTS": "1"},
+    )
+    assert result.returncode == 0, result.stderr
+    calls = docker_calls(work)
+    assert not any(c.startswith(("build ", "pull ")) for c in calls)
     assert any(c.startswith("run ") for c in calls)
 
 
-def test_join_build_flag_skips_pull(work: Path) -> None:
-    result = run(work, "join", JOIN_URL, JOIN_TOKEN, "--accel", "cpu", "--build")
+def test_join_build_flag_forces_build(work: Path) -> None:
+    result = run(
+        work,
+        "join",
+        JOIN_URL,
+        JOIN_TOKEN,
+        "--accel",
+        "cpu",
+        "--build",
+        extra_env={"FAKE_IMAGE_EXISTS": "1"},
+    )
     assert result.returncode == 0, result.stderr
     calls = docker_calls(work)
     assert not any(c.startswith("pull ") for c in calls)
     assert any(c.startswith("build ") for c in calls)
+
+
+def test_join_print_shows_build_line_when_missing(work: Path) -> None:
+    result = run(work, "join", JOIN_URL, JOIN_TOKEN, "--accel", "cpu", "--print")
+    assert "docker build -f docker/engine.Dockerfile --build-arg ACCEL=cpu" in result.stdout
+    with_image = run(
+        work,
+        "join",
+        JOIN_URL,
+        JOIN_TOKEN,
+        "--accel",
+        "cpu",
+        "--print",
+        extra_env={"FAKE_IMAGE_EXISTS": "1"},
+    )
+    assert "docker build" not in with_image.stdout
 
 
 def test_join_print_runs_nothing(work: Path) -> None:
@@ -320,12 +370,19 @@ def test_leave(work: Path) -> None:
 def test_status_and_update_call_compose(work: Path) -> None:
     assert run(work, "status").returncode == 0
     assert run(work, "config").returncode == 0
-    assert run(work, "update").returncode == 0
+    install_fake(work, "git", FAKE_GIT)
+    result = run(work, "update")
+    assert result.returncode == 0, result.stderr
+    assert "git checkout <tag> && ./lainbow update" in result.stdout
+    assert "v2.1.0" in result.stdout
+    git_log = (work.parent / "git.log").read_text().splitlines()
+    assert git_log[0] == "fetch --tags"
+    assert not any(c.startswith(("checkout", "pull", "reset")) for c in git_log)
     log = (work.parent / "docker.log").read_text()
     assert "lainbow-admin status" in log
     assert "lainbow-admin config" in log
-    assert "compose pull" in log
-    assert "compose up -d" in log
+    assert "compose pull" not in log
+    assert "compose up -d --build" in log
     assert " -p " not in log
 
 
