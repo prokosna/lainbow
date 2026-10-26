@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "v2/**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      # The engine decodes with ffmpeg; without it the decode and worker tests are skipped
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: uv sync --locked --extra server --extra engine --extra models --extra optional-models --extra cpu
+      - run: scripts/check.sh
+
+  postgres:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: lainbow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d lainbow_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      LAINBOW_TEST_DATABASE_URL: postgresql+psycopg://test:test@127.0.0.1:5432/lainbow_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --locked --extra server --extra engine --extra models --extra optional-models --extra cpu
+      - run: uv run --no-sync pytest -m postgres -q
+
+  images:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [server, engine]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          build-args: ${{ matrix.image == 'engine' && 'ACCEL=cpu' || '' }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Apple Silicon Macs run Docker Desktop as linux/arm64; the server and the CPU engine must build there.
+  images-arm64:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        image: [server, engine]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          build-args: ${{ matrix.image == 'engine' && 'ACCEL=cpu' || '' }}
+          push: false
+          cache-from: type=gha,scope=arm64-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=arm64-${{ matrix.image }}
+
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: scripts/e2e-smoke.sh

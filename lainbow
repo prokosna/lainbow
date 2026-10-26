@@ -1,0 +1,681 @@
+#!/usr/bin/env bash
+# Optional helper next to compose.yaml. Everything it does can also be done by hand.
+set -eu
+
+cd "$(dirname "$0")"
+
+die() {
+	echo "lainbow: $*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<'USAGE'
+Usage: ./lainbow <command> [options]
+
+Commands:
+  init [--music-dir DIR] [--data-dir DIR] [--port N] [--accel cpu|cuda|rocm] [--mpd HOST:PORT] [--yes]
+                  write .env (never overwrites; only adds missing keys)
+  add-engine NAME [--host HOST]
+                  register an engine and print the 'join' command to run on another machine
+  remove-engine NAME
+                  remove an engine's registration and token (its leased tracks go back to the queue)
+  join SERVER_URL TOKEN [--accel auto|cuda|rocm|cpu] [--name NAME] [--build] [--print] [--yes]
+                  run an engine on this machine that works for a remote server
+  leave [--name NAME]
+                  stop and remove the engine started by 'join'
+  status          show containers, analysis progress and engines
+  config          show every effective server setting
+  update          fetch tags, then rebuild the images of this checkout and restart
+  help            show this text
+USAGE
+}
+
+need_docker() {
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	docker compose version >/dev/null 2>&1 || die "docker compose v2 is required"
+}
+
+# Print the value of KEY from .env (the last assignment wins); print nothing if unset.
+env_get() {
+	[ -f .env ] || return 0
+	grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- || true
+}
+
+env_has() {
+	[ -f .env ] && grep -qE "^$1=" .env
+}
+
+random_password() {
+	head -c 48 /dev/urandom | base64 -w0 | tr '+/' '-_' | tr -d '=\n' | cut -c1-32
+}
+
+random_token() {
+	local hex secret
+	hex=$(tr -d '-' </proc/sys/kernel/random/uuid | tr 'A-F' 'a-f')
+	secret=$(head -c 32 /dev/urandom | base64 -w0 | tr '+/' '-_' | tr -d '=\n')
+	echo "lbe_${hex}_${secret}"
+}
+
+# Minimums for an NVIDIA GPU; they follow the torch CUDA build (cu128) of the engine image.
+MIN_NVIDIA_DRIVER_MAJOR=570 # CUDA 12.8 needs driver 570 or newer
+MIN_NVIDIA_COMPUTE_MAJOR=7  # cu128 wheels ship no kernels below compute capability 7.0
+
+# Set ACCEL_DETECTED and ACCEL_REASON from the hardware of this machine.
+KFD_DEVICE=${LAINBOW_KFD_DEVICE:-/dev/kfd}
+detect_accel() {
+	if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+		ACCEL_DETECTED=cuda
+		ACCEL_REASON="nvidia-smi found"
+	elif [ -e "$KFD_DEVICE" ]; then
+		ACCEL_DETECTED=rocm
+		ACCEL_REASON="$KFD_DEVICE found"
+	else
+		ACCEL_DETECTED=cpu
+		ACCEL_REASON="no GPU found"
+	fi
+}
+
+# Stop early when the first NVIDIA GPU is too old for the engine image (driver or architecture).
+check_nvidia_gpu() {
+	local line name driver cap="" rest
+	if line=$(nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader 2>/dev/null); then
+		:
+	else
+		# An old nvidia-smi does not know compute_cap; check the driver only.
+		line=$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null) || return 0
+	fi
+	line=$(printf '%s\n' "$line" | head -n 1)
+	name=${line%%,*}
+	rest=${line#*,}
+	driver=${rest%%,*}
+	case "$rest" in *,*) cap=${rest#*,} ;; esac
+	name=$(echo "$name" | sed 's/^ *//;s/ *$//')
+	driver=$(echo "$driver" | sed 's/^ *//;s/ *$//')
+	cap=$(echo "$cap" | sed 's/^ *//;s/ *$//')
+	case "${driver%%.*}" in
+	'' | *[!0-9]*) return 0 ;;
+	esac
+	if [ "${driver%%.*}" -lt "$MIN_NVIDIA_DRIVER_MAJOR" ]; then
+		die "NVIDIA driver $driver is too old for this engine (needs $MIN_NVIDIA_DRIVER_MAJOR or newer for CUDA 12.8). Update it (Windows: from nvidia.com or the NVIDIA app) and run join again."
+	fi
+	case "${cap%%.*}" in
+	'' | *[!0-9]*)
+		echo "GPU: $name, driver $driver"
+		return 0
+		;;
+	esac
+	if [ "${cap%%.*}" -lt "$MIN_NVIDIA_COMPUTE_MAJOR" ]; then
+		die "$name (compute capability $cap) is not supported by this engine build; join with --accel cpu."
+	fi
+	echo "GPU: $name, driver $driver, compute capability $cap"
+}
+
+port_in_use() {
+	if command -v ss >/dev/null 2>&1; then
+		ss -ltn "sport = :$1" 2>/dev/null | tail -n +2 | grep -q .
+	else
+		(exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+	fi
+}
+
+# Print PROMPT, read a line into ASK_ANSWER (DEFAULT when empty). Returns 1 at end of input.
+ask() {
+	local answer="" status=0
+	printf '%s' "$1"
+	read -r answer || status=1
+	ASK_ANSWER=${answer:-${2:-}}
+	return "$status"
+}
+
+# Print up to 20 song URIs known to MPD at HOST PORT, one per line. Fails if MPD cannot be read.
+# Runs in a subshell so that a failed connection only ends this function.
+mpd_sample_uris() (
+	local host=$1 port=$2 line cmd n=0 ack
+	exec 4<>"/dev/tcp/$host/$port" || exit 1
+	IFS= read -r -t 5 -u 4 line || exit 1
+	case "$line" in "OK MPD"*) ;; *) exit 1 ;; esac
+	for cmd in "find \"(base '')\" window 0:20" listall; do
+		printf '%s\n' "$cmd" >&4 || exit 1
+		ack=0
+		while IFS= read -r -t 5 -u 4 line; do
+			case "$line" in
+			"file: "*)
+				printf '%s\n' "${line#file: }"
+				n=$((n + 1))
+				[ "$n" -lt 20 ] || break
+				;;
+			OK) break ;;
+			ACK*)
+				ack=1
+				break
+				;;
+			esac
+		done
+		[ "$ack" -eq 1 ] || break
+	done
+	printf 'close\n' >&4 2>/dev/null || true
+)
+
+# Compare MUSIC_DIR (the caller's music_dir) with the song URIs MPD reports.
+# Sets MPD_RESULT; may replace the caller's music_dir (dynamic scope); exits on a refused suggestion in --yes mode.
+mpd_check() {
+	local hostport=$1 host port uris uri total=0 found=0 suggestion="" reason="" first=""
+	local -a missing=()
+	host=${hostport%:*}
+	port=${hostport##*:}
+	if [ "$host" = "$hostport" ]; then
+		port=6600
+	fi
+	case "$port" in "" | *[!0-9]*) die "invalid MPD address '$hostport'; use HOST:PORT" ;; esac
+	if ! uris=$(mpd_sample_uris "$host" "$port"); then
+		echo "lainbow: warning: cannot read from MPD at $host:$port; skipping the path check" >&2
+		MPD_RESULT="not checked (MPD at $host:$port unreachable)"
+		return 0
+	fi
+	while IFS= read -r uri; do
+		[ -n "$uri" ] || continue
+		total=$((total + 1))
+		if [ -f "$music_dir/$uri" ]; then
+			found=$((found + 1))
+		else
+			missing+=("$uri")
+		fi
+	done <<<"$uris"
+	if [ "$total" -eq 0 ]; then
+		echo "lainbow: warning: MPD at $host:$port reports no songs; skipping the path check" >&2
+		MPD_RESULT="not checked (MPD has no songs)"
+		return 0
+	fi
+	if [ "$found" -eq "$total" ]; then
+		echo "paths match MPD ($found/$total sample songs found)"
+		MPD_RESULT="paths match MPD ($found/$total sample songs found)"
+		return 0
+	fi
+
+	first=${missing[0]}
+	echo "lainbow: only $found of $total sample songs from MPD were found under $music_dir" >&2
+	# Too high: the songs live in one subfolder of the music folder.
+	local sub
+	for sub in "$music_dir"/*/; do
+		if [ -f "${sub}$first" ]; then
+			suggestion=${sub%/}
+			reason="MPD's music_directory looks like $suggestion (one level below $music_dir)"
+			break
+		fi
+	done
+	# Too deep: the URI starts with the last folder names of the music folder.
+	if [ -z "$suggestion" ]; then
+		local dirs=${first%/*} prefix parent
+		if [ "$dirs" != "$first" ]; then
+			local -a comps
+			IFS=/ read -r -a comps <<<"$dirs"
+			local k i
+			for ((k = ${#comps[@]}; k >= 1; k--)); do
+				prefix=""
+				for ((i = 0; i < k; i++)); do prefix="$prefix/${comps[$i]}"; done
+				case "$music_dir" in
+				*"$prefix")
+					parent=${music_dir%"$prefix"}
+					if [ -f "$parent/$first" ]; then
+						suggestion=$parent
+						reason="the song paths from MPD start with ${prefix#/}, so MPD's music_directory looks like $suggestion (one level above $music_dir)"
+						break
+					fi
+					;;
+				esac
+			done
+		fi
+	fi
+
+	if [ -n "$suggestion" ]; then
+		echo "lainbow: $reason" >&2
+		[ "$yes" -eq 0 ] || die "suggested music folder: $suggestion; rerun with --music-dir $suggestion"
+		ask "Use the suggested folder? [Y/n] " "" || true
+		case "$ASK_ANSWER" in
+		"" | y | Y | yes)
+			music_dir=$suggestion
+			echo "music folder: $music_dir"
+			MPD_RESULT="music folder changed to MPD's folder ($music_dir)"
+			;;
+		*)
+			MPD_RESULT="paths do not match MPD ($found/$total sample songs found); kept $music_dir"
+			;;
+		esac
+		return 0
+	fi
+
+	echo "lainbow: examples of MPD songs that were not found:" >&2
+	local shown=0
+	for uri in "${missing[@]}"; do
+		echo "  $uri" >&2
+		shown=$((shown + 1))
+		[ "$shown" -lt 3 ] || break
+	done
+	echo "lainbow: MUSIC_DIR must be the same folder as MPD's music_directory (see /music_directory in MPD's config)" >&2
+	MPD_RESULT="paths do not match MPD ($found/$total sample songs found)"
+}
+
+cmd_init() {
+	local music_dir="" data_dir="" port="" accel="" mpd="" yes=0 MPD_RESULT="not checked"
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--music-dir) [ $# -ge 2 ] || die "--music-dir needs a value"; music_dir=$2; shift 2 ;;
+		--data-dir) [ $# -ge 2 ] || die "--data-dir needs a value"; data_dir=$2; shift 2 ;;
+		--port) [ $# -ge 2 ] || die "--port needs a value"; port=$2; shift 2 ;;
+		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
+		--mpd) [ $# -ge 2 ] || die "--mpd needs a value"; mpd=$2; shift 2 ;;
+		--yes | -y) yes=1; shift ;;
+		*) die "init: unknown option '$1'" ;;
+		esac
+	done
+	case "$accel" in "" | cpu | cuda | rocm) ;; *) die "--accel must be cpu, cuda or rocm" ;; esac
+	need_docker
+
+	local added=""
+	local answer
+
+	if ! env_has COMPOSE_PROFILES; then
+		if [ -z "$accel" ]; then
+			detect_accel
+			accel=$ACCEL_DETECTED
+			if [ "$yes" -eq 0 ]; then
+				printf 'Detected accelerator: %s. Use it? [Y/n/cpu/cuda/rocm] ' "$accel"
+				answer=""
+				read -r answer || true
+				case "$answer" in
+				"" | y | Y | yes) ;;
+				cpu | cuda | rocm) accel=$answer ;;
+				*) die "aborted; rerun with --accel cpu|cuda|rocm" ;;
+				esac
+			fi
+		fi
+	else
+		accel=$(env_get COMPOSE_PROFILES)
+	fi
+
+	if ! env_has MUSIC_DIR; then
+		if [ -z "$music_dir" ]; then
+			[ "$yes" -eq 0 ] || die "--music-dir is required with --yes"
+			cat <<'EOT'
+
+Music folder
+  Lainbow names each song by its path inside this folder, e.g. "Artist/Album/01.flac".
+  MPD names songs the same way, relative to its music_directory, and Sola MPD asks
+  Lainbow about a song by that MPD path. So this must be the same folder as MPD's
+  music_directory; otherwise no song matches and Sola MPD shows them as not analyzed.
+EOT
+			printf 'Music folder (same as MPD music_directory): '
+			read -r music_dir || true
+		fi
+		[ -n "$music_dir" ] || die "no music folder given"
+		[ -d "$music_dir" ] || die "music folder '$music_dir' does not exist"
+		[ -r "$music_dir" ] || die "music folder '$music_dir' is not readable"
+		music_dir=$(cd "$music_dir" && pwd)
+	fi
+
+	if ! env_has DATA_DIR; then
+		if [ -z "$data_dir" ] && [ "$yes" -eq 0 ]; then
+			ask "Data folder (database and model weights) [./data]: " ./data || true
+			data_dir=$ASK_ANSWER
+		fi
+		data_dir=${data_dir:-./data}
+		local data_path=$data_dir
+		case "$data_path" in /*) ;; *) data_path="$PWD/${data_path#./}" ;; esac
+		if [ ! -d "$data_path" ]; then
+			if [ "$yes" -eq 0 ]; then
+				ask "Create $data_path? [Y/n] " "" || true
+				case "$ASK_ANSWER" in "" | y | Y | yes) ;; *) die "aborted; the data folder '$data_dir' does not exist" ;; esac
+			fi
+			mkdir -p "$data_path" 2>/dev/null ||
+				die "cannot create '$data_path'; create it yourself: sudo mkdir -p '$data_path' && sudo chown $(id -u):$(id -g) '$data_path'"
+		fi
+		[ -w "$data_path" ] ||
+			die "data folder '$data_path' is not writable; fix it with: sudo chown $(id -u):$(id -g) '$data_path'"
+	fi
+
+	if ! env_has PORT; then
+		if [ -z "$port" ] && [ "$yes" -eq 0 ]; then
+			ask "API port (Sola MPD connects here) [8000]: " 8000 || true
+			port=$ASK_ANSWER
+		fi
+		port=${port:-8000}
+		while :; do
+			case "$port" in "" | *[!0-9]*) die "invalid port '$port'" ;; esac
+			port_in_use "$port" || break
+			[ "$yes" -eq 0 ] || die "port $port is already in use on this machine; pass --port with a free port"
+			echo "Port $port is already in use on this machine."
+			ask "API port (Sola MPD connects here) [8000]: " 8000 || die "port $port is already in use and no other port was given"
+			port=$ASK_ANSWER
+		done
+	fi
+
+	if ! env_has MUSIC_DIR; then
+		if [ -z "$mpd" ] && [ "$yes" -eq 0 ]; then
+			cat <<'EOT'
+
+Path check (optional)
+  Lainbow can ask MPD for a few song paths and look for them in the music folder,
+  to make sure the two folders match. It suggests the right folder if they are off by a level.
+EOT
+			ask "MPD address (host:port, e.g. localhost:6600; Enter to skip): " "" || true
+			mpd=$ASK_ANSWER
+		fi
+		if [ -n "$mpd" ]; then
+			mpd_check "$mpd"
+		fi
+	fi
+
+	# Collect the values for missing keys only, then append them in one go.
+	local new=""
+	add_key() {
+		new="${new}$1=$2"$'\n'
+		added="$added $1"
+	}
+	env_has MUSIC_DIR || add_key MUSIC_DIR "$music_dir"
+	env_has DATA_DIR || add_key DATA_DIR "${data_dir:-./data}"
+	env_has PORT || add_key PORT "$port"
+	env_has COMPOSE_PROFILES || add_key COMPOSE_PROFILES "$accel"
+	env_has POSTGRES_PASSWORD || add_key POSTGRES_PASSWORD "$(random_password)"
+	env_has ENGINE_TOKEN || add_key ENGINE_TOKEN "$(random_token)"
+	if [ "$accel" = rocm ] && ! env_has GPU_GID; then
+		[ -e /dev/kfd ] || die "rocm selected but /dev/kfd does not exist"
+		add_key GPU_GID "$(stat -c %g /dev/kfd)"
+	fi
+
+	if [ -n "$new" ]; then
+		# Keep the existing bytes; only make sure the new lines start on a fresh line.
+		if [ -s .env ] && [ -n "$(tail -c 1 .env)" ]; then
+			printf '\n' >>.env
+		fi
+		printf '%s' "$new" >>.env
+		chmod 600 .env
+		echo "Added to .env:$added"
+	else
+		echo ".env is already complete; nothing changed."
+	fi
+
+	if [ "$accel" = rocm ]; then
+		echo "Note: some integrated GPUs need HSA_OVERRIDE_GFX_VERSION; see docs/configuration.md."
+	fi
+
+	local final_port
+	final_port=$(env_get PORT)
+	cat <<SUMMARY
+
+Settings:
+  music folder: $(env_get MUSIC_DIR)
+  data folder:  $(env_get DATA_DIR)
+  API port:     ${final_port:-8000}
+  accelerator:  $(env_get COMPOSE_PROFILES)
+  MPD check:    $MPD_RESULT
+SUMMARY
+	cat <<NEXT
+
+Next steps:
+  1. docker compose up -d --build   (the first build takes several minutes; the engine image is the large one)
+  2. open http://<host>:${final_port:-8000}/health
+  3. point Sola MPD at http://<host>:${final_port:-8000}
+NEXT
+}
+
+cmd_add_engine() {
+	local name="" host=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--host) [ $# -ge 2 ] || die "--host needs a value"; host=$2; shift 2 ;;
+		-*) die "add-engine: unknown option '$1'" ;;
+		*)
+			[ -z "$name" ] || die "add-engine: only one NAME is accepted"
+			name=$1
+			shift
+			;;
+		esac
+	done
+	[ -n "$name" ] || die "add-engine: NAME is required"
+	need_docker
+
+	local port token
+	port=$(env_get PORT)
+	port=${port:-8000}
+	if [ -z "$host" ]; then
+		host=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+		[ -n "$host" ] || die "cannot determine this machine's address; pass --host"
+	fi
+
+	token=$(docker compose exec -T server lainbow-admin add-engine "$name") ||
+		die "could not register engine '$name' (is the server running?)"
+	token=$(printf '%s' "$token" | tail -n 1 | tr -d '[:space:]')
+	[ -n "$token" ] || die "the server returned no token"
+
+	echo "On the engine machine, in a clone of the same Lainbow release, run:"
+	echo "  ./lainbow join http://${host}:${port} ${token}"
+	echo "Windows: run it in a WSL terminal (Ubuntu) with Docker Desktop's WSL integration enabled."
+	echo "Note: the engine only connects out to the server; nothing needs to be opened on the engine machine."
+}
+
+cmd_remove_engine() {
+	local name=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		-*) die "remove-engine: unknown option '$1'" ;;
+		*)
+			[ -z "$name" ] || die "remove-engine: only one NAME is accepted"
+			name=$1
+			shift
+			;;
+		esac
+	done
+	if [ -z "$name" ]; then
+		usage >&2
+		die "remove-engine: NAME is required"
+	fi
+	need_docker
+	docker compose exec -T server lainbow-admin remove-engine "$name"
+	echo "if its container is still running on that machine, stop it there with: ./lainbow leave"
+}
+
+cmd_join() {
+	local server="" token="" accel=auto name=lainbow-engine build=0 print_only=0 yes=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--accel) [ $# -ge 2 ] || die "--accel needs a value"; accel=$2; shift 2 ;;
+		--name) [ $# -ge 2 ] || die "--name needs a value"; name=$2; shift 2 ;;
+		--build) build=1; shift ;;
+		--print) print_only=1; shift ;;
+		--yes | -y) yes=1; shift ;;
+		-*) die "join: unknown option '$1'" ;;
+		*)
+			if [ -z "$server" ]; then
+				server=$1
+			elif [ -z "$token" ]; then
+				token=$1
+			else
+				die "join: too many arguments"
+			fi
+			shift
+			;;
+		esac
+	done
+	[ -n "$server" ] && [ -n "$token" ] || die "join: usage: ./lainbow join SERVER_URL TOKEN [options]"
+	case "$accel" in auto | cpu | cuda | rocm) ;; *) die "--accel must be auto, cuda, rocm or cpu" ;; esac
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	command -v curl >/dev/null 2>&1 || die "curl is required"
+	server=${server%/}
+
+	# 1. Accelerator.
+	if [ "$accel" = auto ]; then
+		detect_accel
+		accel=$ACCEL_DETECTED
+		echo "accelerator: $accel ($ACCEL_REASON)"
+	else
+		echo "accelerator: $accel (from --accel)"
+	fi
+	if [ "$accel" = cuda ]; then
+		check_nvidia_gpu
+		local runtimes os_name
+		runtimes=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
+		os_name=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null || true)
+		case "$runtimes$os_name" in
+		*nvidia* | *"Docker Desktop"*) ;;
+		*) echo "lainbow: warning: docker does not list the nvidia runtime; the NVIDIA Container Toolkit may be missing" >&2 ;;
+		esac
+	fi
+	local gid=""
+	if [ "$accel" = rocm ]; then
+		[ -e "$KFD_DEVICE" ] || die "rocm selected but $KFD_DEVICE does not exist"
+		gid=$(stat -c %g "$KFD_DEVICE")
+	fi
+
+	# 2. Server and version.
+	local health server_version local_version
+	health=$(curl -fsS "$server/health" 2>/dev/null) ||
+		die "cannot reach the server at $server; is it running and is the port open?"
+	case "$health" in
+	*'"status"'*'"ok"'*) ;;
+	*) die "cannot reach the server at $server; is it running and is the port open?" ;;
+	esac
+	server_version=$(printf '%s' "$health" | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')
+	local_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml | head -n 1)
+	[ -n "$server_version" ] || die "the server did not report its version"
+	[ -n "$local_version" ] || die "cannot read the version from pyproject.toml"
+	if [ "$server_version" != "$local_version" ]; then
+		die "server is $server_version but this checkout is $local_version; check out the same release (git checkout v$server_version)"
+	fi
+
+	# 3. Token.
+	curl -fsS -H "Authorization: Bearer $token" "$server/engine/v1/plan" >/dev/null 2>&1 ||
+		die "the server rejected the token; run ./lainbow add-engine NAME on the server again"
+
+	# 4. Image tag.
+	local tag="lainbow-engine:${server_version}-${accel}"
+	local have_image=0
+	if docker image inspect "$tag" >/dev/null 2>&1; then
+		have_image=1
+	fi
+	local -a build_args=(docker build -f docker/engine.Dockerfile --build-arg "ACCEL=$accel" -t "$tag" "$(pwd)")
+
+	# 5. Run command.
+	local -a run_args=(docker run -d --name "$name" --restart unless-stopped
+		-v lainbow-models:/models
+		-e "LAINBOW_SERVER_URL=$server" -e "LAINBOW_TOKEN=$token"
+		-e LAINBOW_TEXT_PORT=0) # remote engines do not serve text search
+	case "$accel" in
+	cuda) run_args+=(--gpus all) ;;
+	rocm)
+		run_args+=(--device /dev/kfd --device /dev/dri --group-add "${gid:-video}")
+		if [ -n "${HSA_OVERRIDE_GFX_VERSION:-}" ]; then
+			run_args+=(-e "HSA_OVERRIDE_GFX_VERSION=$HSA_OVERRIDE_GFX_VERSION")
+		fi
+		run_args+=(-e MIOPEN_FIND_MODE=FAST -e MIOPEN_USER_DB_PATH=/models/miopen)
+		;;
+	esac
+	run_args+=("$tag")
+
+	if [ "$print_only" -eq 1 ]; then
+		echo "image: $tag"
+		if [ "$have_image" -eq 0 ] || [ "$build" -eq 1 ]; then
+			echo "${build_args[*]}"
+		fi
+		echo "${run_args[*]}"
+		return 0
+	fi
+
+	if [ "$build" -eq 0 ] && [ "$have_image" -eq 1 ]; then
+		echo "image: using local $tag (--build rebuilds it)"
+	else
+		echo "image: building $tag from this checkout (the first build takes a while)"
+		"${build_args[@]}" || die "docker build failed"
+	fi
+
+	local existing
+	existing=$(docker ps -a --filter "name=^${name}\$" --format '{{.Names}}' 2>/dev/null || true)
+	if [ -n "$existing" ]; then
+		if [ "$yes" -eq 0 ]; then
+			local answer=""
+			printf "A container named '%s' already exists. Replace it? [y/N] " "$name"
+			read -r answer || true
+			case "$answer" in y | Y | yes) ;; *) die "aborted; use --name or --yes" ;; esac
+		fi
+		docker rm -f "$name" >/dev/null
+	fi
+
+	"${run_args[@]}" >/dev/null || die "docker run failed"
+	echo "engine started; follow it with: docker logs -f $name"
+	echo "stop it with: ./lainbow leave"
+}
+
+cmd_leave() {
+	local name=lainbow-engine
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--name) [ $# -ge 2 ] || die "--name needs a value"; name=$2; shift 2 ;;
+		*) die "leave: unknown option '$1'" ;;
+		esac
+	done
+	command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+	local existing
+	existing=$(docker ps -a --filter "name=^${name}\$" --format '{{.Names}}' 2>/dev/null || true)
+	if [ -z "$existing" ]; then
+		echo "no engine container named '$name' on this machine; nothing to stop"
+		return 0
+	fi
+	echo "stopping $name (it finishes the tracks in hand and returns its leases)..."
+	docker stop -t 120 "$name" >/dev/null || die "docker stop failed for $name"
+	docker rm "$name" >/dev/null || die "docker rm failed for $name"
+	echo "the downloaded models are kept in the lainbow-models volume; remove them with: docker volume rm lainbow-models"
+	echo "the engine is still registered on the server and can join again with the same token;"
+	echo "to remove it for good, run on the server: ./lainbow remove-engine <engine name>"
+}
+
+cmd_status() {
+	need_docker
+	local out
+	out=$(
+		printf 'SERVICE\tSTATE\tHEALTH\n'
+		docker compose ps --format '{{.Service}}\t{{.State}}\t{{.Health}}'
+	)
+	if command -v column >/dev/null 2>&1; then
+		printf '%s\n' "$out" | column -t -s $'\t'
+	else
+		printf '%s\n' "$out"
+	fi
+	echo
+	docker compose exec -T server lainbow-admin status
+}
+
+cmd_config() {
+	need_docker
+	docker compose exec -T server lainbow-admin config
+}
+
+cmd_update() {
+	need_docker
+	command -v git >/dev/null 2>&1 || die "git is required"
+	git fetch --tags || die "git fetch --tags failed"
+	local current latest
+	current=$(git describe --tags --always 2>/dev/null || echo unknown)
+	latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)
+	echo "checked out: $current"
+	echo "newest release: ${latest:-none found}"
+	echo "to move to a newer release: git checkout <tag> && ./lainbow update"
+	docker compose up -d --build
+}
+
+command=${1:-help}
+[ $# -eq 0 ] || shift
+case "$command" in
+init) cmd_init "$@" ;;
+add-engine) cmd_add_engine "$@" ;;
+remove-engine) cmd_remove_engine "$@" ;;
+join) cmd_join "$@" ;;
+leave) cmd_leave "$@" ;;
+status) cmd_status ;;
+config) cmd_config ;;
+update) cmd_update ;;
+help | -h | --help) usage ;;
+*)
+	usage >&2
+	die "unknown command '$command'"
+	;;
+esac

@@ -1,0 +1,24 @@
+name: Release Please
+
+# On every push to main, release-please keeps a "release x.y.z" PR up to date
+# (version in pyproject.toml and uv.lock, CHANGELOG.md). Merging that PR tags the
+# release and publishes its notes. Images are built by each user, so there is
+# nothing else to publish.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

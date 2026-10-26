@@ -1,110 +1,171 @@
 [project]
 name = "lainbow"
-version = "0.1.0"
-description = "Add your description here"
+version = "2.0.0.dev0"
+description = "Music analysis engine: similar-song and natural-language search for a local music library"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.12",
+    "pydantic-settings>=2.11",
+]
+
+[project.optional-dependencies]
+server = [
+    "alembic>=1.16",
+    "fastapi>=0.120",
+    "httpx>=0.28",
+    "mutagen>=1.47",
+    "pgvector>=0.4",
+    "psycopg[binary]>=3.2",
+    "sqlalchemy>=2.0",
+    "uvicorn[standard]>=0.38",
+]
+engine = [
+    "fastapi>=0.120",
+    "httpx>=0.28",
+    "numpy>=2.0",
+    "uvicorn[standard]>=0.38",
+]
+models = [
+    "muq>=0.1",
+    # muq 0.1 breaks on transformers 5 (EasyDict config has no _attn_implementation)
+    "transformers>=4.57,<5",
+    "huggingface-hub>=0.35",
+]
+optional-models = [
+    "laion-clap>=1.1",
+]
+cpu = [
+    "torch==2.9.1",
+    "torchaudio==2.9.1",
+    # No local suffix: the CPU index serves "+cpu" wheels for x86_64 and plain ones for aarch64.
+    "torchvision==0.24.1",
+]
+# cuda and rocm wheels exist for x86_64 only
+cuda = [
+    "torch==2.9.1; platform_machine == 'x86_64'",
+    "torchaudio==2.9.1; platform_machine == 'x86_64'",
+    "torchvision==0.24.1+cu128; platform_machine == 'x86_64'",
+]
+rocm = [
+    "torch==2.9.1; platform_machine == 'x86_64'",
+    "torchaudio==2.9.1; platform_machine == 'x86_64'",
+    "torchvision==0.24.1+rocm6.4; platform_machine == 'x86_64'",
+    "pytorch-triton-rocm; platform_machine == 'x86_64'",
+]
+
+[project.scripts]
+lainbow-server = "lainbow.server.__main__:main"
+lainbow-engine = "lainbow.engine.__main__:main"
+lainbow-admin = "lainbow.server.admin:main"
 
 [dependency-groups]
 dev = [
-    "mypy",
-    "pre-commit",
-    "pytest",
-    "ruff",
+    "httpx>=0.28",
+    "import-linter>=2.5",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "ruff>=0.14",
 ]
 
-api = [
-    "celery[zstd]",
-    "fastapi",
-    "httpx",
-    "laion-clap",
-    "librosa",
-    "mutagen",
-    "numpy",
-    "pika",
-    "psycopg[binary]",
-    "psycopg2-binary",
-    "pydantic",
-    "pymilvus",
-    "SQLAlchemy",
-    "sqlmodel",
-    "tenacity",
-    "torch",
-    "torchaudio",
-    "torchvision",
-    "uvicorn[standard]",
-    "muq>=0.1.0",
-    "qdrant-client>=1.16.2",
-]
-
-batch = [
-    "celery[zstd]",
-    "celery-stubs",
-    "flower",
-    "httpx",
-    "librosa",
-    "mutagen",
-    "numpy",
-    "pika",
-    "psycopg[binary]",
-    "psycopg2-binary",
-    "pydantic",
-    "pymilvus",
-    "SQLAlchemy",
-    "sqlmodel",
-    "tenacity",
-    "qdrant-client>=1.16.2",
-]
-
-inference = [
-    "celery[zstd]",
-    "celery-stubs",
-    "fastapi",
-    "laion-clap",
-    "librosa",
-    "muq",
-    "nnAudio",
-    "numpy",
-    "pydantic",
-    "python-multipart",
-    "transformers",
-    "uvicorn[standard]",
-]
+[build-system]
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
 
 [tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-required-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
+conflicts = [
+    [{ extra = "cpu" }, { extra = "cuda" }, { extra = "rocm" }],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+torchaudio = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-rocm", extra = "rocm" },
+]
+pytorch-triton-rocm = [{ index = "pytorch-rocm", extra = "rocm" }]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchaudio = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
 
 [tool.ruff]
-include = ["src", "tests"]
-exclude = [
-    "alembic",
-    ".venv",
-]
+src = ["src", "tests"]
 line-length = 100
-lint.select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
-lint.ignore = ["E501"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.format]
 quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+addopts = "-m 'not postgres and not models'"
+markers = [
+    "postgres: needs a disposable PostgreSQL with pgvector (set LAINBOW_TEST_DATABASE_URL)",
+    "models: loads the real MuQ weights (set LAINBOW_TEST_MODELS_DIR)",
+]
 
 [tool.mypy]
-mypy_path = "src"
-ignore_missing_imports = true
+files = ["src", "tests"]
 strict = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["muq.*", "laion_clap.*"]
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_package = "lainbow"
+
+[[tool.importlinter.contracts]]
+name = "core depends on no other lainbow package"
+type = "forbidden"
+source_modules = ["lainbow.core"]
+forbidden_modules = ["lainbow.server", "lainbow.db", "lainbow.engine"]
+
+[[tool.importlinter.contracts]]
+name = "server and db never import the engine"
+type = "forbidden"
+source_modules = ["lainbow.server", "lainbow.db"]
+forbidden_modules = ["lainbow.engine"]
+
+[[tool.importlinter.contracts]]
+name = "engine talks to the server over HTTP only"
+type = "forbidden"
+source_modules = ["lainbow.engine"]
+forbidden_modules = ["lainbow.server", "lainbow.db"]
+
+[[tool.importlinter.contracts]]
+name = "db does not depend on the server"
+type = "forbidden"
+source_modules = ["lainbow.db"]
+forbidden_modules = ["lainbow.server"]

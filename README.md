@@ -1,225 +1,131 @@
 # Lainbow
 
-Lainbow is a music analysis engine designed to process local music libraries. It offers batch processing capabilities to extract deep learning embeddings (MERT, CLAP, MuQ, MuQ-MuLan) and various acoustic features from audio files. These features are then stored in a vector database to power an API for tasks like similarity-based music recommendations and natural language search.
+Lainbow analyzes a local music library with audio models and serves similar-song search and
+natural-language search. It is built for the MPD client [Sola MPD](https://github.com/prokosna/sola_mpd).
 
-The project is primarily intended for integration with the MPD client, [Sola MPD](https://github.com/prokosna/sola_mpd).
+It runs as three containers: the server (API), the engine (analysis) and Postgres with pgvector.
+The only state is the database.
 
-## Architecture Overview
+## Quick start (one machine)
 
-Lainbow is built on a microservices architecture, with each component containerized using Docker. The system consists of four main services that work together:
+1. Clone the release (Lainbow publishes no images; every machine builds its own):
 
-- **Web API Server**: The main entry point for user requests. It handles API calls, interacts with the databases, and delegates heavy tasks to the batch server.
-- **Inference Server**: A dedicated service that hosts the deep learning models and performs inference tasks (e.g., generating embeddings from audio or text).
-- **Batch Server**: A Celery-based worker that processes long-running, asynchronous tasks, such as scanning the music library and analyzing songs.
-- **Databases**: A set of databases for storing metadata, vector embeddings, and managing task queues:
-    - **PostgreSQL**: Stores song metadata, features, and task information.
-    - **Qdrant**: A vector database for storing and searching high-dimensional embeddings.
-    - **RabbitMQ**: A message broker that facilitates communication between the Web API and the Batch Server.
-
-```mermaid
-graph TD
-    subgraph User
-        U[User]
-    end
-
-    subgraph "api.yaml"
-        Web_API[Web API Server]
-    end
-
-    subgraph "batch.yaml"
-        Batch_Server[Batch Server]
-    end
-
-    subgraph "inference.yaml"
-        Inference_Server["Inference Server (GPU Required)"]
-    end
-
-    subgraph "database.yaml"
-        PostgreSQL[PostgreSQL]
-        Qdrant["Vector DB (Qdrant)"]
-        RabbitMQ["Message Queue (RabbitMQ)"]
-    end
-
-    %% Connections
-    U --> Web_API
-    Web_API -- Enqueue Task --> RabbitMQ
-    Web_API -- CRUD --> PostgreSQL
-    Web_API -- Search --> Qdrant
-
-    RabbitMQ -- Consume Task --> Batch_Server
-    Batch_Server -- HTTP Request --> Inference_Server
-    Batch_Server -- CRUD --> PostgreSQL
-    Batch_Server -- Insert --> Qdrant
-
-    style U fill:#f9f,stroke:#333,stroke-width:2px
-    style Web_API fill:#bbf,stroke:#333,stroke-width:2px
-    style Inference_Server fill:#ffc,stroke:#333,stroke-width:2px
-    style Batch_Server fill:#cdf,stroke:#333,stroke-width:2px
-```
-
-## Model Preparation
-
-**Before running the application, you need to download the required deep learning models.**
-
-1.  **Install Dependencies**:
-    Ensure you have `uv` installed.
-
-2.  **Download Models**:
-    Run the provided script to download and place the models in the `./models` directory. The script will skip any models that are already downloaded.
-    ```bash
-    uv run --with httpx --with huggingface-hub --with muq python download_models.py
-    ```
-
-This script will download:
-- The MERT model (`m-a-p/MERT-v1-330M`)
-- The CLAP model (`laion/clap-htsat-unfused`)
-- The MuQ model (`OpenMuQ/MuQ-large-msd-iter`)
-- The MuQ-MuLan model (`OpenMuQ/MuQ-MuLan-large`)
-
-Once the script completes, the application will be ready to run.
-
-## Setup and Configuration
-
-### Environment Variables
-1.  **Create `.env` file**: Copy the template to create your own environment file.
-    ```bash
-    cp .env.template .env
-    ```
-2.  **Edit `.env` file**: Open the `.env` file and customize the variables. **You must at least set `MUSIC_NAS_ROOT_DIR` to the absolute path of your music library.** The default settings should work out-of-the-box if you are running all components on a single machine with no port conflicts.
-
-### GPU Configuration for Inference Server
-The `docker/inference.Dockerfile` uses a specific PyTorch base image optimized for author's GPU (RTX 5070 Ti). **You may need to modify the `FROM` instruction in this Dockerfile** to use a base image compatible with your GPU hardware.
-
-Additionally, **ensure that the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is properly installed and configured**. This is required for Docker to access and utilize the GPU.
-
-There is also `docker/inference.rocm.Dockerfile` for ROCm based inference server. To use this Docker image, you need to setup [ROCm on Docker](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html) similar to NVIDIA.
-
-### Starting the Application
-
-Start the services on your server(s). You can run each service on a separate server or on the same machine. **Ensure that the `.env` file on each server is configured correctly** to allow communication between the services.
-
-**Database Server**
-```bash
-docker compose -f docker-compose.database.yaml up -d
-```
-
-### Migrating from Milvus to Qdrant (Optional)
-If you already have embeddings stored in Milvus and want to migrate them to Qdrant:
-
-1. Start both Milvus and Qdrant on the database server (uncomment the Milvus services in `docker-compose.database.yaml`).
-2. Run the migration script:
-   ```bash
-   uv run --group batch python migrate_milvus_to_qdrant.py
+   ```sh
+   git clone --branch v2.0.0 https://github.com/prokosna/lainbow.git && cd lainbow
+   ./lainbow init
+   docker compose up -d --build
    ```
 
-After the migration finishes, you can disable Milvus again and keep using Qdrant.
+   The first build takes several minutes.
+   `./lainbow init` asks for the music folder, the data folder and the port, and can check the music folder against MPD.
 
-**Web API Server**
-```bash
-docker compose -f docker-compose.api.yaml up -d
+2. Check that the server is up: `curl http://localhost:8000/health`.
+3. In Sola MPD, set the Lainbow address to `http://<host>:8000`.
+
+**Lainbow's music folder must be the same folder as MPD's `music_directory`.** Paths are relative to it.
+
+## Day-to-day
+
+```sh
+docker compose up -d     # start
+docker compose down      # stop
+./lainbow update         # git fetch --tags, then rebuild this checkout and restart
+./lainbow status         # containers, analysis progress and engines
 ```
 
-**Inference API Server**
-```bash
-docker compose -f docker-compose.inference.yaml --profile [cuda|rocm] up -d
+To move to a newer release: `git checkout <tag> && ./lainbow update`.
+
+New music is found by the hourly scan or by the scan button in Sola MPD, and is analyzed automatically.
+
+## Speed up the first analysis with a GPU machine
+
+The first full analysis is the slow part. Any machine with an NVIDIA or AMD GPU can help.
+
+1. On the server, run `./lainbow add-engine desktop` (add `--host <address>` if the guessed address is wrong). It prints a `./lainbow join ...` line.
+2. On the GPU machine, clone the same tag and run that line. The first `join` builds the engine image, which takes a while. `join` detects NVIDIA, AMD or CPU, checks that the server version matches, and starts the engine.
+3. The engine only connects out to the server. Nothing needs to be opened or forwarded on that machine.
+4. When the analysis is done, stop it with `./lainbow leave`. The engine stays registered and can rejoin later with the same line; `./lainbow remove-engine <name>` on the server removes it for good.
+
+Steady-state analysis continues on the server.
+
+An Apple Silicon Mac can join as a CPU engine (Docker Desktop); it cannot use the Mac's GPU from Docker.
+
+Windows (WSL2):
+
+1. Install the NVIDIA driver for Windows.
+2. Run `wsl --install` and open an Ubuntu terminal.
+3. Install Docker Desktop with the WSL2 backend and enable its WSL integration for Ubuntu.
+4. Clone Lainbow inside WSL and run the `./lainbow join ...` line there.
+
+## Hardware and time
+
+Every song is analyzed once. Rough time for 100,000 songs:
+
+- **GPU**: about 1.5 days (NVIDIA RTX 5070 Ti). Needs an NVIDIA GPU with 12 GB+ VRAM.
+- **CPU only**: about 6 weeks (AMD Ryzen AI 9 HX 370). Needs about 10 GB of free RAM.
+
+- Model weights (several GB) are downloaded on the engine's first start and kept in `DATA_DIR/models`.
+
+## Configuration
+
+Everything has a default except the first four keys of `.env`, which `./lainbow init` writes.
+The full list is in [docs/configuration.md](docs/configuration.md). `./lainbow config` shows the effective values.
+The settings most people touch:
+
+- `MUSIC_DIR`: the music folder.
+- `PORT`: the API port.
+- `LAINBOW_MODELS`: which models to analyze (default `muq,muq_mulan`; `clap` and `mert` are optional).
+- `LAINBOW_SCAN_INTERVAL_MIN`: minutes between automatic scans.
+
+## API
+
+- `GET /health`: liveness.
+- `GET /api/v1/stats`: library and analysis counts.
+- `GET /api/v1/songs/search`: natural-language search (`q`, `model_name`, `limit`).
+- `GET /api/v1/songs/{path}/similar`: songs similar to a song (`model_name`, `limit`).
+- `GET /api/v1/songs/{path}/analysis`: analysis state of a song per model.
+- `POST /api/v1/batch/{scan,vacuum,analyze}/run`: start a scan, a vacuum (also a scan) or a retry of failed tracks.
+- `GET /api/v1/batch/tasks/{id}`: status of a run started above.
+
+FastAPI's `/docs` has the full schema.
+
+## Upgrading from v1.x
+
+v2 is a rewrite and is not compatible with v1.x. Nothing is carried over: install it as new and let it analyze
+the library again.
+
+1. Stop v1 (`docker compose down` in its directory). Its data is not used and can be deleted once v2 works.
+2. Install v2 with a new data directory, following [Quick start](#quick-start-one-machine).
+3. Use Sola MPD 4.13.0 or later.
+
+v1 stays available at [v1.0.0](https://github.com/prokosna/lainbow/releases/tag/v1.0.0).
+
+## Development
+
+```sh
+uv sync --extra server --extra engine --extra models --extra optional-models --extra cpu
+scripts/check.sh        # ruff, mypy, import-linter, pytest, shellcheck
+scripts/gen-docs.sh     # regenerate docs/configuration.md
+scripts/e2e-smoke.sh    # build the images and run compose end to end (needs docker)
 ```
 
-**Batch Server**
-```bash
-docker compose -f docker-compose.batch.yaml up -d --scale batch-cpu=N
+The postgres tests run only when a disposable database is given:
+
+```sh
+docker run -d --rm --name lainbow_test_pg -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test \
+  -e POSTGRES_DB=lainbow_test -p 127.0.0.1:55432:5432 pgvector/pgvector:pg17
+LAINBOW_TEST_DATABASE_URL=postgresql+psycopg://test:test@127.0.0.1:55432/lainbow_test uv run pytest -m postgres
 ```
-*(Note: `N` is the number of parallel processes. A value around 4-6 is recommended.)*
 
-## API Endpoints
+Packages in `src/lainbow`:
 
-### General
+- `core`: models, analysis methods and settings. It imports no other Lainbow package.
+- `server`: the HTTP API, library scan and engine coordination.
+- `db`: schema, migrations, vectors and work queue. It never imports `server`.
+- `engine`: audio decoding and models. It talks to the server over HTTP only and never imports `server` or `db`.
 
-#### `GET /health`
-- **Summary**: Health check endpoint.
-- **Response (200 OK)**: `{"status":"ok"}`
+See [docs/design.md](docs/design.md) for the design.
 
-### Statistics
+## License
 
-#### `GET /api/v1/stats`
-- **Summary**: Get database statistics.
-- **Description**: Retrieve statistics about the current state of the database, including song counts and task statuses.
-- **Response (200 OK)**:
-  ```json
-  {
-    "total_songs": 1000,
-    "songs_with_acoustic_features": 50,
-    "songs_with_clap": 100,
-    "songs_with_mert": 100,
-    "songs_with_muq": 200,
-    "songs_with_muq_mulan": 200,
-    "pending_tasks": 5,
-    "running_tasks": 2
-  }
-  ```
-
-### Batch Processing
-
-#### `POST /api/v1/batch/scan/run`
-- **Summary**: Start a music library scan.
-- **Description**: Triggers a background task to scan the music library path specified in `.env`.
-- **Response (200 OK)**: Returns a `TaskResult` object.
-  ```json
-  {
-    "id": "...",
-    "name": "scan",
-    "status": "PENDING",
-    "result": null
-  }
-  ```
-
-#### `POST /api/v1/batch/vacuum/run`
-- **Summary**: Run library vacuum.
-- **Description**: Triggers a background task to remove database entries for songs that no longer exist on disk.
-- **Response (200 OK)**: Returns a `TaskResult` object.
-
-#### `POST /api/v1/batch/analyze/run`
-- **Summary**: Run song analysis.
-- **Description**: Enqueues a task to analyze all songs and generate embeddings for the specified models.
-- **Request Body** (optional):
-  ```json
-  {
-    "models": ["muq", "muq_mulan"]
-  }
-  ```
-  *If the body is omitted, it defaults to `["muq", "muq_mulan"]`.*
-- **Response (200 OK)**: Returns a `TaskResult` object.
-
-#### `GET /api/v1/batch/tasks/{task_id}`
-- **Summary**: Get task status.
-- **Description**: Retrieves the current status and result of a specific background task.
-- **Path Parameters**:
-  - `task_id` (UUID, required): The ID of the task.
-- **Response (200 OK)**: Returns a `TaskResult` object with the current status.
-
-### Songs
-
-#### `GET /api/v1/songs/search`
-- **Summary**: Search songs by natural language.
-- **Description**: Searches for songs based on a natural language query, e.g., "a song for a summer evening".
-- **Query Parameters**:
-  - `q` (string, required): Natural language query.
-  - `model_name` (string, optional, default: `muq_mulan`): The text embedding model to use. Can be `clap` or `muq_mulan`.
-  - `limit` (integer, optional, default: 10): Maximum number of results.
-- **Response (200 OK)**: Returns a list of `SearchSong` objects.
-
-#### `GET /api/v1/songs/{file_path}/analysis`
-- **Summary**: Get detailed song analysis.
-- **Description**: Retrieves detailed analysis for a given song, including metadata, features, and embedding status.
-- **Path Parameters**:
-  - `file_path` (string, required): The URL-encoded file path of the song.
-- **Response (200 OK)**: Returns a `SongAnalysis` object.
-
-#### `GET /api/v1/songs/{file_path}/similar`
-- **Summary**: Find similar songs.
-- **Description**: Finds songs acoustically similar to the given song using a specified vector embedding model.
-- **Path Parameters**:
-  - `file_path` (string, required): The URL-encoded file path of the song.
-- **Query Parameters**:
-  - `model_name` (string, optional, default: `muq`): The embedding model to use. Can be `acoustic_features`, `clap`, `mert`, `muq`, `muq_mulan`.
-  - `limit` (integer, optional, default: 10): Maximum number of results.
-- **Response (200 OK)**: Returns a list of `SearchSong` objects.
+[MIT](LICENSE)
