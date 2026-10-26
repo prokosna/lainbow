@@ -107,6 +107,10 @@ echo "e2e: checking engine API authentication"
 code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/engine/v1/plan")
 [ "$code" = 401 ] || fail "/engine/v1/plan without a token returned $code, expected 401"
 code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE/engine/v1/plan")
+[ "$code" = 409 ] || fail "/engine/v1/plan without X-Lainbow-Version returned $code, expected 409"
+VERSION=$(curl -fsS "$BASE/health" | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" \
+	-H "X-Lainbow-Version: $VERSION" "$BASE/engine/v1/plan")
 [ "$code" = 200 ] || fail "/engine/v1/plan with the token returned $code, expected 200"
 
 echo "e2e: checking that the engine image imports torch and MuQ"
