@@ -101,9 +101,43 @@ def test_config_lists_settings(env: str, capsys: pytest.CaptureFixture[str]) -> 
 
 def test_engine_state() -> None:
     now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
-    assert admin._engine_state(None, now, lease_sec=60) == "never"
-    assert admin._engine_state(now - timedelta(seconds=30), now, lease_sec=60) == "online"
-    assert admin._engine_state(now - timedelta(seconds=90), now, lease_sec=60) == "offline"
+    assert (
+        admin._engine_state(None, now, lease_sec=60, version=None, server_version="1.0") == "never"
+    )
+    assert (
+        admin._engine_state(
+            now - timedelta(seconds=30), now, lease_sec=60, version=None, server_version="1.0"
+        )
+        == "online"
+    )
+    assert (
+        admin._engine_state(
+            now - timedelta(seconds=90), now, lease_sec=60, version=None, server_version="1.0"
+        )
+        == "offline"
+    )
+    assert (
+        admin._engine_state(
+            now - timedelta(seconds=30), now, lease_sec=60, version="0.1.0", server_version="0.1.0"
+        )
+        == "online"
+    )
+    assert (
+        admin._engine_state(
+            now - timedelta(seconds=30), now, lease_sec=60, version="0.0.9", server_version="0.1.0"
+        )
+        == "outdated"
+    )
+    assert (
+        admin._engine_state(
+            now - timedelta(seconds=90), now, lease_sec=60, version="0.0.9", server_version="0.1.0"
+        )
+        == "outdated"
+    )
+    assert (
+        admin._engine_state(None, now, lease_sec=60, version="0.0.9", server_version="0.1.0")
+        == "outdated"
+    )
 
 
 @pytest.mark.postgres
@@ -145,3 +179,45 @@ def test_status_engine_online_and_offline_postgres(
         "offline engines keep their registration;"
         " remove one with: ./lainbow remove-engine <name>" in out
     )
+
+
+@pytest.mark.postgres
+def test_status_engine_outdated_shows_hint(env: str, capsys: pytest.CaptureFixture[str]) -> None:
+    import lainbow
+
+    assert admin.main(["add-engine", "gpu1"]) == 0
+    capsys.readouterr()
+
+    # Engine with different stored version -> outdated and hint
+    eng = create_engine(env)
+    with Session(eng) as s:
+        engine = s.scalar(select(RegisteredEngine).where(RegisteredEngine.name == "gpu1"))
+        assert engine is not None
+        engine.last_seen_at = datetime.now(UTC)
+        engine.version = "0.0.1-old"
+        s.commit()
+    eng.dispose()
+
+    assert admin.main(["status"]) == 0
+    out = capsys.readouterr().out
+    gpu = next(line for line in out.splitlines() if line.startswith("gpu1"))
+    assert "outdated" in gpu
+    assert (
+        f"outdated engines must be rebuilt from this release: "
+        f"on that machine run git checkout v{lainbow.__version__} and join again" in out
+    )
+
+    # Matching version -> online and no hint
+    eng = create_engine(env)
+    with Session(eng) as s:
+        engine = s.scalar(select(RegisteredEngine).where(RegisteredEngine.name == "gpu1"))
+        assert engine is not None
+        engine.version = lainbow.__version__
+        s.commit()
+    eng.dispose()
+
+    assert admin.main(["status"]) == 0
+    out = capsys.readouterr().out
+    gpu = next(line for line in out.splitlines() if line.startswith("gpu1"))
+    assert "online" in gpu
+    assert "outdated engines must be rebuilt from this release" not in out

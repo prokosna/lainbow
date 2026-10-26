@@ -22,8 +22,9 @@ Sola MPD --HTTP--> server --SQL--> postgres (pgvector)
 ## Engines and work
 
 - **Engines talk to the server only over HTTP, with a token.** An engine needs no database access and no
-  inbound port, so a GPU machine on another network only has to reach the server. The import rules enforce it:
-  `engine` never imports `server` or `db`.
+  inbound port, so a GPU machine on another network only has to reach the server. Every engine request carries
+  `X-Lainbow-Version`, and a mismatch is a 409. The import rules enforce it: `engine` never imports `server` or
+  `db`.
 - **The work is derived from the database, not queued.** A track needs work when it has no vector for the active
   model and profile. Nothing can be lost or duplicated by a crashed queue, and adding a model or changing a
   method creates work by itself.

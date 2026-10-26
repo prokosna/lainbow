@@ -13,9 +13,10 @@ from pydantic import SecretStr
 from sqlalchemy import Engine, create_engine, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
+import lainbow
 from lainbow.core.settings import ServerSettings
 from lainbow.db.migrate import upgrade_to_head
-from lainbow.db.schema import Analysis
+from lainbow.db.schema import Analysis, RegisteredEngine
 from lainbow.db.session import make_session_factory
 from lainbow.server import engines
 from lainbow.server.app import create_app
@@ -71,7 +72,88 @@ def auth(factory: sessionmaker[Session], client: TestClient) -> dict[str, str]:
     with factory() as s:
         token = engines.create_engine(s, "gpu1")
         s.commit()
-    return {"Authorization": f"Bearer {token}"}
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-Lainbow-Version": lainbow.__version__,
+    }
+
+
+def test_version_handshake(client: TestClient, factory: sessionmaker[Session]) -> None:
+    with factory() as s:
+        token = engines.create_engine(s, "test-version-engine")
+        s.commit()
+
+    # Matching header -> 200, and the version is stored
+    resp = client.get(
+        "/engine/v1/plan",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Lainbow-Version": lainbow.__version__,
+        },
+    )
+    assert resp.status_code == 200
+    with factory() as s:
+        eng = s.scalar(
+            select(RegisteredEngine).where(RegisteredEngine.name == "test-version-engine")
+        )
+        assert eng is not None
+        assert eng.version == lainbow.__version__
+        initial_seen_at = eng.last_seen_at
+        assert initial_seen_at is not None
+
+    # Mismatched header -> 409 with exact message, and last_seen_at touched
+    expected_msg = (
+        f"server is {lainbow.__version__} but this engine is 0.0.1; "
+        f"on the engine machine run: git fetch --tags && git checkout v{lainbow.__version__} "
+        f"&& ./lainbow join <server url> <token> --build"
+    )
+    resp = client.get(
+        "/engine/v1/plan",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Lainbow-Version": "0.0.1",
+        },
+    )
+    assert resp.status_code == 409
+    assert resp.json() == {"detail": expected_msg}
+    with factory() as s:
+        eng = s.scalar(
+            select(RegisteredEngine).where(RegisteredEngine.name == "test-version-engine")
+        )
+        assert eng is not None
+        assert eng.version == "0.0.1"
+        assert eng.last_seen_at is not None
+        assert eng.last_seen_at >= initial_seen_at
+
+    # Missing header -> 409 mentioning unknown, and version stored as None
+    expected_unknown_msg = (
+        f"server is {lainbow.__version__} but this engine is unknown; "
+        f"on the engine machine run: git fetch --tags && git checkout v{lainbow.__version__} "
+        f"&& ./lainbow join <server url> <token> --build"
+    )
+    resp = client.get(
+        "/engine/v1/plan",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 409
+    assert resp.json() == {"detail": expected_unknown_msg}
+    with factory() as s:
+        eng = s.scalar(
+            select(RegisteredEngine).where(RegisteredEngine.name == "test-version-engine")
+        )
+        assert eng is not None
+        assert eng.version is None
+
+    # Bad token with mismatched header -> 401, not 409
+    resp = client.get(
+        "/engine/v1/plan",
+        headers={
+            "Authorization": "Bearer nope",
+            "X-Lainbow-Version": "0.0.1",
+        },
+    )
+    assert resp.status_code == 401
+    assert resp.headers["WWW-Authenticate"] == "Bearer"
 
 
 def test_requires_token(client: TestClient) -> None:

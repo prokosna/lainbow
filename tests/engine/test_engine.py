@@ -18,9 +18,15 @@ from fakes import (
 )
 from fastapi.testclient import TestClient
 
+import lainbow
 from lainbow.core.method import Span
 from lainbow.engine import audio
-from lainbow.engine.client import EngineUnauthorizedError, ServerClient, ServerUnreachableError
+from lainbow.engine.client import (
+    EngineOutdatedError,
+    EngineUnauthorizedError,
+    ServerClient,
+    ServerUnreachableError,
+)
 from lainbow.engine.models import registry
 from lainbow.engine.models.base import AudioModel
 from lainbow.engine.protocol import PlanOut
@@ -143,6 +149,68 @@ def test_unreachable() -> None:
     client = ServerClient("http://server", "tok", transport=httpx.MockTransport(refuse))
     with pytest.raises(ServerUnreachableError):
         client.plan()
+
+
+def test_client_sends_version_header_on_every_request(tmp_path: Path) -> None:
+    seen_headers: list[dict[str, str]] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        seen_headers.append(dict(request.headers))
+        url = request.url.path
+        if url.endswith("/plan"):
+            return httpx.Response(200, json={"tasks": []})
+        if url.endswith("/claim"):
+            return httpx.Response(200, json={"items": []})
+        if url.endswith("/results"):
+            return httpx.Response(200, json={"accepted": 0, "rejected": 0, "failed": 0})
+        if url.endswith("/release"):
+            return httpx.Response(200, json={"released": 0})
+        if "/audio" in url:
+            return httpx.Response(200, content=b"audio-data")
+        return httpx.Response(404)
+
+    client = ServerClient("http://server", "tok", transport=httpx.MockTransport(mock_handler))
+    client.plan()
+    client.claim(["m"], 1)
+    client.post_results([], [])
+    client.release()
+    client.download(1, tmp_path / "t.wav")
+
+    assert len(seen_headers) == 5
+    for headers in seen_headers:
+        assert headers.get("x-lainbow-version") == lainbow.__version__
+
+
+def test_client_raises_engine_outdated_error_on_409() -> None:
+    detail_msg = "server is 0.2.0 but this engine is 0.1.0; on the engine machine run: git..."
+
+    def handler_409(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json={"detail": detail_msg})
+
+    client = ServerClient("http://server", "tok", transport=httpx.MockTransport(handler_409))
+    with pytest.raises(EngineOutdatedError) as exc_info:
+        client.plan()
+    assert exc_info.value.detail == detail_msg
+    assert str(exc_info.value) == detail_msg
+
+
+def test_worker_run_forever_propagates_engine_outdated_error(
+    server_root: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    server = MockServer(server_root, make_plan("a"))
+    detail_msg = "server is 0.2.0 but this engine is 0.1.0"
+
+    def handler_409(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json={"detail": detail_msg})
+
+    client = ServerClient("http://server", "tok", transport=httpx.MockTransport(handler_409))
+    worker = Worker(client, {"a": FakeModel("a")}, make_settings(), server.plan)
+    stop = threading.Event()
+    with caplog.at_level("WARNING"), pytest.raises(EngineOutdatedError) as exc_info:
+        worker.run_forever(stop)
+
+    assert exc_info.value.detail == detail_msg
+    assert "could not release leases" in caplog.text
 
 
 def test_stop_calls_release(server_root: Path) -> None:

@@ -125,6 +125,7 @@ class RegisteredEngine(Base):
     completed: Mapped[int] = mapped_column(
         BigInteger, default=0, server_default="0", nullable=False
     )
+    version: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Run(Base):

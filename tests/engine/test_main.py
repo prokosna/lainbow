@@ -1,6 +1,7 @@
 """Tests for Lainbow engine main entry point."""
 
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ import pytest
 from fakes import FakeModel, MockServer, make_plan, make_settings
 
 from lainbow.engine import __main__ as engine_main
+from lainbow.engine.client import EngineOutdatedError
 from lainbow.engine.device import DriverTooOldError, UnsupportedGpuError
 from lainbow.engine.models import registry
 from lainbow.engine.worker import InsufficientGpuMemoryError
@@ -19,6 +21,7 @@ def clean_lainbow_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in list(os.environ.keys()):
         if key.startswith("LAINBOW_"):
             monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(engine_main, "CONFIGURATION_HOLD_SEC", 0.0)
 
 
 def test_engine_main_missing_settings(capsys: pytest.CaptureFixture[str]) -> None:
@@ -140,3 +143,34 @@ def test_insufficient_gpu_memory_exits_3(
     with caplog.at_level("ERROR"):
         assert engine_main.run(settings) == 3
     assert "GPU memory is too small" in caplog.text
+
+
+def test_engine_outdated_exits_3_after_hold(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    class OutdatedClient:
+        def plan(self) -> Any:
+            raise EngineOutdatedError("server is 0.2.0 but this engine is 0.1.0")
+
+    monkeypatch.setattr(engine_main, "ServerClient", lambda *_a: OutdatedClient())
+    monkeypatch.setattr(registry, "FACTORIES", {"muq": lambda _d: FakeModel("muq")})
+    settings = make_settings(accel="cpu", models_dir=tmp_path)
+    with caplog.at_level("INFO"):
+        assert engine_main.run(settings) == 3
+    assert "server is 0.2.0 but this engine is 0.1.0" in caplog.text
+    assert "waiting 10 min before exiting" in caplog.text
+
+
+def test_stop_event_already_set_returns_immediately(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class OutdatedClient:
+        def plan(self) -> Any:
+            raise EngineOutdatedError("version mismatch")
+
+    monkeypatch.setattr(engine_main, "ServerClient", lambda *_a: OutdatedClient())
+    monkeypatch.setattr(registry, "FACTORIES", {"muq": lambda _d: FakeModel("muq")})
+    settings = make_settings(accel="cpu", models_dir=tmp_path)
+    stop = threading.Event()
+    stop.set()
+    assert engine_main.run(settings, stop=stop, hold_sec=600.0) == 3

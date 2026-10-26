@@ -23,6 +23,7 @@ from lainbow.db.schema import (
 def test_registered_engine_tablename() -> None:
     """RegisteredEngine ORM class maps to 'engines' table."""
     assert RegisteredEngine.__tablename__ == "engines"
+    assert hasattr(RegisteredEngine, "version")
 
 
 def test_analysis_detail_tablename() -> None:
@@ -39,7 +40,7 @@ def test_analysis_detail_tablename() -> None:
 def test_upgrade_to_head_creates_all_tables_and_is_idempotent(clean_db: str) -> None:
     """upgrade_to_head creates all migration tables and returns revision id."""
     rev = upgrade_to_head(clean_db)
-    assert rev == "0001_initial"
+    assert rev == "0002_engine_version"
 
     engine = create_engine(clean_db)
     with engine.connect() as conn:
@@ -56,9 +57,14 @@ def test_upgrade_to_head_creates_all_tables_and_is_idempotent(clean_db: str) -> 
         }
         assert tables == expected_tables
 
+        # Check version column exists on engines table and is nullable
+        cols = {c["name"]: c for c in inspector.get_columns("engines")}
+        assert "version" in cols
+        assert cols["version"]["nullable"] is True
+
     # Second run should be a no-op and succeed without errors
     rev2 = upgrade_to_head(clean_db)
-    assert rev2 == "0001_initial"
+    assert rev2 == "0002_engine_version"
 
 
 @pytest.mark.postgres

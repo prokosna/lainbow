@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+import lainbow
 from lainbow.core.method import AnalysisMethod
 from lainbow.core.models import MODELS
 from lainbow.core.settings import ServerSettings
@@ -47,7 +48,23 @@ def current_engine(request: Request, session: SessionDep) -> RegisteredEngine:
     if engine is None:
         session.rollback()
         raise unauthorized
+
+    version = request.headers.get("X-Lainbow-Version")
+    engine.version = version
     session.commit()
+
+    if version != lainbow.__version__:
+        reported = version if version is not None else "unknown"
+        server_ver = lainbow.__version__
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"server is {server_ver} but this engine is {reported}; "
+                f"on the engine machine run: git fetch --tags && git checkout v{server_ver} "
+                "&& ./lainbow join <server url> <token> --build"
+            ),
+        )
+
     return engine
 
 

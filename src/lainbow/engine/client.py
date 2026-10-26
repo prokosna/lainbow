@@ -5,6 +5,7 @@ from pathlib import Path
 
 import httpx
 
+import lainbow
 from lainbow.engine.protocol import (
     ClaimIn,
     ClaimOut,
@@ -21,6 +22,14 @@ UNAUTHORIZED_MESSAGE = "the server rejected the engine token; create one with la
 
 class EngineUnauthorizedError(Exception):
     """Raised when the server rejects the engine token."""
+
+
+class EngineOutdatedError(Exception):
+    """Raised when the engine version does not match the server version."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
 
 
 class ServerUnreachableError(Exception):
@@ -40,7 +49,10 @@ class ServerClient:
     ) -> None:
         self._http = httpx.Client(
             base_url=base_url.rstrip("/"),
-            headers={"Authorization": f"Bearer {token}"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Lainbow-Version": lainbow.__version__,
+            },
             transport=transport,
             timeout=timeout,
         )
@@ -52,6 +64,15 @@ class ServerClient:
     def _check(self, response: httpx.Response) -> httpx.Response:
         if response.status_code == 401:
             raise EngineUnauthorizedError(UNAUTHORIZED_MESSAGE)
+        if response.status_code == 409:
+            try:
+                data = response.json()
+                detail = (
+                    data.get("detail", response.text) if isinstance(data, dict) else response.text
+                )
+            except Exception:
+                detail = response.text
+            raise EngineOutdatedError(str(detail))
         response.raise_for_status()
         return response
 
