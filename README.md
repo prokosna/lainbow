@@ -59,8 +59,11 @@ Windows (WSL2):
 
 ## Hardware and time
 
-- CPU works. It just takes longer.
-- A GPU engine is much faster for the first full analysis.
+Every song is analyzed once. Rough time for 100,000 songs:
+
+- **GPU**: about 1.5 days (NVIDIA RTX 5070 Ti). Needs an NVIDIA GPU with 12 GB+ VRAM.
+- **CPU only**: about 6 weeks (AMD Ryzen AI 9 HX 370). Needs about 10 GB of free RAM.
+
 - Model weights (several GB) are downloaded on the engine's first start and kept in `DATA_DIR/models`.
 
 ## Configuration
@@ -88,11 +91,14 @@ FastAPI's `/docs` has the full schema.
 
 ## Upgrading from v1.x
 
-v2 is not compatible with v1.x.
+v2 is a rewrite and is not compatible with v1.x. Nothing is carried over: install it as new and let it analyze
+the library again.
 
-- Start with a new data directory.
-- Every track is analyzed again.
-- v1 stays available at [v1.0.0](https://github.com/prokosna/lainbow/releases/tag/v1.0.0).
+1. Stop v1 (`docker compose down` in its directory). Its data is not used and can be deleted once v2 works.
+2. Install v2 with a new data directory, following [Quick start](#quick-start-one-machine).
+3. Use Sola MPD 4.13.0 or later.
+
+v1 stays available at [v1.0.0](https://github.com/prokosna/lainbow/releases/tag/v1.0.0).
 
 ## Development
 
