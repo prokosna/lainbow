@@ -18,6 +18,8 @@ Commands:
                   write .env (never overwrites; only adds missing keys)
   add-engine NAME [--host HOST]
                   register an engine and print the 'join' command to run on another machine
+  remove-engine NAME
+                  remove an engine's registration and token (its leased tracks go back to the queue)
   join SERVER_URL TOKEN [--accel auto|cuda|rocm|cpu] [--name NAME] [--build] [--print] [--yes]
                   run an engine on this machine that works for a remote server
   leave [--name NAME]
@@ -452,6 +454,27 @@ cmd_add_engine() {
 	echo "Note: the engine only connects out to the server; nothing needs to be opened on the engine machine."
 }
 
+cmd_remove_engine() {
+	local name=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		-*) die "remove-engine: unknown option '$1'" ;;
+		*)
+			[ -z "$name" ] || die "remove-engine: only one NAME is accepted"
+			name=$1
+			shift
+			;;
+		esac
+	done
+	if [ -z "$name" ]; then
+		usage >&2
+		die "remove-engine: NAME is required"
+	fi
+	need_docker
+	docker compose exec -T server lainbow-admin remove-engine "$name"
+	echo "if its container is still running on that machine, stop it there with: ./lainbow leave"
+}
+
 cmd_join() {
 	local server="" token="" accel=auto name=lainbow-engine build=0 print_only=0 yes=0
 	while [ $# -gt 0 ]; do
@@ -601,11 +624,22 @@ cmd_leave() {
 	docker stop -t 120 "$name" >/dev/null || die "docker stop failed for $name"
 	docker rm "$name" >/dev/null || die "docker rm failed for $name"
 	echo "the downloaded models are kept in the lainbow-models volume; remove them with: docker volume rm lainbow-models"
+	echo "the engine is still registered on the server and can join again with the same token;"
+	echo "to remove it for good, run on the server: ./lainbow remove-engine <engine name>"
 }
 
 cmd_status() {
 	need_docker
-	docker compose ps --format 'table {{.Service}}\t{{.State}}\t{{.Health}}'
+	local out
+	out=$(
+		printf 'SERVICE\tSTATE\tHEALTH\n'
+		docker compose ps --format '{{.Service}}\t{{.State}}\t{{.Health}}'
+	)
+	if command -v column >/dev/null 2>&1; then
+		printf '%s\n' "$out" | column -t -s $'\t'
+	else
+		printf '%s\n' "$out"
+	fi
 	echo
 	docker compose exec -T server lainbow-admin status
 }
@@ -621,7 +655,7 @@ cmd_update() {
 	git fetch --tags || die "git fetch --tags failed"
 	local current latest
 	current=$(git describe --tags --always 2>/dev/null || echo unknown)
-	latest=$(git tag --list 'v2.*' --sort=-v:refname | head -n 1)
+	latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)
 	echo "checked out: $current"
 	echo "newest release: ${latest:-none found}"
 	echo "to move to a newer release: git checkout <tag> && ./lainbow update"
@@ -633,6 +667,7 @@ command=${1:-help}
 case "$command" in
 init) cmd_init "$@" ;;
 add-engine) cmd_add_engine "$@" ;;
+remove-engine) cmd_remove_engine "$@" ;;
 join) cmd_join "$@" ;;
 leave) cmd_leave "$@" ;;
 status) cmd_status ;;

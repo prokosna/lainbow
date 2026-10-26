@@ -580,6 +580,20 @@ def test_leave(work: Path) -> None:
     assert not any(c.startswith("rm -f") for c in calls)
     assert "stopping lainbow-engine" in result.stdout
     assert "docker volume rm lainbow-models" in result.stdout
+    assert "remove-engine" in result.stdout
+
+
+def test_remove_engine(work: Path) -> None:
+    result = run(work, "remove-engine", "desktop")
+    assert result.returncode == 0, result.stderr
+    calls = docker_calls(work)
+    assert "compose exec -T server lainbow-admin remove-engine desktop" in calls
+    assert (
+        "if its container is still running on that machine, stop it there with: ./lainbow leave"
+        in result.stdout
+    )
+
+    assert run(work, "remove-engine").returncode != 0
 
 
 def test_leave_without_container(work: Path) -> None:
@@ -616,7 +630,10 @@ def test_script_parses_in_posix_mode() -> None:
 
 
 def test_status_and_update_call_compose(work: Path) -> None:
-    assert run(work, "status").returncode == 0
+    status_res = run(work, "status")
+    assert status_res.returncode == 0
+    assert "HEALTH" in status_res.stdout
+    assert "<no value>" not in status_res.stdout
     assert run(work, "config").returncode == 0
     install_fake(work, "git", FAKE_GIT)
     result = run(work, "update")
@@ -625,6 +642,7 @@ def test_status_and_update_call_compose(work: Path) -> None:
     assert "v2.1.0" in result.stdout
     git_log = (work.parent / "git.log").read_text().splitlines()
     assert git_log[0] == "fetch --tags"
+    assert any("v[0-9]*" in call for call in git_log)
     assert not any(c.startswith(("checkout", "pull", "reset")) for c in git_log)
     log = (work.parent / "docker.log").read_text()
     assert "lainbow-admin status" in log
@@ -637,6 +655,7 @@ def test_status_and_update_call_compose(work: Path) -> None:
 def test_help_and_unknown(work: Path) -> None:
     out = run(work).stdout
     assert "add-engine" in out
+    assert "remove-engine" in out
     assert "join" in out
     assert "leave" in out
     assert run(work, "bogus").returncode != 0

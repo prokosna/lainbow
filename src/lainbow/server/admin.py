@@ -62,7 +62,14 @@ def _relative(moment: datetime | None, now: datetime) -> str:
     return f"{seconds // 86400} d ago"
 
 
-def _status_text(session: Session) -> str:
+def _engine_state(last_seen_at: datetime | None, now: datetime, lease_sec: float) -> str:
+    """An engine silent for longer than a lease has lost its leases, so it counts as offline."""
+    if last_seen_at is None:
+        return "never"
+    return "online" if (now - last_seen_at).total_seconds() <= lease_sec else "offline"
+
+
+def _status_text(session: Session, lease_sec: float) -> str:
     now = datetime.now(UTC)
     total = session.scalar(select(func.count()).select_from(Track)) or 0
     sections = [f"Tracks: {total}"]
@@ -89,10 +96,21 @@ def _status_text(session: Session) -> str:
     )
 
     engine_rows: list[tuple[str, ...]] = [
-        (e.name, _relative(e.last_seen_at, now), str(e.completed))
+        (
+            e.name,
+            _engine_state(e.last_seen_at, now, lease_sec),
+            _relative(e.last_seen_at, now),
+            str(e.completed),
+        )
         for e in engines.list_engines(session)
     ]
-    sections.append(_format_rows(("ENGINE", "LAST SEEN", "COMPLETED"), engine_rows))
+    engine_table = _format_rows(("ENGINE", "STATE", "LAST SEEN", "COMPLETED"), engine_rows)
+    if any(row[1] == "offline" for row in engine_rows):
+        engine_table += (
+            "\noffline engines keep their registration;"
+            " remove one with: ./lainbow remove-engine <name>"
+        )
+    sections.append(engine_table)
 
     run_rows: list[tuple[str, ...]] = []
     for kind in ("scan", "vacuum", "analyze"):
@@ -133,7 +151,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 session.commit()
                 print(token)
             elif args.command == "status":
-                print(_status_text(session))
+                print(_status_text(session, lease_sec=settings.lease_sec))
             elif args.command == "list-engines":
                 rows = [
                     (

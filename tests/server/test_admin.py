@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from lainbow.db.schema import RegisteredEngine
 from lainbow.server import admin, engines
 
 
@@ -95,3 +97,51 @@ def test_status_shows_counts(env: str, capsys: pytest.CaptureFixture[str]) -> No
 def test_config_lists_settings(env: str, capsys: pytest.CaptureFixture[str]) -> None:
     assert admin.main(["config"]) == 0
     assert "LAINBOW_MUQ_MAX_SEC" in capsys.readouterr().out
+
+
+def test_engine_state() -> None:
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    assert admin._engine_state(None, now, lease_sec=60) == "never"
+    assert admin._engine_state(now - timedelta(seconds=30), now, lease_sec=60) == "online"
+    assert admin._engine_state(now - timedelta(seconds=90), now, lease_sec=60) == "offline"
+
+
+@pytest.mark.postgres
+def test_status_engine_online_and_offline_postgres(
+    env: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert admin.main(["add-engine", "gpu1"]) == 0
+    capsys.readouterr()
+
+    # Engine seen recently -> online, no hint line
+    eng = create_engine(env)
+    with Session(eng) as s:
+        engine = s.scalar(select(RegisteredEngine).where(RegisteredEngine.name == "gpu1"))
+        assert engine is not None
+        engine.last_seen_at = datetime.now(UTC)
+        s.commit()
+    eng.dispose()
+
+    assert admin.main(["status"]) == 0
+    out = capsys.readouterr().out
+    gpu = next(line for line in out.splitlines() if line.startswith("gpu1"))
+    assert "online" in gpu
+    assert "offline engines keep their registration" not in out
+
+    # Engine seen longer ago than threshold -> offline, hint line appears
+    eng = create_engine(env)
+    with Session(eng) as s:
+        engine = s.scalar(select(RegisteredEngine).where(RegisteredEngine.name == "gpu1"))
+        assert engine is not None
+        engine.last_seen_at = datetime.now(UTC) - timedelta(seconds=1800)
+        s.commit()
+    eng.dispose()
+
+    assert admin.main(["status"]) == 0
+    out = capsys.readouterr().out
+    gpu = next(line for line in out.splitlines() if line.startswith("gpu1"))
+    assert "offline" in gpu
+    assert (
+        "offline engines keep their registration;"
+        " remove one with: ./lainbow remove-engine <name>" in out
+    )

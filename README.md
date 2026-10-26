@@ -44,7 +44,7 @@ The first full analysis is the slow part. Any machine with an NVIDIA or AMD GPU 
 1. On the server, run `./lainbow add-engine desktop` (add `--host <address>` if the guessed address is wrong). It prints a `./lainbow join ...` line.
 2. On the GPU machine, clone the same tag and run that line. The first `join` builds the engine image, which takes a while. `join` detects NVIDIA, AMD or CPU, checks that the server version matches, and starts the engine.
 3. The engine only connects out to the server. Nothing needs to be opened or forwarded on that machine.
-4. When the analysis is done, stop it with `./lainbow leave`.
+4. When the analysis is done, stop it with `./lainbow leave`. The engine stays registered and can rejoin later with the same line; `./lainbow remove-engine <name>` on the server removes it for good.
 
 Steady-state analysis continues on the server.
 
