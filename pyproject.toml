@@ -1,6 +1,6 @@
 [project]
 name = "lainbow"
-version = "2.0.0.dev0"
+version = "2.0.0"
 description = "Music analysis engine: similar-song and natural-language search for a local music library"
 readme = "README.md"
 license = "MIT"
