@@ -3,7 +3,7 @@
 The `revision` field in `ModelSpec` tracks changes that alter the computed vector
 but are not captured by the analysis method configuration (such as max_sec or drop_tail).
 This includes:
-- Model checkpoint / weights
+- Model checkpoint / weights (including the pinned Hugging Face commit)
 - Target sample rate
 - Clip length (`clip_sec`)
 - Tail trimming rule

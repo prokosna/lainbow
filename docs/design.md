@@ -49,6 +49,8 @@ Sola MPD --HTTP--> server --SQL--> postgres (pgvector)
   work rather than silently wrong results. Vectors of the previous profile are kept, so switching back is free.
 - **The model revision** (in `ModelSpec`) is bumped whenever a code or weight change alters the vector, which
   invalidates the old ones the same way.
+- **Weights are pinned** to a Hugging Face commit per model, so every engine downloads the same weights;
+  changing a pin is a weight change and bumps the model revision.
 
 ## Data
 

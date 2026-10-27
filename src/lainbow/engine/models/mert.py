@@ -13,6 +13,8 @@ from lainbow.engine.models.aggregate import l2_normalize, pad_by_wrapping
 from lainbow.engine.models.base import EmbedResult
 
 REPO_ID = "m-a-p/MERT-v1-330M"
+# Pinned Hugging Face commit. Changing it changes the weights: bump the ModelSpec revision.
+REVISION = "5240c2708a5acaee1007f43fb9735c7dcd0b78c9"
 SAMPLE_RATE = 24000
 CLIP_SEC = 10
 START_LAYER = 12
@@ -34,10 +36,12 @@ class MertModel:
         """Download (first start) and load the weights onto the device."""
         self._device = device
         self._processor = Wav2Vec2FeatureExtractor.from_pretrained(
-            REPO_ID, trust_remote_code=True, cache_dir=self._cache_dir
+            REPO_ID, revision=REVISION, trust_remote_code=True, cache_dir=self._cache_dir
         )
         self._model = (
-            AutoModel.from_pretrained(REPO_ID, trust_remote_code=True, cache_dir=self._cache_dir)
+            AutoModel.from_pretrained(
+                REPO_ID, revision=REVISION, trust_remote_code=True, cache_dir=self._cache_dir
+            )
             .to(device)
             .eval()
         )
