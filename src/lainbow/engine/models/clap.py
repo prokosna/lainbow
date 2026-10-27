@@ -13,6 +13,8 @@ from lainbow.engine.models.aggregate import l2_normalize, pad_by_wrapping
 from lainbow.engine.models.base import EmbedResult
 
 REPO_ID = "lukewys/laion_clap"
+# Pinned Hugging Face commit. Changing it changes the weights: bump the ModelSpec revision.
+REVISION = "b3708341862f581175dba5c356a4ebf74a9b6651"
 CHECKPOINT = "music_audioset_epoch_15_esc_90.14.pt"
 SAMPLE_RATE = 48000
 CLIP_SEC = 10
@@ -43,7 +45,10 @@ class ClapModel:
         """Download (first start) and load the checkpoint onto the device."""
         self._device = device
         path = hf_hub_download(
-            repo_id=REPO_ID, filename=CHECKPOINT, cache_dir=self._models_dir / "hf"
+            repo_id=REPO_ID,
+            filename=CHECKPOINT,
+            revision=REVISION,
+            cache_dir=self._models_dir / "hf",
         )
         model = _clap_module(enable_fusion=False, amodel="HTSAT-base", device=device)
         model.load_ckpt(path)

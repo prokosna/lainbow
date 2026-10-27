@@ -13,6 +13,8 @@ from lainbow.engine.models.aggregate import l2_normalize, weighted_mean
 from lainbow.engine.models.base import EmbedResult
 
 REPO_ID = "OpenMuQ/MuQ-large-msd-iter"
+# Pinned Hugging Face commit. Changing it changes the weights: bump the ModelSpec revision.
+REVISION = "0562a57814f6f8bbd9fdea0a25921a2fce1a841a"
 
 
 class MuQModel:
@@ -28,7 +30,11 @@ class MuQModel:
     def load(self, device: str) -> None:
         """Download (first start) and load the weights onto the device."""
         self._device = device
-        self._model = _MuQ.from_pretrained(REPO_ID, cache_dir=self._cache_dir).to(device).eval()
+        self._model = (
+            _MuQ.from_pretrained(REPO_ID, revision=REVISION, cache_dir=self._cache_dir)
+            .to(device)
+            .eval()
+        )
 
     def unload(self) -> None:
         """Drop the weights and free cached device memory."""

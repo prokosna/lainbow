@@ -51,6 +51,7 @@ def test_clap(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     model.load("cpu")
     assert seen["module"] == {"enable_fusion": False, "amodel": "HTSAT-base", "device": "cpu"}
     assert seen["download"]["cache_dir"] == tmp_path / "hf"
+    assert seen["download"]["revision"] == clap.REVISION
     assert fake.ckpt == "/ckpt.pt"
     clips = [np.full(6, 3.0, dtype=np.float32), np.full(4, 1.0, dtype=np.float32)]
     out = model.embed(clips).embedding
@@ -82,6 +83,10 @@ def test_mert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         seen["processor"] = kwargs
         return {"input_values": torch.from_numpy(np.stack(clips))}
 
+    def processor_from_pretrained(repo: str, **kwargs: Any) -> Any:
+        seen["processor_load"] = (repo, kwargs)
+        return processor
+
     def from_pretrained(repo: str, **kwargs: Any) -> Any:
         seen["model"] = (repo, kwargs)
         return FakeMert()
@@ -89,7 +94,7 @@ def test_mert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         mert,
         "Wav2Vec2FeatureExtractor",
-        SimpleNamespace(from_pretrained=lambda _r, **_k: processor),
+        SimpleNamespace(from_pretrained=processor_from_pretrained),
     )
     monkeypatch.setattr(mert, "AutoModel", SimpleNamespace(from_pretrained=from_pretrained))
     monkeypatch.setattr(mert, "SAMPLE_RATE", 2)
@@ -98,7 +103,19 @@ def test_mert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     model.load("cpu")
     assert seen["model"] == (
         "m-a-p/MERT-v1-330M",
-        {"trust_remote_code": True, "cache_dir": tmp_path / "hf"},
+        {
+            "revision": mert.REVISION,
+            "trust_remote_code": True,
+            "cache_dir": tmp_path / "hf",
+        },
+    )
+    assert seen["processor_load"] == (
+        "m-a-p/MERT-v1-330M",
+        {
+            "revision": mert.REVISION,
+            "trust_remote_code": True,
+            "cache_dir": tmp_path / "hf",
+        },
     )
     clips = [np.zeros(6, dtype=np.float32), np.full(6, 2.0, dtype=np.float32)]
     out = model.embed(clips).embedding
