@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/prokosna/lainbow/compare/v2.0.1...v2.1.0) (2026-10-28)
+
+
+### Features
+
+* rank similar songs with CSLS ([#12](https://github.com/prokosna/lainbow/issues/12)) ([358c287](https://github.com/prokosna/lainbow/commit/358c28764f48048459e3d3e72cf0e09d6a6576f0))
+
 ## [2.0.1](https://github.com/prokosna/lainbow/compare/v2.0.0...v2.0.1) (2026-10-27)
 
 
