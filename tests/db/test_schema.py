@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from lainbow.db.migrate import get_alembic_config, upgrade_to_head
 from lainbow.db.schema import (
     AnalysisDetail,
+    NeighborProfile,
+    NeighborStat,
     RegisteredEngine,
 )
 
@@ -31,6 +33,12 @@ def test_analysis_detail_tablename() -> None:
     assert AnalysisDetail.__tablename__ == "analysis_details"
 
 
+def test_neighbor_stat_and_profile_tablenames() -> None:
+    """NeighborStat and NeighborProfile map to their respective tables."""
+    assert NeighborStat.__tablename__ == "neighbor_stats"
+    assert NeighborProfile.__tablename__ == "neighbor_profiles"
+
+
 # ---------------------------------------------------------------------------
 # Postgres integration tests (@pytest.mark.postgres)
 # ---------------------------------------------------------------------------
@@ -40,7 +48,7 @@ def test_analysis_detail_tablename() -> None:
 def test_upgrade_to_head_creates_all_tables_and_is_idempotent(clean_db: str) -> None:
     """upgrade_to_head creates all migration tables and returns revision id."""
     rev = upgrade_to_head(clean_db)
-    assert rev == "0002_engine_version"
+    assert rev == "0003_neighbor_stats"
 
     engine = create_engine(clean_db)
     with engine.connect() as conn:
@@ -53,6 +61,8 @@ def test_upgrade_to_head_creates_all_tables_and_is_idempotent(clean_db: str) -> 
             "analysis_details",
             "runs",
             "active_profiles",
+            "neighbor_stats",
+            "neighbor_profiles",
             "alembic_version",
         }
         assert tables == expected_tables
@@ -64,7 +74,7 @@ def test_upgrade_to_head_creates_all_tables_and_is_idempotent(clean_db: str) -> 
 
     # Second run should be a no-op and succeed without errors
     rev2 = upgrade_to_head(clean_db)
-    assert rev2 == "0002_engine_version"
+    assert rev2 == "0003_neighbor_stats"
 
 
 @pytest.mark.postgres
