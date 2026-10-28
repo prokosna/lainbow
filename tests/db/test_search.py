@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session
 
 from lainbow.core.method import AnalysisMethod
 from lainbow.core.models import MODELS, ModelSpec, Purpose
 from lainbow.db.migrate import upgrade_to_head
 from lainbow.db.schema import NeighborProfile, NeighborStat, Track
-from lainbow.db.search import nearest, track_by_path, vector_of
-from lainbow.db.vectors import ensure_vector_store, vector_table
+from lainbow.db.search import _nearest_statement, nearest, track_by_path, vector_of
+from lainbow.db.vectors import ensure_vector_store, vector_index_name, vector_table
 
 pytestmark = pytest.mark.postgres
 
@@ -184,3 +185,58 @@ def test_search_helpers(db_engine: Engine, fake_model: str) -> None:
         assert len(vec) == 4
         assert vec[0] == pytest.approx(0.1, abs=1e-3)
         assert vector_of(session, fake_model, profile, 999999) is None
+
+
+def test_nearest_generic_plan_uses_hnsw_index(
+    db_engine: Engine,
+    fake_model: str,
+) -> None:
+    """EXPLAIN plan uses the profile's HNSW index under force_generic_plan."""
+    profile = "p1"
+    idx_name = vector_index_name(fake_model, profile)
+
+    count = 800
+    with Session(db_engine) as session:
+        now = datetime.now(UTC)
+        tracks = [
+            Track(
+                path=f"/track/{i}",
+                duration_sec=120.0,
+                mtime=now,
+                size_bytes=1000,
+                seen_at=now,
+            )
+            for i in range(count)
+        ]
+        session.add_all(tracks)
+        session.flush()
+
+        tbl = vector_table(fake_model)
+        rng = random.Random(42)
+        records = [
+            {
+                "track_id": tr.id,
+                "profile": profile,
+                "embedding": [rng.uniform(-1, 1) for _ in range(4)],
+            }
+            for tr in tracks
+        ]
+        session.execute(tbl.insert().values(records))
+        session.commit()
+
+        session.execute(text("ANALYZE"))
+        session.execute(text("SET plan_cache_mode = force_generic_plan"))
+
+        stmt = _nearest_statement(
+            model=fake_model,
+            profile=profile,
+            query=[1.0, 0.0, 0.0, 0.0],
+            limit=10,
+        )
+        compiled = stmt.compile(
+            dialect=db_engine.dialect,
+            compile_kwargs={"literal_binds": True},
+        )
+        rows = session.execute(text(f"EXPLAIN {compiled}")).all()
+        plan = "\n".join(r[0] for r in rows)
+        assert idx_name in plan

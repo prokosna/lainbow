@@ -18,7 +18,7 @@ from lainbow.db.migrate import upgrade_to_head
 from lainbow.db.neighbors import plan_refresh, profile_stats, refresh
 from lainbow.db.schema import NeighborStat
 from lainbow.db.session import make_session_factory
-from lainbow.db.vectors import ensure_vector_store, vector_table
+from lainbow.db.vectors import ensure_vector_store, vector_index_name, vector_table
 
 pytestmark = pytest.mark.postgres
 
@@ -364,3 +364,26 @@ def test_refresh_isolated_single_track_null_r(
         assert prof is not None
         assert prof.vectors == 1
         assert prof.mean_r == 0.0
+
+
+def test_refresh_generic_plan_uses_hnsw_index(
+    db_engine: Engine,
+    fake_model: str,
+) -> None:
+    """EXPLAIN plan uses the profile's HNSW index under force_generic_plan."""
+    profile = "p1"
+    idx_name = vector_index_name(fake_model, profile)
+
+    tids = add_tracks(db_engine, 800)
+    rng = random.Random(42)
+    vecs = {tid: [rng.uniform(-1, 1) for _ in range(4)] for tid in tids}
+    add_vectors(db_engine, fake_model, profile, vecs)
+
+    with Session(db_engine) as session:
+        session.execute(text("ANALYZE"))
+        session.execute(text("SET plan_cache_mode = force_generic_plan"))
+
+        sql = neighbors._compute_sql(fake_model, profile, k=10)
+        rows = session.execute(text(f"EXPLAIN {sql.text}"), {"ids": [tids[0]]}).all()
+        plan = "\n".join(r[0] for r in rows)
+        assert idx_name in plan

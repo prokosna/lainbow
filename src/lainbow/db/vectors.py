@@ -19,6 +19,16 @@ vector_metadata = MetaData(naming_convention=POSTGRES_NAMING_CONVENTION)
 _VECTOR_TABLE_CACHE: dict[tuple[str, int], Table] = {}
 
 
+def validate_profile(profile: str) -> str:
+    """Validate that profile matches '^[a-z0-9-]+$'.
+
+    Returns the profile if valid, otherwise raises ValueError.
+    """
+    if not _PROFILE_PATTERN.match(profile):
+        raise ValueError(f"Invalid profile name: {profile!r}. Profile must match '^[a-z0-9-]+$'.")
+    return profile
+
+
 def vector_index_name(model: str, profile: str) -> str:
     """Generate the index name for a vector table's profile HNSW index.
 
@@ -27,8 +37,7 @@ def vector_index_name(model: str, profile: str) -> str:
     the prefix and appends an 8-hex-digit hash of the full name so that
     it is at most 63 characters and unique.
     """
-    if not _PROFILE_PATTERN.match(profile):
-        raise ValueError(f"Invalid profile name: {profile!r}. Profile must match '^[a-z0-9-]+$'.")
+    validate_profile(profile)
 
     safe_profile = profile.replace("-", "_")
     raw_name = f"ix_vectors_{model}_{safe_profile}_hnsw"
@@ -82,6 +91,7 @@ def ensure_vector_store(conn: Connection, model: str, profile: str) -> None:
 
 __all__ = [
     "ensure_vector_store",
+    "validate_profile",
     "vector_index_name",
     "vector_metadata",
     "vector_table",

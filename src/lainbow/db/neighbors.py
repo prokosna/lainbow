@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Literal
 
-from sqlalchemy import exists, func, select, text
+from sqlalchemy import TextClause, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from lainbow.db.schema import NeighborProfile, NeighborStat
-from lainbow.db.vectors import vector_table
+from lainbow.db.vectors import validate_profile, vector_table
 
 MIN_VECTORS = 1000
 GROW_RATIO = 1.25
@@ -70,6 +70,27 @@ def plan_refresh(
     return "none"
 
 
+def _compute_sql(model: str, profile: str, k: int) -> TextClause:
+    """Build the SQL query for computing average neighbor similarity."""
+    valid_profile = validate_profile(profile)
+    k_val = int(k)
+    tbl = vector_table(model)
+    return text(
+        f"""
+        SELECT v.track_id,
+          (SELECT avg(1 - d) FROM (
+             SELECT w.embedding <=> v.embedding AS d
+             FROM "{tbl.name}" w
+             WHERE w.profile = '{valid_profile}' AND w.track_id <> v.track_id
+             ORDER BY w.embedding <=> v.embedding
+             LIMIT {k_val}
+          ) n) AS r
+        FROM "{tbl.name}" v
+        WHERE v.profile = '{valid_profile}' AND v.track_id = ANY(:ids)
+        """
+    )
+
+
 def refresh(
     session_factory: Callable[[], Session],
     *,
@@ -83,7 +104,6 @@ def refresh(
         return {"computed": 0}
 
     tbl = vector_table(model)
-    tbl_name = tbl.name
 
     if kind == "full":
         with session_factory() as session:
@@ -115,21 +135,7 @@ def refresh(
 
     computed = 0
     ef_search = max(100, 2 * k)
-
-    compute_sql = text(
-        f"""
-        SELECT v.track_id,
-          (SELECT avg(1 - d) FROM (
-             SELECT w.embedding <=> v.embedding AS d
-             FROM "{tbl_name}" w
-             WHERE w.profile = :profile AND w.track_id <> v.track_id
-             ORDER BY w.embedding <=> v.embedding
-             LIMIT :k
-          ) n) AS r
-        FROM "{tbl_name}" v
-        WHERE v.profile = :profile AND v.track_id = ANY(:ids)
-        """
-    )
+    compute_sql = _compute_sql(model, profile, k)
 
     for i in range(0, len(target_ids), CHUNK):
         chunk_ids = target_ids[i : i + CHUNK]
@@ -137,7 +143,7 @@ def refresh(
             session.execute(text(f"SET LOCAL hnsw.ef_search = {ef_search}"))
             rows = session.execute(
                 compute_sql,
-                {"profile": profile, "k": k, "ids": chunk_ids},
+                {"ids": chunk_ids},
             ).all()
 
             records = [

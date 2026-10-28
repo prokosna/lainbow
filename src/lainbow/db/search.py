@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import Select, func, literal_column, select, text
 from sqlalchemy.orm import Session
 
 from lainbow.db.neighbors import profile_stats
-from lainbow.db.schema import NeighborStat, Track
-from lainbow.db.vectors import vector_table
+from lainbow.db.schema import NeighborProfile, NeighborStat, Track
+from lainbow.db.vectors import validate_profile, vector_table
 
 CANDIDATES = 200
 
@@ -39,29 +40,29 @@ def vector_of(session: Session, model: str, profile: str, track_id: int) -> list
     return [float(x) for x in value]
 
 
-def nearest(
-    session: Session,
+def _nearest_statement(
     model: str,
     profile: str,
     query: Sequence[float],
     limit: int,
     exclude_track_id: int | None = None,
+    prof: NeighborProfile | None = None,
     csls_k: int = 0,
-) -> list[Hit]:
-    """Return the ``limit`` tracks closest to ``query`` by cosine distance or CSLS."""
+) -> Select[Any]:
+    """Build the SELECT query for nearest neighbor search."""
+    valid_profile = validate_profile(profile)
     tbl = vector_table(model)
-    prof = profile_stats(session, model=model, profile=profile) if csls_k > 0 else None
     use_csls = prof is not None and prof.k == csls_k
 
-    fetch_limit = max(CANDIDATES, limit) if use_csls else limit
-    ef_search = min(1000, max(40, fetch_limit * 2))
-    session.execute(text(f"SET LOCAL hnsw.ef_search = {ef_search}"))
+    fetch_limit = int(max(CANDIDATES, limit) if use_csls else limit)
 
     distance = tbl.c.embedding.cosine_distance(list(query))
-    inner = select(tbl.c.track_id, distance.label("distance")).where(tbl.c.profile == profile)
+    inner = select(tbl.c.track_id, distance.label("distance")).where(
+        tbl.c.profile == literal_column(f"'{valid_profile}'")
+    )
     if exclude_track_id is not None:
         inner = inner.where(tbl.c.track_id != exclude_track_id)
-    near = inner.order_by(distance).limit(fetch_limit).subquery("near")
+    near = inner.order_by(distance).limit(literal_column(str(fetch_limit))).subquery("near")
 
     stmt = select(
         Track.id,
@@ -80,18 +81,47 @@ def nearest(
                 NeighborStat,
                 (NeighborStat.track_id == near.c.track_id)
                 & (NeighborStat.model == model)
-                & (NeighborStat.profile == profile),
+                & (NeighborStat.profile == valid_profile),
             )
             .order_by(
                 (2 * (1 - near.c.distance) - func.coalesce(NeighborStat.r, prof.mean_r)).desc(),
                 near.c.distance,
                 Track.id,
             )
-            .limit(limit)
+            .limit(literal_column(str(int(limit))))
         )
     else:
         stmt = stmt.order_by(near.c.distance, Track.id)
 
+    return stmt
+
+
+def nearest(
+    session: Session,
+    model: str,
+    profile: str,
+    query: Sequence[float],
+    limit: int,
+    exclude_track_id: int | None = None,
+    csls_k: int = 0,
+) -> list[Hit]:
+    """Return the ``limit`` tracks closest to ``query`` by cosine distance or CSLS."""
+    prof = profile_stats(session, model=model, profile=profile) if csls_k > 0 else None
+    use_csls = prof is not None and prof.k == csls_k
+
+    fetch_limit = max(CANDIDATES, limit) if use_csls else limit
+    ef_search = min(1000, max(40, fetch_limit * 2))
+    session.execute(text(f"SET LOCAL hnsw.ef_search = {ef_search}"))
+
+    stmt = _nearest_statement(
+        model=model,
+        profile=profile,
+        query=query,
+        limit=limit,
+        exclude_track_id=exclude_track_id,
+        prof=prof,
+        csls_k=csls_k,
+    )
     rows = session.execute(stmt).all()
     return [
         Hit(
