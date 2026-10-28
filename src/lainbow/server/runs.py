@@ -17,7 +17,7 @@ from lainbow.db.schema import Run
 
 logger = logging.getLogger(__name__)
 
-RunKind = Literal["scan", "vacuum", "analyze"]
+RunKind = Literal["scan", "vacuum", "analyze", "neighbors"]
 RunState = Literal["pending", "running", "succeeded", "failed"]
 
 

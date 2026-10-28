@@ -12,6 +12,7 @@ from lainbow.core.models import MODELS, ModelId, ModelSpec, Purpose
 from lainbow.db.migrate import get_alembic_config, upgrade_to_head
 from lainbow.db.vectors import (
     ensure_vector_store,
+    validate_profile,
     vector_index_name,
     vector_table,
 )
@@ -66,6 +67,15 @@ def test_vector_index_name_rules() -> None:
     assert len(name_1) <= 63
     assert len(name_2) <= 63
     assert name_1 != name_2
+
+
+def test_validate_profile() -> None:
+    """validate_profile returns the profile when valid, and raises ValueError when invalid."""
+    assert validate_profile("default") == "default"
+    assert validate_profile("a-b-1") == "a-b-1"
+    for invalid in ["bad'profile", "bad profile", "UPPER_CASE", "semi;colon", ""]:
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            validate_profile(invalid)
 
 
 def test_vector_index_name_rejects_invalid_profile() -> None:

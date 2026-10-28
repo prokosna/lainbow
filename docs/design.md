@@ -52,6 +52,24 @@ Sola MPD --HTTP--> server --SQL--> postgres (pgvector)
 - **Weights are pinned** to a Hugging Face commit per model, so every engine downloads the same weights;
   changing a pin is a weight change and bumps the model revision.
 
+## Similar-song ranking
+
+- **Similar songs are ranked with CSLS**, not raw cosine similarity. Embeddings have hubs: tracks that are close
+  to almost everything and turn up in most result lists. The server takes the 200 nearest candidates and ranks
+  them by `2 * cos(q, c) - r(c)`, where `r(c)` is the mean similarity of `c` to its k nearest neighbours
+  (`LAINBOW_SIMILAR_CSLS_K`, default 50). On a 94k-track library this cut the share of tracks that never appear
+  in any top 10 from 4.1% to 0.5%, without hurting listening tests. The `score` in responses stays the cosine
+  similarity.
+- **The neighbour statistics are derived from the database, like the work.** A minute after start and every ten
+  minutes the server checks each active model and profile, and computes `r` with the HNSW index when it is
+  missing, when the library has grown by a quarter or shrunk by a fifth since the last full pass, or when k
+  changed. New tracks in between get their own `r` on the next check. An upgrade therefore needs no step:
+  until the statistics exist, search falls back to plain cosine similarity.
+- **Literals for the profile in vector SQL.** HNSW indexes are partial, one per profile, so the profile and the
+  limit are written into the SQL rather than bound; a generic plan of a prepared statement could otherwise not
+  use the index.
+- Natural-language search is unchanged.
+
 ## Data
 
 - **Vector tables are created at runtime**, one per model and dimension, with an HNSW index per profile. The

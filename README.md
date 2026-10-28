@@ -82,7 +82,8 @@ The settings most people touch:
 - `GET /health`: liveness.
 - `GET /api/v1/stats`: library and analysis counts.
 - `GET /api/v1/songs/search`: natural-language search (`q`, `model_name`, `limit`).
-- `GET /api/v1/songs/{path}/similar`: songs similar to a song (`model_name`, `limit`).
+- `GET /api/v1/songs/{path}/similar`: songs similar to a song (`model_name`, `limit`), ranked with CSLS
+  (see [docs/design.md](docs/design.md#similar-song-ranking)).
 - `GET /api/v1/songs/{path}/analysis`: analysis state of a song per model.
 - `POST /api/v1/batch/{scan,vacuum,analyze}/run`: start a scan, a vacuum (also a scan) or a retry of failed tracks.
 - `GET /api/v1/batch/tasks/{id}`: status of a run started above.

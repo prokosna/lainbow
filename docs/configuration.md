@@ -32,6 +32,7 @@ Optional. Put them in `.env`; the server reads every `LAINBOW_*` variable. `./la
 | `LAINBOW_LOCAL_ENGINE_TOKEN` | unset | Token of the engine that runs next to the server (written by `lainbow init`). |
 | `LAINBOW_LEASE_SEC` | `900` | Seconds an engine may hold a track before another engine may take it. |
 | `LAINBOW_TEXT_ENGINE_URL` | `http://engine:8001/` | URL of the engine that turns search text into vectors (the engine next to the server). |
+| `LAINBOW_SIMILAR_CSLS_K` | `50` | Neighbours per track used to rank similar songs with CSLS, which pushes down songs that are close to everything (0 = plain cosine similarity). |
 | `LAINBOW_MODELS` | `muq,muq_mulan` | Models to analyze. Available: muq, muq_mulan, clap, mert. |
 | `LAINBOW_MUQ_MAX_SEC` | `180` | MuQ: seconds from the start of a track to analyze (0 = whole track) |
 | `LAINBOW_MUQ_DROP_TAIL` | `False` | MuQ: drop the last min(30 s, 15%) of tracks of 60 s or longer |

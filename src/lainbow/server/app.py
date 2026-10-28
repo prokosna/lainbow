@@ -17,6 +17,7 @@ from lainbow.db.session import make_engine, make_session_factory
 from lainbow.server import engines
 from lainbow.server.api import batch, songs, stats
 from lainbow.server.api import engine as engine_api
+from lainbow.server.neighbors import make_neighbors_job, needs_refresh
 from lainbow.server.profiles import activate_profiles
 from lainbow.server.runs import RunExecutor
 from lainbow.server.text_embedding import TextEmbedder
@@ -24,6 +25,8 @@ from lainbow.server.text_embedding import TextEmbedder
 logger = logging.getLogger(__name__)
 
 STARTUP_SCAN_DELAY_SEC = 5.0
+NEIGHBORS_START_DELAY_SEC = 60.0
+NEIGHBORS_INTERVAL_SEC = 600.0
 
 
 async def _periodic_scan(app: FastAPI, interval_min: int) -> None:
@@ -35,6 +38,22 @@ async def _periodic_scan(app: FastAPI, interval_min: int) -> None:
         except Exception:
             logger.exception("could not start the periodic scan")
         await asyncio.sleep(interval_min * 60)
+
+
+async def _periodic_neighbors(app: FastAPI, k: int) -> None:
+    await asyncio.sleep(NEIGHBORS_START_DELAY_SEC)
+    while True:
+        try:
+            factory = app.state.session_factory
+            tasks = app.state.active_tasks
+            should_refresh = await asyncio.to_thread(needs_refresh, factory, tasks, k)
+            if should_refresh:
+                executor: RunExecutor = app.state.executor
+                job = make_neighbors_job(factory, tasks, k)
+                await asyncio.to_thread(executor.submit, "neighbors", job)
+        except Exception:
+            logger.exception("could not check or run periodic neighbor stats refresh")
+        await asyncio.sleep(NEIGHBORS_INTERVAL_SEC)
 
 
 def create_app(
@@ -66,13 +85,17 @@ def create_app(
         task: asyncio.Task[None] | None = None
         if settings.scan_interval_min > 0:
             task = asyncio.create_task(_periodic_scan(app, settings.scan_interval_min))
+        neighbors_task: asyncio.Task[None] | None = None
+        if settings.similar_csls_k > 0:
+            neighbors_task = asyncio.create_task(_periodic_neighbors(app, settings.similar_csls_k))
         try:
             yield
         finally:
-            if task is not None:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+            for t in (task, neighbors_task):
+                if t is not None:
+                    t.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await t
             await asyncio.to_thread(executor.shutdown)
             if text_embedder is None:
                 embedder.close()

@@ -133,7 +133,7 @@ class Run(Base):
 
     __tablename__ = "runs"
     __table_args__ = (
-        CheckConstraint("kind IN ('scan', 'vacuum', 'analyze')", name="kind"),
+        CheckConstraint("kind IN ('scan', 'vacuum', 'analyze', 'neighbors')", name="kind"),
         CheckConstraint("state IN ('pending', 'running', 'succeeded', 'failed')", name="state"),
     )
 
@@ -163,12 +163,42 @@ class ActiveProfile(Base):
     )
 
 
+class NeighborStat(Base):
+    """Nearest neighbor statistics for a track under a model profile."""
+
+    __tablename__ = "neighbor_stats"
+
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    profile: Mapped[str] = mapped_column(Text, primary_key=True)
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    r: Mapped[float] = mapped_column(REAL, nullable=False)
+
+
+class NeighborProfile(Base):
+    """Summary of neighbor statistics computation for a model profile."""
+
+    __tablename__ = "neighbor_profiles"
+
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    profile: Mapped[str] = mapped_column(Text, primary_key=True)
+    k: Mapped[int] = mapped_column(Integer, nullable=False)
+    vectors: Mapped[int] = mapped_column(Integer, nullable=False)
+    mean_r: Mapped[float] = mapped_column(REAL, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 __all__ = [
     "POSTGRES_NAMING_CONVENTION",
     "ActiveProfile",
     "Analysis",
     "AnalysisDetail",
     "Base",
+    "NeighborProfile",
+    "NeighborStat",
     "RegisteredEngine",
     "Run",
     "Track",
