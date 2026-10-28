@@ -44,6 +44,7 @@ def test_describe_field_order_and_masking(monkeypatch: pytest.MonkeyPatch) -> No
         "LAINBOW_LOCAL_ENGINE_TOKEN",
         "LAINBOW_LEASE_SEC",
         "LAINBOW_TEXT_ENGINE_URL",
+        "LAINBOW_SIMILAR_CSLS_K",
         "LAINBOW_MODELS",
         "LAINBOW_MUQ_MAX_SEC",
         "LAINBOW_MUQ_DROP_TAIL",
@@ -338,3 +339,33 @@ def test_describe_method_is_default_uses_explicit_vars_not_environ(
     assert not rows_by_name["LAINBOW_MUQ_MAX_SEC"].is_default
     assert rows_by_name["LAINBOW_MUQ_MAX_SEC"].value == "120"
     assert rows_by_name["LAINBOW_MUQ_DROP_TAIL"].is_default
+
+
+def test_similar_csls_k_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    settings = load_settings(ServerSettings)
+    assert settings.similar_csls_k == 50
+
+
+def test_similar_csls_k_negative_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_SIMILAR_CSLS_K", "-1")
+
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(ServerSettings)
+
+    message = str(exc_info.value)
+    assert "LAINBOW_SIMILAR_CSLS_K" in message
+    assert "Input should be greater than or equal to 0" in message
+
+
+def test_similar_csls_k_too_large_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LAINBOW_DATABASE_URL", "postgresql://localhost/test")
+    monkeypatch.setenv("LAINBOW_SIMILAR_CSLS_K", "201")
+
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(ServerSettings)
+
+    message = str(exc_info.value)
+    assert "LAINBOW_SIMILAR_CSLS_K" in message
+    assert "Input should be less than or equal to 200" in message

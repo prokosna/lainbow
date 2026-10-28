@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from lainbow.core import models
 from lainbow.core.settings import ServerSettings
 from lainbow.db.migrate import upgrade_to_head
-from lainbow.db.schema import Analysis, AnalysisDetail, Track
+from lainbow.db.schema import Analysis, AnalysisDetail, NeighborProfile, NeighborStat, Track
 from lainbow.db.session import make_session_factory
 from lainbow.db.vectors import ensure_vector_store, vector_table
 from lainbow.server.app import create_app
@@ -116,6 +116,35 @@ def test_similar_order_exclusion_and_encoding(factory: sessionmaker[Session]) ->
         assert songs[0]["title"] == "x/near.flac"
         limited = client.get(url, params={"model_name": "mert", "limit": 1}).json()
         assert len(limited["songs"]) == 1
+
+
+def test_similar_uses_csls_ranking(factory: sessionmaker[Session]) -> None:
+    settings = make_settings("mert")
+    profile = profile_of("mert", factory, settings)
+    d = MERT.dimension
+    paths = ["seed.flac", "hub.flac", "match.flac"]
+    # hub has higher cosine sim (1.0 vs 0.9) to seed
+    vectors = [vec(d, 1, 0), vec(d, 0.99, 0.1), vec(d, 0.90, 0.435)]
+    with factory() as session:
+        activate_profiles(factory, settings)
+        ids = [add_track(session, p, title=p) for p in paths]
+        for tid, v in zip(ids, vectors, strict=True):
+            add_vector(session, "mert", profile, tid, v)
+        # Hub has high r (0.8), Match has low r (0.1)
+        session.add(NeighborProfile(model="mert", profile=profile, k=50, vectors=3, mean_r=0.4))
+        session.add(NeighborStat(model="mert", profile=profile, track_id=ids[1], r=0.8))
+        session.add(NeighborStat(model="mert", profile=profile, track_id=ids[2], r=0.1))
+        session.commit()
+
+    with TestClient(create_app(settings, session_factory=factory)) as client:
+        url = f"/api/v1/songs/{quote(paths[0], safe='')}/similar"
+        resp = client.get(url, params={"model_name": "mert", "limit": 10})
+        assert resp.status_code == 200
+        songs = resp.json()["songs"]
+        # Match comes before Hub due to CSLS
+        assert [s["file_path"] for s in songs] == ["match.flac", "hub.flac"]
+        # Scores are still cosine similarities (Hub's cosine score > Match's cosine score)
+        assert songs[0]["score"] < songs[1]["score"]
 
 
 def test_similar_errors(factory: sessionmaker[Session]) -> None:

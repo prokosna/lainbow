@@ -153,6 +153,15 @@ class ServerSettings(_LainbowSettings):
             "URL of the engine that turns search text into vectors (the engine next to the server)."
         ),
     )
+    similar_csls_k: int = Field(
+        default=50,
+        ge=0,
+        le=200,
+        description=(
+            "Neighbours per track used to rank similar songs with CSLS, which pushes down songs"
+            " that are close to everything (0 = plain cosine similarity)."
+        ),
+    )
     models: Annotated[list[str], NoDecode] = Field(
         default=["muq", "muq_mulan"],
         description=_models_description(),

@@ -106,7 +106,15 @@ def similar_songs(
             raise HTTPException(
                 status_code=404, detail=f"{file_path} has not been analyzed with {model_name} yet"
             )
-        hits = nearest(session, task.model, task.profile, vector, limit, exclude_track_id=track.id)
+        hits = nearest(
+            session,
+            task.model,
+            task.profile,
+            vector,
+            limit,
+            exclude_track_id=track.id,
+            csls_k=request.app.state.settings.similar_csls_k,
+        )
         return _songs(hits)
 
 

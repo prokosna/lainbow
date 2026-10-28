@@ -72,6 +72,7 @@ def test_duplicate_submit(factory: sessionmaker[Session]) -> None:
     first = ex.submit("scan", lambda: (gate.wait(10), {})[1])
     assert ex.submit("scan", lambda: {}) == first
     assert ex.submit("vacuum", lambda: {}) != first
+    assert ex.submit("neighbors", lambda: {}) != first
     gate.set()
     wait_done(factory, first)
     second = ex.submit("scan", lambda: {})
